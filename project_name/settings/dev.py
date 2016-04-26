@@ -12,8 +12,14 @@ DEBUG = True
 # ##### DATABASE CONFIGURATION ############################
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': join(PROJECT_ROOT, 'run', 'dev.sqlite3'),
+    #Settings for mysql on a centos server communicating locally over a unix port
+    #Assumes DB and DB-user are both the site name - which is vaguely sensible.
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': SITE_NAME,
+        'USER': SITE_NAME,
+        'PASSWORD':'[[db password]]',
+        'HOST':'/var/lib/mysql/mysql.sock',
+        'PORT':'',
     }
 }
 
