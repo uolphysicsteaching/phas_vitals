@@ -10,33 +10,33 @@ Meta
 
 Author:
     Mischback
+    Gavin Burnell (this fork)
 
 Status:
     maintained, in development
 
 Version:
-    1.1
+    1.2
 
 Django Version:
-    1.8
+    1.9
 
 
 
 Usage
 -----
 
-To use this repository just use the ``template`` option of `django-admin
-<https://docs.djangoproject.com/en/1.8/ref/django-admin/#startproject-projectname-destination>`_::
+To use this repository just use the ``template`` option of `django-admin and run
 
-    $ django-admin startproject --template=https://github.com/Mischback/django-project-skeleton/archive/development.zip [projectname]
+    $ django-admin startproject --template=https://github.com/gb119/django-project-skeleton/archive/development.zip --name apache2_vhost.sample [projectname]
 
-If you wish to automagically fill the ``apache2_vhost.sample`` the command is::
-
-    $ django-admin startproject --template=https://github.com/Mischback/django-project-skeleton/archive/development.zip --name apache2_vhost.sample [projectname]
+to automagically fill the ``apache2_vhost.sample``.
 
 
 Documentation
 -------------
 
-You can see the documentation over at **Read the Docs**: `django-project-skeleton
+You can see the documentation for the original version over at **Read the Docs**: `django-project-skeleton
 <http://django-project-skeleton.readthedocs.org/en/latest/>`_
+
+This fork updates some things for Django 1.9 and Apache 2.4 and changes a few defaults to thinks I like better.

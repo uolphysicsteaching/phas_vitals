@@ -2,7 +2,7 @@
     # This is name based virtual hosting. So place an appropriate server name
     #   here. Example: django.devsrv.local
     ServerName  [[SERVER_NAME]]
-    ServerAdmin webmaster@localhost
+    ServerAdmin [[your email]]
 
     # This alias makes serving static files possible.
     #   Please note, that this is geared to our settings/common.py
@@ -19,12 +19,15 @@
 
     # PROCESS_NAME specifies a distinct name of this process
     #   see: https://code.google.com/p/modwsgi/wiki/ConfigurationDirectives#WSGIDaemonProcess
-    # PATH/TO/PROJECT_ROOT is the full path to your project's root directory, 
+    # PATH/TO/PROJECT_ROOT is the full path to your project's root directory,
     #   containing your project files
     # PATH/TO/VIRTUALENV/ROOT: If you are using a virtualenv specify the full
     #   path to its directory.
     #   Generally you must specify the path to Python's site-packages.
-    WSGIDaemonProcess   {{ project_name }}  python-path={{ project_directory }}:{{ project_directory }}/../lib/python2.7/site-packages
+
+    #Also place the eggs directory into the project directory (will need to be writeable by webserver ) as otherwise it
+    #will try to write into the web server's home directory which is unlikely to work....
+    WSGIDaemonProcess   {{ project_name }}  python-path={{ project_directory }} python-eggs={{ project_directory }}.python-eggs
 
     # PROCESS_GROUP specifies a distinct name for the process group
     #   see: https://code.google.com/p/modwsgi/wiki/ConfigurationDirectives#WSGIProcessGroup
@@ -35,8 +38,7 @@
     #   In production environment, you will propably adjust this!
     <Directory {{ project_directory }}/run/static>
         Options -Indexes
-        Order deny,allow
-        Allow from all
+        Require all granted
     </Directory>
 
     # Serving media files from this directory
@@ -44,8 +46,7 @@
     #   In production environment, you will propably adjust this!
     <Directory {{ project_directory }}/run/media>
         Options -Indexes
-        Order deny,allow
-        Allow from all
+        Require all granted
     </Directory>
 
     LogLevel warn

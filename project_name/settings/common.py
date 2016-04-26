@@ -90,7 +90,7 @@ SECRET_FILE = normpath(join(PROJECT_ROOT, 'run', 'SECRET.key'))
 
 # These persons receive error notification
 ADMINS = (
-    ('your name', 'your_name@example.com'),
+    ('[[ your name ]]', '[[ your_name@example.com ]]'),
 )
 MANAGERS = ADMINS
 
@@ -98,10 +98,10 @@ MANAGERS = ADMINS
 # ##### DJANGO RUNNING CONFIGURATION ######################
 
 # The default WSGI application
-WSGI_APPLICATION = '%s.wsgi.application' % SITE_NAME
+WSGI_APPLICATION = '{}.wsgi.application'.format(SITE_NAME)
 
 # The root URL configuration
-ROOT_URLCONF = '%s.urls' % SITE_NAME
+ROOT_URLCONF = '{}.urls'.format(SITE_NAME)
 
 # This site's ID
 SITE_ID = 1
@@ -119,8 +119,8 @@ DEBUG = False
 
 # ##### INTERNATIONALIZATION ##############################
 
-LANGUAGE_CODE = 'de'
-TIME_ZONE = 'Europe/Berlin'
+LANGUAGE_CODE = 'en'
+TIME_ZONE = 'Europe/London'
 
 # Internationalization
 USE_I18N = True
