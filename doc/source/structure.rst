@@ -4,14 +4,14 @@ Project Structure
 =================
 
 The *normal* Django workflow, as it is described `in the official Django
-tutorial  <https://docs.djangoproject.com/en/1.8/intro/tutorial01/#creating-a-project>`_
+tutorial  <https://docs.djangoproject.com/en/2.2/intro/tutorial01/#creating-a-project>`_
 starts a project with the command::
 
     $ django-admin startproject [projectname]
 
 Your project will look like this::
 
-    
+
     [projectname]/
     ├── [projectname]/
     │   ├── __init__.py
@@ -21,15 +21,14 @@ Your project will look like this::
     └── manage.py
 
 However, the ``startproject``-command takes an optional argument ``template``
-which can be used to specify a project template to be used for project
-creation (see `Django documentation
-<https://docs.djangoproject.com/en/1.8/ref/django-admin/#startproject-projectname-destination>`_).
+which can be used to specify a project template to be used for project (see
+`official documentation <https://docs.djangoproject.com/en/2.2/ref/django-admin/#django-admin-startproject>`_)
 
 The ``template``-argument works with paths on your local machine, but also
 supports URLs. So you can easily fetch this skeleton from **GitHub** using this
 command::
 
-    $ django-admin startproject --template=https://github.com/Mischback/django-project-skeleton/archive/development.zip [projectname]
+    $ django-admin startproject --template=https://github.com/Mischback/django-project-skeleton/archive/master.zip [projectname]
 
 Your project will look like this::
 
@@ -38,8 +37,8 @@ Your project will look like this::
     │   ├── __init__.py
     │   ├── settings/
     │   │   ├── common.py
-    │   │   ├── dev.py
-    │   │   ├── djangodefault.py
+    │   │   ├── development.py
+    │   │   ├── i18n.py
     │   │   ├── __init__.py
     │   │   └── production.py
     │   ├── urls.py
@@ -64,6 +63,9 @@ Your project will look like this::
     ├── static/
     │   └── README
     └── templates/
+        ├── base.html
+        ├── core
+        │   └── login.html
         └── README
 
 
@@ -77,8 +79,8 @@ Django Root
     │   ├── __init__.py
     │   ├── settings/
     │   │   ├── common.py
-    │   │   ├── dev.py
-    │   │   ├── djangodefault.py
+    │   │   ├── development.py
+    │   │   ├── i18n.py
     │   │   ├── __init__.py
     │   │   └── production.py
     │   ├── urls.py
@@ -103,7 +105,7 @@ project's connection with Django.
 ``[projectname]/wsgi.py``
     Deploying Django makes use of WSGI, the Pythonic way of deploying web
     applications. See the `official settings documentation on WSGI
-    <https://docs.djangoproject.com/en/1.8/howto/deployment/wsgi/>`_ for more
+    <https://docs.djangoproject.com/en/2.2/howto/deployment/wsgi/>`_ for more
     details. The default WSGI-application is modified to use our
     ``settings``-module.
 
@@ -128,9 +130,8 @@ in your project root.
 configs/
 --------
 
-This directory contains configuration files for deployment. Now only a
-configuration file for deployment with **Apache2** and **mod_wsgi** is
-provided.
+This directory contains configuration files for deployment. A configuration
+file for deployment with **Apache2** and **mod_wsgi** is provided.
 
 ::
 
@@ -138,6 +139,7 @@ provided.
     ├── *snap*
     ├── configs/
     │   ├── apache2_vhost.sample
+    │   ├── Makefile.sample
     │   └── README
     └── *snap*
 
@@ -147,6 +149,10 @@ only include files ending with the suffix ``.sample`` into *Git*.
 
 For a brief overview of the ``configs/apach2_vhost.sample`` refer to
 :ref:`label-apache2-vhost`.
+
+Additionally, a sample Makefile is stored here. This file can be used to ease
+the management of the project. Probably a future release will automatically
+exchange the Makefile in ``project_root`` with this one.
 
 
 doc/
@@ -210,6 +216,9 @@ static/ and templates/
     ├── static/
     │   └── README
     └── templates/
+        ├── base.html
+        ├── core
+        │   └── login.html
         └── README
 
 These directories are used for project wide files, meaning project wide static
@@ -218,10 +227,12 @@ assets and templates.
 ``static/``
     This directory is used to provide our project wide static assets. Please
     refer to `the Django documentation
-    <https://docs.djangoproject.com/en/1.8/howto/static-files/#configuring-static-files>`_
+    <https://docs.djangoproject.com/en/2.2/howto/static-files/#configuring-static-files>`_
     for more details. :ref:`label-project-settings` documents the
     ``STATICFILES_DIRS``-setting.
 
 ``templates/``
     This directory is used to provide our project wide templates.
     :ref:`label-project-settings` documents the ``TEMPLATE_DIRS``-setting.
+    Please note, that there are two basic templates are already included. These
+    are used to enable a very basic login functionality for the project.

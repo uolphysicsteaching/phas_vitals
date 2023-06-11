@@ -3,7 +3,7 @@ Quickstart
 
 I assume you know what you are doing, so let's just do it::
 
-    $ django-admin startproject --template=https://github.com/Mischback/django-project-skeleton/archive/development.zip [projectname]
+    $ django-admin startproject --template=https://github.com/Mischback/django-project-skeleton/archive/master.zip [projectname]
 
 Your project will look like this::
 
@@ -12,8 +12,8 @@ Your project will look like this::
     │   ├── __init__.py
     │   ├── settings/
     │   │   ├── common.py
-    │   │   ├── dev.py
-    │   │   ├── djangodefault.py
+    │   │   ├── development.py
+    │   │   ├── i18n.py
     │   │   ├── __init__.py
     │   │   └── production.py
     │   ├── urls.py
@@ -22,6 +22,7 @@ Your project will look like this::
     │   └── __init__.py
     ├── configs/
     │   ├── apache2_vhost.sample
+    │   ├── Makefile.sample
     │   └── README
     ├── doc/
     │   ├── Makefile
@@ -38,6 +39,9 @@ Your project will look like this::
     ├── static/
     │   └── README
     └── templates/
+        ├── base.html
+        ├── core
+        │   └── login.html
         └── README
 
 See :ref:`label-project-structure` for a detailled description of this layout.

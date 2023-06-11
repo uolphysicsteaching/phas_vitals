@@ -1,4 +1,5 @@
-# Import sys (to adjust Python path)
+# Python imports
+from os.path import abspath, basename, dirname, join, normpath
 import sys
 # Import some utility functions
 from os.path import abspath, basename, dirname, join, normpath
@@ -7,19 +8,19 @@ from os.path import abspath, basename, dirname, join, normpath
 
 # ##### PATH CONFIGURATION ################################
 
-# Fetch Django's project directory
+# fetch Django's project directory
 DJANGO_ROOT = dirname(dirname(abspath(__file__)))
 
-# Fetch the project_root
+# fetch the project_root
 PROJECT_ROOT = dirname(DJANGO_ROOT)
 
-# The name of the whole site
+# the name of the whole site
 SITE_NAME = basename(DJANGO_ROOT)
 
-# Collect static files here
+# collect static files here
 STATIC_ROOT = join(PROJECT_ROOT, 'run', 'static')
 
-# Collect media files here
+# collect media files here
 MEDIA_ROOT = join(PROJECT_ROOT, 'run', 'media')
 
 # look for static assets here
@@ -33,13 +34,13 @@ PROJECT_TEMPLATES = [
     join(PROJECT_ROOT, 'templates'),
 ]
 
-# Add apps/ to the Python path
+# add apps/ to the Python path
 sys.path.append(normpath(join(PROJECT_ROOT, 'apps')))
 
 
 # ##### APPLICATION CONFIGURATION #########################
 
-# This are the apps
+# these are the apps
 DEFAULT_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -50,7 +51,8 @@ DEFAULT_APPS = [
 ]
 
 # Middlewares
-MIDDLEWARE_CLASSES = [
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -61,7 +63,7 @@ MIDDLEWARE_CLASSES = [
     'django.middleware.security.SecurityMiddleware',
 ]
 
-# Template stuff
+# template stuff
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -81,6 +83,9 @@ TEMPLATES = [
     },
 ]
 
+# Internationalization
+USE_I18N = False
+
 
 # ##### SECURITY CONFIGURATION ############################
 
@@ -88,7 +93,7 @@ TEMPLATES = [
 # The required SECRET_KEY is fetched at the end of this file
 SECRET_FILE = normpath(join(PROJECT_ROOT, 'run', 'SECRET.key'))
 
-# These persons receive error notification
+# these persons receive error notification
 ADMINS = (
     ('[[ your name ]]', '[[ your_name@example.com ]]'),
 )
@@ -97,10 +102,10 @@ MANAGERS = ADMINS
 
 # ##### DJANGO RUNNING CONFIGURATION ######################
 
-# The default WSGI application
+# the default WSGI application
 WSGI_APPLICATION = '{}.wsgi.application'.format(SITE_NAME)
 
-# The root URL configuration
+# the root URL configuration
 ROOT_URLCONF = '{}.urls'.format(SITE_NAME)
 
 # This site's ID
@@ -109,7 +114,7 @@ SITE_ID = 1
 # The URL for static files
 STATIC_URL = '/static/'
 
-# The URL for media files
+# the URL for media files
 MEDIA_URL = '/media/'
 
 
