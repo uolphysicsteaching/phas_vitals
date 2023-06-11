@@ -15,3 +15,11 @@ coverage_html
 
 # I started relying on putting temporary notes into TODO files
 *.todo
+
+# General backup files
+*.bak
+
+# Sectrets
+
+*secrets.*
+*SECRET*
