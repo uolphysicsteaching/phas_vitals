@@ -4,17 +4,20 @@ django-project-skeleton
 **django-project-skeleton** is my skeleton for Django projects. It provides a
 directory structure for Django projects during development and deployment.
 
+This fork is designed to work with Django 4.x, Python 3.11 and postgresql as the DB backend.
+It adds code to automatically incorporate apps placed within the apps/ directory, looking for
+a urls.py and models.py and optionally a settings.py.
 
 Meta
 ----
 
 Author:
     Mischback
-    Gavin Burnell (this fork)
 
 Contributors:
     `agirardeaudale <https://github.com/agirardeuadale>`_,
     `jmrbcu <https://github.com/jmrbcu>`_
+    `Gavin Burnell <https://github.com/gb119/>`
 
 Status:
     maintained, in development
@@ -39,19 +42,8 @@ If you wish to automagically fill the ``apache2_vhost.sample`` the command is::
     $ django-admin startproject --template=https://github.com/Mischback/django-project-skeleton/archive/development.zip --name apache2_vhost.sample [projectname]
 
 
-Note
-----
-
-Disregard the failing build-status of commits in the branch ``development``.
-These commits are tested on Travis with all possible combinations of Django
-and Python. This is done to determine the compatibility and update the
-documentation accordingly. Failing is expected.
-
-
 Documentation
 -------------
 
 You can see the documentation for the original version over at **Read the Docs**: `django-project-skeleton
 <http://django-project-skeleton.readthedocs.org/en/latest/>`_
-
-This fork updates some things for Django 1.9 and Apache 2.4 and changes a few defaults to thinks I like better.
