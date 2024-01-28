@@ -1,0 +1,57 @@
+<VirtualHost *:80>
+    # This is name based virtual hosting. So place an appropriate server name
+    #   here. Example: django.devsrv.local
+    ServerName  [[SERVER_NAME]]
+    ServerAdmin [[your email]]
+
+    # This alias makes serving static files possible.
+    #   Please note, that this is geared to our settings/common.py
+    #   In production environment, you will propably adjust this!
+    Alias /static/  W:\phas_vitals\phas_vitals/run/static/
+
+    # This alias makes serving media files possible.
+    #   Please note, that this is geared to our settings/common.py
+    #   In production environment, you will propably adjust this!
+    Alias /media/  W:\phas_vitals\phas_vitals/run/media/
+
+    # Insert the full path to the wsgi.py-file here
+    WSGIScriptAlias /   W:\phas_vitals\phas_vitals/phas_vitals/wsgi.py
+
+    # PROCESS_NAME specifies a distinct name of this process
+    #   see: https://code.google.com/p/modwsgi/wiki/ConfigurationDirectives#WSGIDaemonProcess
+    # PATH/TO/PROJECT_ROOT is the full path to your project's root directory,
+    #   containing your project files
+    # PATH/TO/VIRTUALENV/ROOT: If you are using a virtualenv specify the full
+    #   path to its directory.
+    #   Generally you must specify the path to Python's site-packages.
+
+    #Also place the eggs directory into the project directory (will need to be writeable by webserver ) as otherwise it
+    #will try to write into the web server's home directory which is unlikely to work....
+    WSGIDaemonProcess   phas_vitals  python-path=W:\phas_vitals\phas_vitals python-eggs=W:\phas_vitals\phas_vitals.python-eggs
+
+    # PROCESS_GROUP specifies a distinct name for the process group
+    #   see: https://code.google.com/p/modwsgi/wiki/ConfigurationDirectives#WSGIProcessGroup
+    WSGIProcessGroup    phas_vitals
+
+    # Serving static files from this directory
+    #   Please note, that this is geared to our settings/common.py
+    #   In production environment, you will propably adjust this!
+    <Directory W:\phas_vitals\phas_vitals/run/static>
+        Options -Indexes
+        Require all granted
+    </Directory>
+
+    # Serving media files from this directory
+    #   Please note, that this is geared to our settings/common.py
+    #   In production environment, you will propably adjust this!
+    <Directory W:\phas_vitals\phas_vitals/run/media>
+        Options -Indexes
+        Require all granted
+    </Directory>
+
+    LogLevel warn
+
+    # PROJECT_NAME is used to seperate the log files of this application
+    ErrorLog    ${APACHE_LOG_DIR}/phas_vitals_error.log
+    CustomLog   ${APACHE_LOG_DIR}/phas_vitals_access.log combined
+</VirtualHost>
