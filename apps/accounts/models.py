@@ -105,7 +105,7 @@ class Account(AbstractUser):
     number = models.IntegerField(blank=True, null=True)
     title = models.CharField(max_length=20, blank=True, null=True)
     cohort = models.ForeignKey(Cohort, on_delete=models.SET_NULL, related_name="students", blank=True, null=True)
-    programme = models.CharField(max_length=50, blank=True, null=True, default="")
+    programme = models.ForeignKey(Programme, on_delete=models.SET_NULL, blank=True, null=True, related_name="students")
     level = models.IntegerField(
         default=1,
         verbose_name="Current Level of Study",

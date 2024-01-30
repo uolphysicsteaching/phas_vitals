@@ -89,6 +89,7 @@ DEFAULT_APPS = [
     "dal",
     "dal_select2",
     "django_bootstrap5",
+    'django_extensions',
     "django_tables2",
     "email_obfuscator",
     "floppyforms",
@@ -378,6 +379,13 @@ BATON = {
     #     'CREDENTIALS': os.path.join(BASE_DIR, 'credentials.json'),
     #     'VIEW_ID': '12345678',
     # }
+}
+
+###### Django-extensions #################################
+
+GRAPH_MODELS = {
+  'all_applications': True,
+  'group_models': True,
 }
 
 ###### Import config from apps ############################
