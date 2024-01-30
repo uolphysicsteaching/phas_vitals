@@ -1,12 +1,15 @@
+# Django imports
 from django import forms
 from django.contrib.admin import ModelAdmin, SimpleListFilter, register, site
 from django.contrib.auth.admin import GroupAdmin, UserAdmin
 from django.contrib.auth.models import Group
 from django.utils.translation import gettext_lazy as _
+
+# external imports
 from import_export import fields, resources, widgets
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
-
+# app imports
 from .models import Account, Cohort, Programme
 
 # Register your models here.

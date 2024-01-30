@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
-from ajax_select import LookupChannel, register
+# Django imports
+from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
-from django.contrib.auth.models import Group
 
-from .models import Account, academic_Q, tutor_Q, students_Q, markers_Q
+# external imports
+from ajax_select import LookupChannel, register
+
+# app imports
+from .models import Account, academic_Q, markers_Q, students_Q, tutor_Q
 
 
 @register("groups")

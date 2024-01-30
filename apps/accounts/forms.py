@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
+# Django imports
 import django.utils.timezone as tz
-import floppyforms as forms
 from django.db.models import Count, Q
 from django.forms.widgets import Select
 
-from .models import Account, Cohort, students_Q, academic_Q
+# external imports
+import floppyforms as forms
+
+# app imports
+from .models import Account, Cohort, academic_Q, students_Q
 
 
 class StudentSelectForm(forms.Form):

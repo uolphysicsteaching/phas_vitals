@@ -1,11 +1,14 @@
 from __future__ import unicode_literals
 
+# Django imports
 from django.contrib.auth.models import AbstractUser, Group
 from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.functional import cached_property, classproperty
+
+# external imports
 from six import string_types
 
 # Some useful query objects

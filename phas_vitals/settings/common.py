@@ -1,7 +1,7 @@
 # Python imports
-from importlib import import_module
-import sys
 import socket
+import sys
+from importlib import import_module
 from pathlib import Path
 
 # Import some utility functions
@@ -227,6 +227,7 @@ try:
     SECRET_KEY = SECRET_FILE.read_text().strip()
 except IOError:
     try:
+        # Django imports
         from django.utils.crypto import get_random_string
 
         chars = "abcdefghijklmnopqrstuvwxyz0123456789!$%&()=+-_"
@@ -282,7 +283,7 @@ for app in CUSTOM_APPS:
         for setting in dir(app_settings):
             if setting == setting.upper():
                 set_val = getattr(app_settings, setting)
-                if isinstance(set_val, dict):  # Merge app.seetings
+                if isinstance(set_val, dict):  # Merge app.settings
                     locals()[setting].update(set_val)
                 elif isinstance(set_val, (list, tuple)):  # append app.settings
                     locals()[setting] = locals()[setting] + set_val

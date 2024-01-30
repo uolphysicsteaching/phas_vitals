@@ -1,6 +1,7 @@
 # Python imports
 from os.path import join
 
+# app imports
 # project imports
 from .common import *
 from .secrets import DATABASES

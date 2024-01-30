@@ -4,8 +4,9 @@ from os.path import join
 # Django imports
 from django.utils.translation import ugettext_lazy as _
 
+# app imports
 # project imports
-from .common import PROJECT_ROOT, MIDDLEWARE
+from .common import MIDDLEWARE, PROJECT_ROOT
 
 # ##### INTERNATIONALIZATION ##############################
 

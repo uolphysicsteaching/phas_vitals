@@ -2,9 +2,13 @@
 # -*- coding: utf-8 -*-
 """REST Framework API endpoints for accounts app"""
 
+# Django imports
 from django.contrib.auth.models import Group
+
+# external imports
 from rest_framework import routers, serializers, viewsets
 
+# app imports
 from .models import Account, Cohort, Programme
 
 
@@ -30,7 +34,7 @@ class AccountSerializer(serializers.ModelSerializer):
 
 class GroupSerializer(serializers.ModelSerializer):
 
-    """Serialiser for Goup Objects."""
+    """Serialiser for Group Objects."""
 
     class Meta:
         model = Group
