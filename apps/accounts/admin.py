@@ -12,7 +12,10 @@ from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 # app imports
 from .models import Account, Cohort, Programme
 from .resource import (
-    CohortResource, GroupResource, ProgrammeResource, StrippedCharWidget,
+    CohortResource,
+    GroupResource,
+    ProgrammeResource,
+    StrippedCharWidget,
     UserResource,
 )
 
@@ -116,17 +119,28 @@ class AccountrAdmin(ImportExportModelAdmin):
                     "email",
                     ("programme", "registration_status"),
                 ],
+                "classes": (
+                    "order-0",
+                    "baton-tabs-init",
+                    "baton-tab-inline-attribute",
+                    "baton-tab-fs-permissions",
+                    "baton-tab-fs-dates",
+                ),
             },
         ),
         (
             _("Permissions"),
             {
                 "fields": (("is_active", "is_staff", "is_superuser"), "groups", "user_permissions"),
+                "classes": ("tab-fs-permissions",),
             },
         ),
         (
             _("Important dates"),
-            {"fields": (("last_login", "date_joined"),)},
+            {
+                "fields": (("last_login", "date_joined"),),
+                "classes": ("tab-fs-dates",),
+            },
         ),
     )
     list_display = ["username", "last_name", "first_name", "cohort", "programme", "is_staff"]
