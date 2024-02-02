@@ -105,7 +105,7 @@ class Migration(migrations.Migration):
                         choices=[
                             ("Graded", "Score Graded"),
                             ("NeedsGrading", "Not Marked Yet"),
-                        ]
+                        ],  max_length=40, null=True
                     ),
                 ),
                 ("text", models.TextField(blank=True, null=True)),
@@ -161,7 +161,7 @@ class Migration(migrations.Migration):
                                 "NeedsGradingAgain",
                                 "New Student activity needs grade ipdating",
                             ),
-                        ],
+                        ],  max_length=40,
                         null=True,
                     ),
                 ),
