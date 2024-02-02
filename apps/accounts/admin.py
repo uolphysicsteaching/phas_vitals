@@ -12,10 +12,7 @@ from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 # app imports
 from .models import Account, Cohort, Programme
 from .resource import (
-    CohortResource,
-    GroupResource,
-    ProgrammeResource,
-    StrippedCharWidget,
+    CohortResource, GroupResource, ProgrammeResource, StrippedCharWidget,
     UserResource,
 )
 

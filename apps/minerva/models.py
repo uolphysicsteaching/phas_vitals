@@ -39,7 +39,8 @@ class Test(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     externalGrade = models.BooleanField(default=True, verbose_name="Grade from LTI")
-    score_possible = models.IntegerField(default=100, verbose_name="Maximum possible score")
+    score_possible = models.FloatField(default=100, verbose_name="Maximum possible score")
+    passing_score = models.FloatField(default=80, verbose_name="Maximum possible score")
     grading_due = models.DateTimeField(blank=True, null=True, verbose_name="Minerva Due Date")
     release_date = models.DateTimeField(blank=True, null=True, verbose_name="Test Available Date")
     recommended_date = models.DateTimeField(blank=True, null=True, verbose_name="Recomemnded Attempt Date")
@@ -55,6 +56,23 @@ class Test_Score(models.Model):
     status = models.CharField(choices=SCORE_STATUS.items(), max_length=50)
     text = models.TextField(blank=True, null=True)
     score = models.FloatField(null=True, blank=True)
+    passed = models.BooleanField(default=False)
+
+    def save(self, **kargs):
+        """Correct the passed flag if score is equal to or greate than test.passing_score."""
+        if self.test.grading_attemptsAllowed and self.test.grading_attemptsAllowed > 0:
+            attempts = self.attempts.count() <= self.test.grading_attemptsAllowed
+            self.score = self.score if self.score else self.attempts.aggregate(models.Max("score", default=0))
+        else:
+            attempts = True
+
+        numerically_passed = self.score >= self.test.passing_score
+        self.passed = self.passed or (numerically_passed and attempts)
+        super().save(**kargs)
+
+    def __str__(self):
+        """Give us a more friendly string version."""
+        return f"{self.test.name} : {self.user.displayname} {'passed' if self.passed else 'not passed'}"
 
 
 class Test_Attempt(models.Model):
@@ -63,7 +81,7 @@ class Test_Attempt(models.Model):
 
     attempt_id = models.CharField(max_length=255, primary_key=True)
     test_entry = models.ForeignKey(Test_Score, on_delete=models.CASCADE, related_name="attempts")
-    status = models.CharField(choices=ATTEMPT_STATUS.items(), blank=True, null=True,max_length=40)
+    status = models.CharField(choices=ATTEMPT_STATUS.items(), blank=True, null=True, max_length=40)
     text = models.TextField(blank=True, null=True)
     score = models.FloatField(null=True, blank=True)
     created = models.DateTimeField(blank=True, null=True)
