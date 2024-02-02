@@ -52,7 +52,7 @@ class Test_Score(models.Model):
 
     user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="test_results")
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="results")
-    status = models.CharField(choices=SCORE_STATUS.items())
+    status = models.CharField(choices=SCORE_STATUS.items(), max_length=50)
     text = models.TextField(blank=True, null=True)
     score = models.FloatField(null=True, blank=True)
 
@@ -63,7 +63,7 @@ class Test_Attempt(models.Model):
 
     attempt_id = models.CharField(max_length=255, primary_key=True)
     test_entry = models.ForeignKey(Test_Score, on_delete=models.CASCADE, related_name="attempts")
-    status = models.CharField(choices=ATTEMPT_STATUS.items(), blank=True, null=True)
+    status = models.CharField(choices=ATTEMPT_STATUS.items(), blank=True, null=True,max_length=40)
     text = models.TextField(blank=True, null=True)
     score = models.FloatField(null=True, blank=True)
     created = models.DateTimeField(blank=True, null=True)
