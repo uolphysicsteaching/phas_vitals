@@ -13,6 +13,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path, re_path
 
 # app imports
+from .api import router
 from .settings.production import PROJECT_ROOT
 
 urlpatterns = [
@@ -20,7 +21,11 @@ urlpatterns = [
     # url(r'^$', 'phas_vitals.views.home', name='home'),
     # url(r'^blog/', include('blog.urls')),
     path('admin/', admin.site.urls),
+    path('api-auth/', include('rest_framework.urls')),
     path('baton/', include('baton.urls')),
+    path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
+    path('api/', include(router.urls)),
+
 ]
 
 # Add urls path for all the apps

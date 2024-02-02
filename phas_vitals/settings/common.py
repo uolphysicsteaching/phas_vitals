@@ -69,40 +69,45 @@ for appdir in appdirs:
 print("#" * 80)
 
 # these are the apps
-DEFAULT_APPS = [
-    "baton",
-    "django.contrib.admin",
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.flatpages",
-    "django.contrib.sessions",
-    "django.contrib.sites",
-    "django.contrib.messages",
-    "django.contrib.staticfiles",
-    ### General 3rd party apps
-    "adminsortable2",
-    "ajax_select",
-    "colorful",  # django-colorful package
-    "constance",
-    "cookielaw",
-    "corsheaders",
-    "dal",
-    "dal_select2",
-    "django_bootstrap5",
-    'django_extensions',
-    "django_tables2",
-    "email_obfuscator",
-    "floppyforms",
-    "import_export",
-    "rest_framework",
-    "django_filters",
-    "sitetree",  # django-sitetree package
-    "smart_selects",
-    "tinymce",  # django-tinymce package
-    "mathfilters",
-] + CUSTOM_APPS + [
-    'baton.autodiscover',
+DEFAULT_APPS = (
+    [
+        "baton",
+        "django.contrib.admin",
+        "django.contrib.auth",
+        "django.contrib.contenttypes",
+        "django.contrib.flatpages",
+        "django.contrib.sessions",
+        "django.contrib.sites",
+        "django.contrib.messages",
+        "django.contrib.staticfiles",
+        ### General 3rd party apps
+        "adminsortable2",
+        "ajax_select",
+        "colorful",  # django-colorful package
+        "constance",
+        "cookielaw",
+        "corsheaders",
+        "dal",
+        "dal_select2",
+        "django_bootstrap5",
+        "django_extensions",
+        "django_filters",
+        "django_tables2",
+        "email_obfuscator",
+        "floppyforms",
+        "import_export",
+        "mathfilters",
+        "oauth2_provider",
+        "rest_framework",
+        "sitetree",  # django-sitetree package
+        "smart_selects",
+        "tinymce",  # django-tinymce package
     ]
+    + CUSTOM_APPS
+    + [
+        "baton.autodiscover",
+    ]
+)
 
 # Middlewares
 MIDDLEWARE = [
@@ -317,56 +322,44 @@ CONSTANCE_ADDITIONAL_FIELDS = {
 ###### BATON Configuration ###############################
 
 BATON = {
-    'SITE_HEADER': 'Physics VITALS tracking',
-    'SITE_TITLE': 'Physics VITALS',
-    'INDEX_TITLE': 'Site administration',
+    "SITE_HEADER": "Physics VITALS tracking",
+    "SITE_TITLE": "Physics VITALS",
+    "INDEX_TITLE": "Site administration",
     #'SUPPORT_HREF': 'https://github.com/otto-torino/django-baton/issues',
-    'COPYRIGHT': 'copyright © 2023 University of Leeds',
+    "COPYRIGHT": "copyright © 2023 University of Leeds",
     #'POWERED_BY': '<a href="https://www.otto.to.it">Otto srl</a>',
-    'CONFIRM_UNSAVED_CHANGES': True,
-    'SHOW_MULTIPART_UPLOADING': True,
-    'ENABLE_IMAGES_PREVIEW': True,
-    'CHANGELIST_FILTERS_IN_MODAL': True,
-    'CHANGELIST_FILTERS_ALWAYS_OPEN': False,
-    'CHANGELIST_FILTERS_FORM': True,
-    'COLLAPSABLE_USER_AREA': False,
-    'MENU_ALWAYS_COLLAPSED': False,
-    'MENU_TITLE': 'Menu',
-    'MESSAGES_TOASTS': False,
-    'GRAVATAR_DEFAULT_IMG': 'retro',
-    'GRAVATAR_ENABLED': True,
-    'FORCE_THEME': None,
+    "CONFIRM_UNSAVED_CHANGES": True,
+    "SHOW_MULTIPART_UPLOADING": True,
+    "ENABLE_IMAGES_PREVIEW": True,
+    "CHANGELIST_FILTERS_IN_MODAL": True,
+    "CHANGELIST_FILTERS_ALWAYS_OPEN": False,
+    "CHANGELIST_FILTERS_FORM": True,
+    "COLLAPSABLE_USER_AREA": False,
+    "MENU_ALWAYS_COLLAPSED": False,
+    "MENU_TITLE": "Menu",
+    "MESSAGES_TOASTS": False,
+    "GRAVATAR_DEFAULT_IMG": "retro",
+    "GRAVATAR_ENABLED": True,
+    "FORCE_THEME": None,
     #'LOGIN_SPLASH': '/static/core/img/login-splash.png',
     # 'SEARCH_FIELD': {
     #     'label': 'Search contents...',
     #     'url': '/search/',
     # },
-    'MENU': (
-        { 'type': 'title', 'label': 'main', 'apps': ('auth', ) },
+    "MENU": (
+        {"type": "title", "label": "main", "apps": ("auth",)},
         {
-            'type': 'app',
-            'name': 'accounts',
-            'label': 'Authentication',
-            'icon': 'fa fa-lock',
-            'default_open': True,
-            'models': (
-                {
-                    'name': 'account',
-                    'label': 'Users'
-                },
-                {
-                    'name': 'cohort',
-                    'label': 'Student Cohorts'
-                },
-                {
-                    'name': 'programme',
-                    'label': 'Programmes'
-                },
-                {
-                    'name': 'group',
-                    'label': 'Groups'
-                },
-            )
+            "type": "app",
+            "name": "accounts",
+            "label": "Authentication",
+            "icon": "fa fa-lock",
+            "default_open": True,
+            "models": (
+                {"name": "account", "label": "Users"},
+                {"name": "cohort", "label": "Student Cohorts"},
+                {"name": "programme", "label": "Programmes"},
+                {"name": "group", "label": "Groups"},
+            ),
         },
         # { 'type': 'title', 'label': 'Contents', 'apps': ('flatpages', ) },
         # { 'type': 'model', 'label': 'Pages', 'name': 'flatpage', 'app': 'flatpages' },
@@ -385,8 +378,25 @@ BATON = {
 ###### Django-extensions #################################
 
 GRAPH_MODELS = {
-  'all_applications': True,
-  'group_models': True,
+    "all_applications": True,
+    "group_models": True,
+}
+
+
+###### Django REST Framework Settings #####################
+
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAdminUser",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework.authentication.BasicAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ),
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ),
+
 }
 
 ###### Import config from apps ############################
