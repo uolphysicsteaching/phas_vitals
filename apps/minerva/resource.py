@@ -1,9 +1,7 @@
-# Django imports
-from django.contrib import admin
+"""Import Export Admin Resources for the minerva app models."""
 
 # external imports
 from import_export import fields, resources, widgets
-from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
 # app imports
 from .models import Module, Test, Test_Attempt, Test_Score

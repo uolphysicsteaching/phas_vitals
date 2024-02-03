@@ -116,13 +116,13 @@ class AccountrAdmin(ImportExportModelAdmin):
                     "email",
                     ("programme", "registration_status"),
                 ],
-                "classes": (
+                "classes": [
                     "order-0",
                     "baton-tabs-init",
                     "baton-tab-inline-attribute",
                     "baton-tab-fs-permissions",
                     "baton-tab-fs-dates",
-                ),
+                ],
             },
         ),
         (

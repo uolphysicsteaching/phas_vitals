@@ -3,6 +3,7 @@
 
 # Django imports
 from django.contrib.auth.models import Group
+from django.db.models import Q
 
 # external imports
 from import_export import fields, resources, widgets
@@ -18,6 +19,16 @@ class StrippedCharWidget(widgets.CharWidget):
     def clean(self, value, row=None, *args, **kwargs):
         return super().clean(value, row, *args, **kwargs).strip()
 
+class ProgrammeWidget(widgets.ForeignKeyWidget):
+
+    def clean(self, value, row=None, *args, **kwargs):
+
+        qs = self.model.objects.filter(Q(code=value)|Q(name=value))
+        if qs.count()<1:
+            return None
+        return qs.last()
+
+
 
 class UserResource(resources.ModelResource):
     groups = fields.Field(
@@ -27,7 +38,7 @@ class UserResource(resources.ModelResource):
     programme = fields.Field(
         column_name="programme",
         attribute="programme",
-        widget=widgets.ForeignKeyWidget(Programme, "code"),
+        widget=ProgrammeWidget(Programme, "code"),
     )
 
     tutor = fields.Field(

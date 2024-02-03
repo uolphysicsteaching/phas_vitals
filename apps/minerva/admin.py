@@ -3,14 +3,29 @@ from django.contrib import admin
 
 # external imports
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
+from util.admin import add_inlines
 
 # app imports
 from .models import Module, Test, Test_Attempt, Test_Score
 from .resource import (
-    ModuleResource, Test_AttemptResource, Test_ScoreResource, TestResource,
+    ModuleResource,
+    Test_AttemptResource,
+    Test_ScoreResource,
+    TestResource,
 )
 
 # Register your models here.
+
+
+class Test_ScoreInline(admin.StackedInline):
+
+    """Inline admin for Test Result mapping for VITALS."""
+
+    model = Test_Score
+    extra = 0
+
+
+add_inlines("accounts.Account", Test_ScoreInline, "test_results")
 
 
 @admin.register(Module)
@@ -22,9 +37,11 @@ class ModuleAdmin(ImportExportModelAdmin):
     search_fields = ["name", "description", "programmes__name", "programmes__code"]
 
     def get_export_resource_class(self):
+        """Return the class for exporting objects."""
         return ModuleResource
 
     def get_import_resource_class(self):
+        """Return the class for importing objects."""
         return ModuleResource
 
 
@@ -47,9 +64,11 @@ class TestAdmin(ImportExportModelAdmin):
     search_fields = ["name", "module__name", "module__programmes__name"]
 
     def get_export_resource_class(self):
+        """Return the class for exporting objects."""
         return TestResource
 
     def get_import_resource_class(self):
+        """Return the class for importing objects."""
         return TestResource
 
 
@@ -67,9 +86,11 @@ class Test_ScoreAdmin(ImportExportModelAdmin):
     search_fields = ["user__last_name", "user__username", "test__name", "test__module__name"]
 
     def get_export_resource_class(self):
+        """Return the class for exporting objects."""
         return Test_ScoreResource
 
     def get_import_resource_class(self):
+        """Return the class for importing objects."""
         return Test_ScoreResource
 
 
@@ -95,7 +116,9 @@ class Test_AtemptAdmin(ImportExportModelAdmin):
     ]
 
     def get_export_resource_class(self):
+        """Return the class for exporting objects."""
         return Test_AttemptResource
 
     def get_import_resource_class(self):
+        """Return the class for importing objects."""
         return Test_AttemptResource
