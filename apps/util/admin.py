@@ -1,7 +1,10 @@
 """Utility Admin Operations."""
+# Python imports
 import contextlib
-from importlib import import_module
 from collections.abc import Iterable
+from importlib import import_module
+
+# Django imports
 from django.contrib import admin
 from django.db.models import Model
 
@@ -84,7 +87,9 @@ def patch_admin(model, **kargs):
             else:
                 setattr(model_admin, attr, value)
 
+# external imports
 from sitetree.admin import TreeItemAdmin as model_admin
+
 model_admin.fieldsets[0][1]["classes"] = (
     "baton-tabs-init",
     "baton-tab-fs-basic",

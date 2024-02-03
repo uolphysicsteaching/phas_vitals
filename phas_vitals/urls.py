@@ -13,7 +13,6 @@ from django.contrib.auth import views as auth_views
 from django.urls import path, re_path
 from django.views.generic import TemplateView
 
-
 # app imports
 from .api import router
 from .settings.production import PROJECT_ROOT

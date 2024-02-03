@@ -1,12 +1,15 @@
 # Django imports
 from django.contrib import admin
-from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
+# external imports
+from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 from util.admin import add_inlines
 
-
-from .resource import VITALResource, VITAL_Test_MapResource, VITAL_ResultResource
-from .models import VITAL, VITAL_Test_Map, VITAL_Result
+# app imports
+from .models import VITAL, VITAL_Result, VITAL_Test_Map
+from .resource import (
+    VITAL_ResultResource, VITAL_Test_MapResource, VITALResource,
+)
 
 # Register your models here.
 

@@ -8,10 +8,7 @@ from util.admin import add_inlines
 # app imports
 from .models import Module, Test, Test_Attempt, Test_Score
 from .resource import (
-    ModuleResource,
-    Test_AttemptResource,
-    Test_ScoreResource,
-    TestResource,
+    ModuleResource, Test_AttemptResource, Test_ScoreResource, TestResource,
 )
 
 # Register your models here.
