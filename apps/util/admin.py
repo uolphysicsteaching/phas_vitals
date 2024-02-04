@@ -87,6 +87,7 @@ def patch_admin(model, **kargs):
             else:
                 setattr(model_admin, attr, value)
 
+
 # external imports
 from sitetree.admin import TreeItemAdmin as model_admin
 

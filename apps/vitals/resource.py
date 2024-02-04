@@ -34,7 +34,7 @@ class VITAL_ResultResource(resources.ModelResource):
 
     class Meta:
         model = VITAL_Result
-        fileds = ("id", "vital", "user", "date_passed")
+        fields = ("id", "vital", "user", "date_passed")
         import_id_fields = ["id"]
 
     vital = fields.Field(

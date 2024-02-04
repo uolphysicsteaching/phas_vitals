@@ -19,15 +19,13 @@ class StrippedCharWidget(widgets.CharWidget):
     def clean(self, value, row=None, *args, **kwargs):
         return super().clean(value, row, *args, **kwargs).strip()
 
+
 class ProgrammeWidget(widgets.ForeignKeyWidget):
-
     def clean(self, value, row=None, *args, **kwargs):
-
-        qs = self.model.objects.filter(Q(code=value)|Q(name=value))
-        if qs.count()<1:
+        qs = self.model.objects.filter(Q(code=value) | Q(name=value))
+        if qs.count() < 1:
             return None
         return qs.last()
-
 
 
 class UserResource(resources.ModelResource):

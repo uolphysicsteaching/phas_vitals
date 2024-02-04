@@ -65,7 +65,7 @@ class VITALAdmin(ImportExportModelAdmin):
 @admin.register(VITAL_Test_Map)
 class VITAL_Test_MapAdmin(ImportExportModelAdmin):
 
-    """Admin Interface for Mapings between Tests and VITALs."""
+    """Admin Interface for Mappings between Tests and VITALs."""
 
     list_display = ("test", "vital", "necessary", "sufficient")
     list_filter = list_display

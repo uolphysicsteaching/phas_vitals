@@ -28,9 +28,7 @@ class Migration(migrations.Migration):
                 ("description", models.TextField(blank=True, null=True)),
                 (
                     "programmes",
-                    models.ManyToManyField(
-                        related_name="modules", to="accounts.programme"
-                    ),
+                    models.ManyToManyField(related_name="modules", to="accounts.programme"),
                 ),
             ],
         ),
@@ -49,33 +47,23 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "score_possible",
-                    models.IntegerField(
-                        default=100, verbose_name="Maximum possible score"
-                    ),
+                    models.IntegerField(default=100, verbose_name="Maximum possible score"),
                 ),
                 (
                     "grading_due",
-                    models.DateTimeField(
-                        blank=True, null=True, verbose_name="Minerva Due Date"
-                    ),
+                    models.DateTimeField(blank=True, null=True, verbose_name="Minerva Due Date"),
                 ),
                 (
                     "release_date",
-                    models.DateTimeField(
-                        blank=True, null=True, verbose_name="Test Available Date"
-                    ),
+                    models.DateTimeField(blank=True, null=True, verbose_name="Test Available Date"),
                 ),
                 (
                     "recommended_date",
-                    models.DateTimeField(
-                        blank=True, null=True, verbose_name="Recomemnded Attempt Date"
-                    ),
+                    models.DateTimeField(blank=True, null=True, verbose_name="Recomemnded Attempt Date"),
                 ),
                 (
                     "grading_attemptsAllowed",
-                    models.IntegerField(
-                        blank=True, null=True, verbose_name="Number of allowed attempts"
-                    ),
+                    models.IntegerField(blank=True, null=True, verbose_name="Number of allowed attempts"),
                 ),
                 (
                     "module",
@@ -105,7 +93,9 @@ class Migration(migrations.Migration):
                         choices=[
                             ("Graded", "Score Graded"),
                             ("NeedsGrading", "Not Marked Yet"),
-                        ],  max_length=40, null=True
+                        ],
+                        max_length=40,
+                        null=True,
                     ),
                 ),
                 ("text", models.TextField(blank=True, null=True)),
@@ -161,7 +151,8 @@ class Migration(migrations.Migration):
                                 "NeedsGradingAgain",
                                 "New Student activity needs grade ipdating",
                             ),
-                        ],  max_length=40,
+                        ],
+                        max_length=40,
                         null=True,
                     ),
                 ),

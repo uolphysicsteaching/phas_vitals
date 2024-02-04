@@ -1,5 +1,6 @@
 # Django imports
 from django.db import models
+from django.utils import timezone as tz
 
 # Create your models here.
 
@@ -20,6 +21,7 @@ class VITAL_Result(models.Model):
 
     vital = models.ForeignKey("VITAL", on_delete=models.CASCADE, related_name="student_results")
     user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="vital_results")
+    passed = models.BooleanField(default=False)
     date_passed = models.DateTimeField(blank=True, null=True, verbose_name="Date Achieved")
 
     class Meta:
@@ -34,4 +36,11 @@ class VITAL(models.Model):
     description = models.TextField(blank=True, null=True)
     module = models.ForeignKey("minerva.Module", on_delete=models.CASCADE, related_name="VITALS")
     tests = models.ManyToManyField("minerva.Test", related_name="VITALS", through=VITAL_Test_Map)
-    students = models.ManyToManyField("accounts.Account", through=VITAL_Result,related_name="VITALS")
+    students = models.ManyToManyField("accounts.Account", through=VITAL_Result, related_name="VITALS")
+
+    def passed(self, user=None):
+        """Record the user as having passed this vital."""
+        result, new = VITAL_Result.objects.get_or_create(vital=self, user=user)
+        result.passed = True
+        result.date_passed = tz.now()
+        result.save()

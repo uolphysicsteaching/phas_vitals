@@ -101,7 +101,7 @@ class CohortViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = Cohort.objects.all()
     serializer_class = CohortSerializer
-    filterset_fields=["name","code"]
+    filterset_fields = ["name", "code"]
 
 
 class ProgrammeViewSet(viewsets.ReadOnlyModelViewSet):
@@ -110,7 +110,7 @@ class ProgrammeViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = Programme.objects.all()
     serializer_class = ProgrammeSerializer
-    filterset_fields=["name","code","level","local"]
+    filterset_fields = ["name", "code", "level", "local"]
 
 
 router.register(r"accounts", AccountViewSet)

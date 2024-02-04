@@ -21,20 +21,19 @@ urlpatterns = [
     # Examples:
     # url(r'^$', 'phas_vitals.views.home', name='home'),
     # url(r'^blog/', include('blog.urls')),
-    path('', TemplateView.as_view(template_name="home.html")),
-    path('admin/', admin.site.urls),
-    path('api/', include(router.urls)),
-    path('api-auth/', include('rest_framework.urls')),
-    path('baton/', include('baton.urls')),
+    path("", TemplateView.as_view(template_name="home.html")),
+    path("admin/", admin.site.urls),
+    path("api/", include(router.urls)),
+    path("api-auth/", include("rest_framework.urls")),
+    path("baton/", include("baton.urls")),
     path(r"login/", auth_views.LoginView.as_view(), name="core_login"),
     path(r"logout/", auth_views.LogoutView.as_view(next_page="/"), name="core_logout"),
-    path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
-
+    path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
 ]
 
 # Add urls path for all the apps
-for f in (Path(PROJECT_ROOT)/"apps").iterdir():
+for f in (Path(PROJECT_ROOT) / "apps").iterdir():
     if not f.is_dir() or f.name.startswith("."):
         continue
-    if (f/"urls.py").exists():
+    if (f / "urls.py").exists():
         urlpatterns.append(path(f"{f.name}/", include(f"{f.name}.urls")))

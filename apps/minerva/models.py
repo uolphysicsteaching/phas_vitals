@@ -1,6 +1,9 @@
 # Django imports
 from django.db import models
 
+# app imports
+from .signals import test_passed
+
 # Create your models here.
 
 
@@ -67,8 +70,11 @@ class Test_Score(models.Model):
             attempts = True
 
         numerically_passed = self.score >= self.test.passing_score
+        send_signal = not self.passed and numerically_passed and attempts
         self.passed = self.passed or (numerically_passed and attempts)
         super().save(**kargs)
+        if send_signal:
+            test_passed.send(sender=self.__class__, test=self)
 
     def __str__(self):
         """Give us a more friendly string version."""
@@ -87,3 +93,10 @@ class Test_Attempt(models.Model):
     created = models.DateTimeField(blank=True, null=True)
     attempted = models.DateTimeField(blank=True, null=True)
     modified = models.DateTimeField(blank=True, null=True)
+
+    def save(self, **kargs):
+        """Check whether saving this attempt changes the test passed or not."""
+        trigger_check = self.pk is None
+        super().save(**kargs)
+        if trigger_check:  # Every new attempt causes a save to the test_entry
+            self.test_entry.save()

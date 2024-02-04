@@ -15,6 +15,7 @@ from .models import Module, Test, Test_Attempt, Test_Score
 
 ###### Serializers define the API representation. ########
 
+
 class ModuleSerializer(serializers.ModelSerializer):
 
     """Serialises minerva.Module."""
@@ -50,7 +51,9 @@ class TestScoreSerializer(serializers.ModelSerializer):
         model = Test_Score
         fields = [x.name for x in model._meta.fields]
 
+
 ###### Viewsets #########################################
+
 
 class ModuleViewSet(viewsets.ReadOnlyModelViewSet):
 
@@ -59,12 +62,14 @@ class ModuleViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Module.objects.all()
     serializer_class = ModuleSerializer
 
+
 class TestViewSet(viewsets.ReadOnlyModelViewSet):
 
     """Default Viewset for Account objects."""
 
     queryset = Test.objects.all()
     serializer_class = TestSerializer
+
 
 class TestAttemptViewSet(viewsets.ReadOnlyModelViewSet):
 
@@ -73,12 +78,14 @@ class TestAttemptViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Test_Attempt.objects.all()
     serializer_class = TestAttemptSerializer
 
+
 class TestScoreViewSet(viewsets.ReadOnlyModelViewSet):
 
     """Default Viewset for Account objects."""
 
     queryset = Test_Score.objects.all()
     serializer_class = TestScoreSerializer
+
 
 router.register(r"modules", ModuleViewSet)
 router.register(r"tests", TestViewSet)

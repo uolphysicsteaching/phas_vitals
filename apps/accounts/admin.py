@@ -101,7 +101,7 @@ except:
 
 
 @register(Account)
-class AccountrAdmin(ImportExportModelAdmin):
+class AccountAdmin(ImportExportModelAdmin):
     """Sectioned Admin interface for Account Objects."""  # TODO: Add Tabs if Baton allows it
 
     form = UserAdminForm

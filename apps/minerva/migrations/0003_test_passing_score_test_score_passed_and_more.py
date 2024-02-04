@@ -5,25 +5,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('minerva', '0002_alter_test_attempt_status_alter_test_score_status'),
+        ("minerva", "0002_alter_test_attempt_status_alter_test_score_status"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='test',
-            name='passing_score',
-            field=models.FloatField(default=80, verbose_name='Maximum possible score'),
+            model_name="test",
+            name="passing_score",
+            field=models.FloatField(default=80, verbose_name="Maximum possible score"),
         ),
         migrations.AddField(
-            model_name='test_score',
-            name='passed',
+            model_name="test_score",
+            name="passed",
             field=models.BooleanField(default=False),
         ),
         migrations.AlterField(
-            model_name='test',
-            name='score_possible',
-            field=models.FloatField(default=100, verbose_name='Maximum possible score'),
+            model_name="test",
+            name="score_possible",
+            field=models.FloatField(default=100, verbose_name="Maximum possible score"),
         ),
     ]
