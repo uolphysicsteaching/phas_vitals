@@ -1,23 +1,23 @@
-import pandas as pd
-from traceback import format_exc
+# Python imports
 import re
-from pytz import timezone
-
+from traceback import format_exc
 
 # Django imports
 from django.conf import settings
-
-from django.template.response import TemplateResponse
-
-from util.views import IsSuperuserViewMixin
-from django.views.generic import FormView
-from django.forms import ValidationError
 from django.core.exceptions import ObjectDoesNotExist
+from django.forms import ValidationError
+from django.template.response import TemplateResponse
+from django.views.generic import FormView
 
+# external imports
+import pandas as pd
 from accounts.models import Account
+from pytz import timezone
+from util.views import IsSuperuserViewMixin
 
-from .models import Test, Test_Score, Test_Attempt
+# app imports
 from .forms import TestImportForm
+from .models import Test, Test_Attempt, Test_Score
 
 TZ=timezone(settings.TIME_ZONE)
 

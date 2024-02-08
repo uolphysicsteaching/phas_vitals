@@ -1,13 +1,20 @@
 # -*- coding: utf-8 -*-
 """Common Form Classes"""
+# Python imports
 import os
+
 try:
+    # external imports
     import magic
 except ImportError:
     magic = None
     
+# Python imports
 from mimetypes import guess_type
+
+# Django imports
 from django import forms
+
 
 def get_mime(content):
     """Get the mime type of the current file as a string.

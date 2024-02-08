@@ -3,6 +3,7 @@
 # Django imports
 from django.urls import path
 
+# app imports
 from . import views
 
 urlpatterns = [

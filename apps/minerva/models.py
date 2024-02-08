@@ -1,12 +1,18 @@
+# Python imports
 import re
-import numpy as np
+from os import path
 from pathlib import Path
-from constance import config
+
 # Django imports
-from django.db import models
 from django.conf import settings
+from django.db import models
 from django.forms import ValidationError
+
+# external imports
+import numpy as np
+from constance import config
 from util.spreadsheet import Spreadsheet
+
 # app imports
 from .signals import test_passed
 
