@@ -80,6 +80,7 @@ print("#" * 80)
 # these are the apps
 DEFAULT_APPS = (
     [
+        "constance",
         "baton",
         "django.contrib.admin",
         "django.contrib.auth",
@@ -93,7 +94,6 @@ DEFAULT_APPS = (
         "adminsortable2",
         "ajax_select",
         "colorful",  # django-colorful package
-        "constance",
         "cookielaw",
         "corsheaders",
         "dal",
@@ -293,23 +293,6 @@ EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = f"no-reply@{DNS_NAME}"
 
 
-# Import Applicaton-specific Settings
-for app in CUSTOM_APPS:
-    try:
-        app_module = __import__(app, globals(), locals(), ["settings"])
-        app_settings = getattr(app_module, "settings", None)
-        for setting in dir(app_settings):
-            if setting == setting.upper():
-                set_val = getattr(app_settings, setting)
-                if isinstance(set_val, dict):  # Merge app.settings
-                    locals()[setting].update(set_val)
-                elif isinstance(set_val, (list, tuple)):  # append app.settings
-                    locals()[setting] = locals()[setting] + set_val
-                else:  # replace with app.settings
-                    locals()[setting] = set_val
-    except ImportError:
-        pass
-
 ####### GRAPPELI Settings ##################################
 
 GRAPPELLI_ADMIN_TITLE = "Physics VITALS management"
@@ -319,7 +302,11 @@ GRAPPELLI_SWITCH_USER = True
 
 CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
 
-CONSTANCE_CONFIG = {}
+CONSTANCE_IGNORE_ADMIN_VERSION_CHECK = True
+
+CONSTANCE_CONFIG = {
+    'SUBJECT_PREFIX': ("PHAS", 'Module Subject code prefix'),
+}
 
 CONSTANCE_ADDITIONAL_FIELDS = {
     "custdatetime": [

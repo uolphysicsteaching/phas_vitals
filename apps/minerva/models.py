@@ -31,10 +31,10 @@ ATTEMPT_STATUS = {
 }
 
 SCORE_STATUS = {"Graded": "Score Graded", "NeedsGrading": "Not Marked Yet"}
-
+MOD_PATTERN =  re.compile(rf"{config.SUBJECT_PREFIX}[0123589][0-9]{{3}}M?")
 
 def module_validator(value):
-    pattern = re.compile(rf"{config.SUBJECT_PREFIX}[0123589][0-9]{{3}}M?")
+    pattern = MOD_PATTERN
     if not isinstance(value, str) or not pattern.match(value):
         raise ValidationError("Module code must be PHYS module code")
 
@@ -196,8 +196,6 @@ class Module(models.Model):
             # Try to guess a sensible default credit level.
             self.credits = 10 if self.level < 3 else 15
         super().save(*args, **kargs)
-        for entry in self.entries.all():
-            entry.student.update()
 
     def generate_spreadsheet(self):
         """Generate a spreadsheet object instance for this module."""
@@ -223,15 +221,15 @@ class Module(models.Model):
 
 
 class ModuleEnrollment(models.Model):
-    
+
     """Records students enrolled on modules."""
-    
+
     module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name="student_enrollments")
     student = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="module_enrollments")
-    
+
     class Meta:
         constraints = [models.UniqueConstraint(fields=["module", "student"], name="Singleton EWnrollment on a module")]
-       
+
 
 
 class Test(models.Model):
@@ -255,7 +253,7 @@ class Test(models.Model):
     def __str__(self):
         """Nicer name."""
         return f"{self.name} ({self.module.courseId}) <{self.test_id}>"
-    
+
 class Test_Score(models.Model):
 
     """The model that links a particular student to a particular test."""
@@ -266,10 +264,10 @@ class Test_Score(models.Model):
     text = models.TextField(blank=True, null=True)
     score = models.FloatField(null=True, blank=True)
     passed = models.BooleanField(default=False)
-    
+
     class Meta:
         constraints = [models.UniqueConstraint(fields=["test", "user"], name="Singleton mapping student and test_score")]
- 
+
 
     def save(self, **kargs):
         """Correct the passed flag if score is equal to or greate than test.passing_score."""
@@ -280,7 +278,7 @@ class Test_Score(models.Model):
                 attempts = True
             best_score = self.attempts.aggregate(models.Max("score", default=0)).get('score__max',None)
             self.score = self.score if self.score else best_score
-    
+
             if self.score and self.test.passing_score:
                 numerically_passed = self.score >= self.test.passing_score
             else:

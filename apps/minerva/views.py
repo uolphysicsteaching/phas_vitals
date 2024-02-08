@@ -151,7 +151,7 @@ class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
                 try:
                     test = Test.objects.get(name=row.Column, module=module)
                 except ObjectDoesNotExist:
-                    row_report["message"] = "Unknow test {row.Column}"
+                    row_report["message"] = "Unknown test {row.Column}"
                 test_score, new = Test_Score.objects.get_or_create(user=student, test=test)
                 if new:
                     test_score.save()
