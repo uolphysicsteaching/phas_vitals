@@ -1,0 +1,194 @@
+[
+{
+  "model": "minerva.test",
+  "pk": "1000888",
+  "fields": {
+    "module": 22698,
+    "name": "Maths 1 Homework 3",
+    "description": null,
+    "externalGrade": true,
+    "score_possible": 4.0,
+    "passing_score": 3.2,
+    "grading_due": null,
+    "release_date": null,
+    "recommended_date": null,
+    "grading_attemptsAllowed": null
+  }
+},
+{
+  "model": "minerva.test",
+  "pk": "1001411",
+  "fields": {
+    "module": 22698,
+    "name": "Maths 1 Homework 4",
+    "description": null,
+    "externalGrade": true,
+    "score_possible": 4.0,
+    "passing_score": 3.2,
+    "grading_due": null,
+    "release_date": null,
+    "recommended_date": null,
+    "grading_attemptsAllowed": null
+  }
+},
+{
+  "model": "minerva.test",
+  "pk": "1003010",
+  "fields": {
+    "module": 22698,
+    "name": "Maths 1 Homework 5",
+    "description": null,
+    "externalGrade": true,
+    "score_possible": 4.0,
+    "passing_score": 3.2,
+    "grading_due": null,
+    "release_date": null,
+    "recommended_date": null,
+    "grading_attemptsAllowed": null
+  }
+},
+{
+  "model": "minerva.test",
+  "pk": "1004521",
+  "fields": {
+    "module": 22698,
+    "name": "Maths 1 Homework 6",
+    "description": null,
+    "externalGrade": true,
+    "score_possible": 4.0,
+    "passing_score": 3.2,
+    "grading_due": null,
+    "release_date": null,
+    "recommended_date": null,
+    "grading_attemptsAllowed": null
+  }
+},
+{
+  "model": "minerva.test",
+  "pk": "1007200",
+  "fields": {
+    "module": 22698,
+    "name": "Match 1 Homework 8",
+    "description": null,
+    "externalGrade": true,
+    "score_possible": 4.0,
+    "passing_score": 3.2,
+    "grading_due": null,
+    "release_date": null,
+    "recommended_date": null,
+    "grading_attemptsAllowed": null
+  }
+},
+{
+  "model": "minerva.test",
+  "pk": "1008297",
+  "fields": {
+    "module": 22698,
+    "name": "Maths 1 Homework 9",
+    "description": null,
+    "externalGrade": true,
+    "score_possible": 4.0,
+    "passing_score": 3.2,
+    "grading_due": null,
+    "release_date": null,
+    "recommended_date": null,
+    "grading_attemptsAllowed": null
+  }
+},
+{
+  "model": "minerva.test",
+  "pk": "1009185",
+  "fields": {
+    "module": 22698,
+    "name": "Maths 1 Homework 10",
+    "description": null,
+    "externalGrade": true,
+    "score_possible": 4.0,
+    "passing_score": 3.2,
+    "grading_due": null,
+    "release_date": null,
+    "recommended_date": null,
+    "grading_attemptsAllowed": null
+  }
+},
+{
+  "model": "minerva.test",
+  "pk": "1009224",
+  "fields": {
+    "module": 22698,
+    "name": "End of Module Exam - PHYS1290 - Maths 1",
+    "description": null,
+    "externalGrade": true,
+    "score_possible": 100.0,
+    "passing_score": 80.0,
+    "grading_due": null,
+    "release_date": null,
+    "recommended_date": null,
+    "grading_attemptsAllowed": null
+  }
+},
+{
+  "model": "minerva.test",
+  "pk": "1014140",
+  "fields": {
+    "module": 22698,
+    "name": "PHYAs1290 End of Module Assessment (Large Print size)",
+    "description": "",
+    "externalGrade": true,
+    "score_possible": 100.0,
+    "passing_score": 80.0,
+    "grading_due": null,
+    "release_date": null,
+    "recommended_date": null,
+    "grading_attemptsAllowed": null
+  }
+},
+{
+  "model": "minerva.test",
+  "pk": "1016418",
+  "fields": {
+    "module": 22698,
+    "name": "Maths 1 Homework 7",
+    "description": null,
+    "externalGrade": true,
+    "score_possible": 4.0,
+    "passing_score": 3.2,
+    "grading_due": null,
+    "release_date": null,
+    "recommended_date": null,
+    "grading_attemptsAllowed": null
+  }
+},
+{
+  "model": "minerva.test",
+  "pk": "998908",
+  "fields": {
+    "module": 22698,
+    "name": "Maths 1 Homework 1",
+    "description": null,
+    "externalGrade": true,
+    "score_possible": 4.0,
+    "passing_score": 3.2,
+    "grading_due": null,
+    "release_date": null,
+    "recommended_date": null,
+    "grading_attemptsAllowed": null
+  }
+},
+{
+  "model": "minerva.test",
+  "pk": "998909",
+  "fields": {
+    "module": 22698,
+    "name": "Maths 1 Homework 2 ",
+    "description": null,
+    "externalGrade": true,
+    "score_possible": 4.0,
+    "passing_score": 3.2,
+    "grading_due": null,
+    "release_date": null,
+    "recommended_date": null,
+    "grading_attemptsAllowed": null
+  }
+}
+]
