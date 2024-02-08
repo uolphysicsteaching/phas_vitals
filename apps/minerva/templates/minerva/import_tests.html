@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% block title %}{{ block.super }}Import Tests{% endblock title %}
+{% block javascript %}
+{{ block.super }}
+{{ form.media }}
+{% endblock %}
+
+{% block content %}
+
+<form id="selectform" action="{{ request.url }}" method="post" enctype="multipart/form-data" >
+    {% csrf_token %}
+    {% bootstrap_form form %}
+    <br/>
+{% bootstrap_button "Upload" button_type="submit" button_class="btn-primary" %}
+</form>
+
+{% for result in results %}
+<table>
+<tr>
+<th> File : {{resjult.file }}</th>
+</tr>
+{% for col in result.cols %}
+<tr>
+<td>{{ col }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endfor %}
+
+{% endblock content %}

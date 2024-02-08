@@ -21,6 +21,14 @@ class Test_ScoreInline(admin.StackedInline):
     model = Test_Score
     extra = 0
 
+class Test_AttemptInline(admin.StackedInline):
+
+    """Inline admin for Test Result mapping for VITALS."""
+
+    model = Test_Attempt
+    extra = 0
+
+
 
 add_inlines("accounts.Account", Test_ScoreInline, "test_results")
 
@@ -78,9 +86,11 @@ class Test_ScoreAdmin(ImportExportModelAdmin):
         "test",
         "status",
         "score",
+        "passed",
     )
     list_filter = list_display
     search_fields = ["user__last_name", "user__username", "test__name", "test__module__name"]
+    inlines =[Test_AttemptInline,]
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""

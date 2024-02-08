@@ -44,6 +44,15 @@ PROJECT_TEMPLATES = [
     str(PROJECT_ROOT_PATH / "templates"),
 ]
 
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
 # ##### APPLICATION CONFIGURATION #########################
 
 APPS = {
@@ -112,6 +121,7 @@ DEFAULT_APPS = (
 # Middlewares
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -207,6 +217,9 @@ SECURE_REQUIRED_PATHS = ("/login",)
 # ##### Default autofield type
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+
+# only use TemporaryFileUploadHandler for file uploads
+FILE_UPLOAD_HANDLERS = ("django.core.files.uploadhandler.TemporaryFileUploadHandler",)
 
 # ##### DEBUG CONFIGURATION ###############################
 DEBUG = False

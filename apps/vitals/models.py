@@ -44,3 +44,6 @@ class VITAL(models.Model):
         result.passed = True
         result.date_passed = tz.now()
         result.save()
+        
+    def __str__(self):
+        return f"{self.name} ({self.module.courseId}"
