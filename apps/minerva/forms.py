@@ -4,8 +4,13 @@ Created on Tue Feb  6 14:33:54 2024
 
 @author: gavin
 """
+# Django imports
 from django import forms
+
+# external imports
 from util.forms import get_mime
+
+# app imports
 from .models import Module
 
 

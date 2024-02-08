@@ -3,14 +3,18 @@ Created on Fri May 25 12:25:15 2018
 
 @author: phygbu
 """
+# Python imports
 import os
 import re
 from tempfile import NamedTemporaryFile
 
-import numpy as np
-import openpyxl as opx
+# Django imports
 from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
 from django.http import HttpResponse
+
+# external imports
+import numpy as np
+import openpyxl as opx
 from openpyxl.styles.alignment import Alignment
 
 
