@@ -6,6 +6,8 @@ from pathlib import Path
 # Django imports
 from django.conf import settings
 from django.db import models
+from django.core.exceptions import ObjectDoesNotExist
+
 from django.forms import ValidationError
 
 # external imports
@@ -18,7 +20,7 @@ from .signals import test_passed
 
 # Create your models here.
 
-TEMPLATE_ROOT = settings.PROJECT_ROOT_PATH/"run"/"templates"
+TEMPLATE_ROOT = settings.PROJECT_ROOT_PATH / "run" / "templates"
 
 
 ATTEMPT_STATUS = {
@@ -31,12 +33,14 @@ ATTEMPT_STATUS = {
 }
 
 SCORE_STATUS = {"Graded": "Score Graded", "NeedsGrading": "Not Marked Yet"}
-MOD_PATTERN =  re.compile(rf"{config.SUBJECT_PREFIX}[0123589][0-9]{{3}}M?")
+MOD_PATTERN = re.compile(rf"{config.SUBJECT_PREFIX}[0123589][0-9]{{3}}M?")
+
 
 def module_validator(value):
     pattern = MOD_PATTERN
     if not isinstance(value, str) or not pattern.match(value):
         raise ValidationError("Module code must be PHYS module code")
+
 
 class ModuleManager(models.Manager):
     def get_queryset(self):
@@ -49,10 +53,8 @@ class Module(models.Model):
 
     uuid = models.CharField(max_length=32)
     courseId = models.CharField(max_length=255, null=True, blank=True)
-    code = models.CharField(max_length=11, null=False,
-                            blank=False, validators=[module_validator])
-    alt_code = models.CharField(
-        max_length=11, null=True, blank=True)  # For merged Modules
+    code = models.CharField(max_length=11, null=False, blank=False, validators=[module_validator])
+    alt_code = models.CharField(max_length=11, null=True, blank=True)  # For merged Modules
     credits = models.IntegerField(default=0)
     name = models.CharField(max_length=80)
     level = models.IntegerField(null=True, blank=True)
@@ -60,12 +62,13 @@ class Module(models.Model):
     exam_code = models.IntegerField(default=1, null=False, blank=False)
     description = models.TextField(blank=True, null=True)
     module_leader = models.ForeignKey(
-        "accounts.Account", on_delete=models.SET_NULL, blank=True, null=True, related_name="_modules")
-    team_members = models.ManyToManyField(
-        "accounts.Account", blank=True, related_name="_module_teams")
+        "accounts.Account", on_delete=models.SET_NULL, blank=True, null=True, related_name="_modules"
+    )
+    team_members = models.ManyToManyField("accounts.Account", blank=True, related_name="_module_teams")
     updated = models.DateTimeField(auto_now=True)
     updater = models.ForeignKey(
-        "accounts.Account", on_delete=models.SET_NULL, blank=True, null=True, related_name=None)
+        "accounts.Account", on_delete=models.SET_NULL, blank=True, null=True, related_name=None
+    )
 
     students = models.ManyToManyField("accounts.Account", related_name="modules", through="ModuleEnrollment")
     objects = ModuleManager()
@@ -96,20 +99,17 @@ class Module(models.Model):
             name = self.name.split("-")[0]
         else:
             name = self.name
-        parts = [x for x in name.split(" ") if len(
-            x) > 0 and x[0] in "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"]
+        parts = [x for x in name.split(" ") if len(x) > 0 and x[0] in "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"]
         return "".join([x[0] for x in parts]).upper()
 
     @property
     def module_variance(self):
         if self.entries.all().count() == 0:
             return np.nan
-        marks = self.entries.all().prefetch_related(
-            "student").order_by("student__number")
+        marks = self.entries.all().prefetch_related("student").order_by("student__number")
         variances = np.array([mark.variance for mark in marks])
         weights = np.ma.MaskedArray(
-            [(1 / mark.student.score_std) if mark.student.score_std >
-             0 else 0.001 for mark in marks]
+            [(1 / mark.student.score_std) if mark.student.score_std > 0 else 0.001 for mark in marks]
         ).astype(float)
         mask = np.logical_or(np.isnan(variances), np.isnan(weights))
         variances = variances[~mask]
@@ -123,8 +123,7 @@ class Module(models.Model):
         """Calculate the mean mark for this module."""
         if self.entries.all().count() == 0:
             return np.nan
-        scores = np.atleast_2d(np.array(self.entries.values_list("score")))[
-            :, 0].astype(float)
+        scores = np.atleast_2d(np.array(self.entries.values_list("score")))[:, 0].astype(float)
         scores = scores[~np.isnan(scores)]
         if len(scores) == 0:
             return np.nan
@@ -135,8 +134,7 @@ class Module(models.Model):
         """Calculate the mean mark for this module."""
         if self.entries.all().count() == 0:
             return np.nan
-        scores = np.atleast_2d(np.array(self.entries.values_list("score")))[
-            :, 0].astype(float)
+        scores = np.atleast_2d(np.array(self.entries.values_list("score")))[:, 0].astype(float)
         scores = scores[~np.isnan(scores)]
         if len(scores) == 0:
             return np.nan
@@ -147,8 +145,7 @@ class Module(models.Model):
         """Calculate the mean mark for this module."""
         if self.entries.all().count() == 0:
             return np.nan
-        scores = np.atleast_2d(np.array(self.entries.values_list("score")))[
-            :, 0].astype(float)
+        scores = np.atleast_2d(np.array(self.entries.values_list("score")))[:, 0].astype(float)
         scores = scores[~np.isnan(scores)]
         if len(scores) < 2:
             return np.nan
@@ -175,20 +172,18 @@ class Module(models.Model):
     @property
     def most_recent_upload(self):
         """Get the most recent file from the upload directories."""
-        mstats = sorted([(f.lstat().st_mtime, f)
-                        for f in self.upload_path.glob("*.xlsx")], reverse=True)
+        mstats = sorted([(f.lstat().st_mtime, f) for f in self.upload_path.glob("*.xlsx")], reverse=True)
         if len(mstats) == 0:
             return None
         return mstats[0][1]
 
     @property
     def resit_upload_path(self):
-        return self.upload_path.parent/"resit"
+        return self.upload_path.parent / "resit"
 
     @property
     def semester_upload_path(self):
-        return self.upload_path.parent/f"S{self.semester}"
-
+        return self.upload_path.parent / f"S{self.semester}"
 
     def save(self, *args, **kargs):
         self.level = int(self.code[4])
@@ -199,8 +194,7 @@ class Module(models.Model):
 
     def generate_spreadsheet(self):
         """Generate a spreadsheet object instance for this module."""
-        spreadsheet = Spreadsheet(
-            path.join(TEMPLATE_ROOT, "Module_Template.xlsx"), blank=True)
+        spreadsheet = Spreadsheet(path.join(TEMPLATE_ROOT, "Module_Template.xlsx"), blank=True)
         spreadsheet.fill_in(self)
         return spreadsheet
 
@@ -228,14 +222,29 @@ class ModuleEnrollment(models.Model):
     student = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="module_enrollments")
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["module", "student"], name="Singleton EWnrollment on a module")]
+        constraints = [
+            models.UniqueConstraint(fields=["module", "student"], name="Singleton EWnrollment on a module")
+        ]
 
+
+class Test_Manager(models.Manager):
+
+    """Manager class for Test objects to support natural keys."""
+
+    key_pattern = re.compile(r"(?P<name>.*)\s\((?P<module__code>[^\)]*)\)")
+
+    def get_by_natural_key(self, name):
+        """Use ythe string representation as a natural key."""
+        if match := self.key_pattern.match(name):
+            return self.get(**match.groupdict())
+        raise ObjectDoesNotExist(f"No VITAL {name}")
 
 
 class Test(models.Model):
 
     """Represents a single Gradebook column."""
 
+    objects = Test_Manager()
     # test_id is actually a composite of course_id and column_id
     test_id = models.CharField(max_length=255, primary_key=True)
     module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name="tests")
@@ -250,9 +259,16 @@ class Test(models.Model):
     recommended_date = models.DateTimeField(blank=True, null=True, verbose_name="Recomemnded Attempt Date")
     grading_attemptsAllowed = models.IntegerField(blank=True, null=True, verbose_name="Number of allowed attempts")
 
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["module", "name"], name="Singleton name of a test per module")]
+
     def __str__(self):
         """Nicer name."""
-        return f"{self.name} ({self.module.courseId}) <{self.test_id}>"
+        return f"{self.name} ({self.module.code})"
+
+    def natural_key(self):
+        return str(self)
+
 
 class Test_Score(models.Model):
 
@@ -266,8 +282,9 @@ class Test_Score(models.Model):
     passed = models.BooleanField(default=False)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["test", "user"], name="Singleton mapping student and test_score")]
-
+        constraints = [
+            models.UniqueConstraint(fields=["test", "user"], name="Singleton mapping student and test_score")
+        ]
 
     def save(self, **kargs):
         """Correct the passed flag if score is equal to or greate than test.passing_score."""
@@ -276,7 +293,7 @@ class Test_Score(models.Model):
                 attempts = self.attempts.count() <= self.test.grading_attemptsAllowed
             else:
                 attempts = True
-            best_score = self.attempts.aggregate(models.Max("score", default=0)).get('score__max',None)
+            best_score = self.attempts.aggregate(models.Max("score", default=0)).get("score__max", None)
             self.score = self.score if self.score else best_score
 
             if self.score and self.test.passing_score:
@@ -312,7 +329,7 @@ class Test_Attempt(models.Model):
 
     def save(self, **kargs):
         """Check whether saving this attempt changes the test passed or not."""
-        trigger_check = self.pk is None or self.test_entry.score!=self.score
+        trigger_check = self.pk is None or self.test_entry.score != self.score
         super().save(**kargs)
 
         if trigger_check:  # Every new attempt causes a save to the test_entry

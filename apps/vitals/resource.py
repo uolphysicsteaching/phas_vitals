@@ -4,8 +4,29 @@
 # external imports
 from import_export import fields, resources, widgets
 
+from minerva.models import Module, Test
 # app imports
 from .models import VITAL, VITAL_Result, VITAL_Test_Map
+
+
+class TestsWidget(widgets.ManyToManyWidget):
+    def clean(self, value, row=None, **kwargs):
+        """Split the value by separator and then lookup natural keys."""
+        if not value:
+            return self.model.objects.none()
+        if self.separator in value:
+            values = [x.strip() for x in value.split(self.separator) if x.strip() != ""]
+        else:
+            values = [value]
+        ret = []
+        for v in values:
+            ret.append(self.model.objects.get_by_natural_key(v))
+        return ret
+
+    def render(self, value, obj=None):
+        """Render using natural keys."""
+        ids = [str(obj) for obj in value.all()]
+        return self.separator.join(ids)
 
 
 class VITALResource(resources.ModelResource):
@@ -20,12 +41,10 @@ class VITALResource(resources.ModelResource):
     module = fields.Field(
         column_name="module",
         attribute="module",
-        widget=widgets.ForeignKeyWidget("minerva.Module", "name"),
+        widget=widgets.ForeignKeyWidget(Module, "code"),
     )
 
-    tests = fields.Field(
-        column_name="tests", attribute="tests", widget=widgets.ManyToManyWidget("minerva.Test", ";", "test_id")
-    )
+    tests = fields.Field(column_name="tests", attribute="tests", widget=TestsWidget(Test, ";"))
 
 
 class VITAL_ResultResource(resources.ModelResource):
@@ -40,7 +59,7 @@ class VITAL_ResultResource(resources.ModelResource):
     vital = fields.Field(
         column_name="vital",
         attribute="vital",
-        widget=widgets.ForeignKeyWidget(VITAL, "name"),
+        widget=widgets.ForeignKeyWidget(VITAL, use_natural_foreign_keys=True),
     )
 
     user = fields.Field(
@@ -62,7 +81,7 @@ class VITAL_Test_MapResource(resources.ModelResource):
     vital = fields.Field(
         column_name="vital",
         attribute="vital",
-        widget=widgets.ForeignKeyWidget(VITAL, "name"),
+        widget=widgets.ForeignKeyWidget(VITAL, use_natural_foreign_keys=True),
     )
 
     test = fields.Field(
