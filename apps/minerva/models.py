@@ -18,7 +18,7 @@ from .signals import test_passed
 
 # Create your models here.
 
-TEMPLATE_ROOT = Path(settings.MEDIA_ROOT)/"templates"
+TEMPLATE_ROOT = settings.PROJECT_ROOT_PATH/"run"/"templates"
 
 
 ATTEMPT_STATUS = {

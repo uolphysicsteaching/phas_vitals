@@ -1,5 +1,6 @@
 # Django imports
 from django.contrib import admin
+from django.contrib import messages
 
 # external imports
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
@@ -8,26 +9,27 @@ from util.admin import add_inlines
 # app imports
 from .models import Module, Test, Test_Attempt, Test_Score
 from .resource import (
-    ModuleResource, Test_AttemptResource, Test_ScoreResource, TestResource,
+    ModuleResource,
+    Test_AttemptResource,
+    Test_ScoreResource,
+    TestResource,
 )
 
 # Register your models here.
 
 
 class Test_ScoreInline(admin.StackedInline):
-
     """Inline admin for Test Result mapping for VITALS."""
 
     model = Test_Score
     extra = 0
 
-class Test_AttemptInline(admin.StackedInline):
 
+class Test_AttemptInline(admin.StackedInline):
     """Inline admin for Test Result mapping for VITALS."""
 
     model = Test_Attempt
     extra = 0
-
 
 
 add_inlines("accounts.Account", Test_ScoreInline, "test_results")
@@ -40,6 +42,22 @@ class ModuleAdmin(ImportExportModelAdmin):
     list_display = ("id", "uuid", "courseId", "name")
     list_filter = list_display
     search_fields = ["name", "description", "programmes__name", "programmes__code"]
+
+    actions = ["generate_marksheet"]
+
+    @admin.action(description="Generate Marksheet")
+    def generate_marksheet(self, request, queryset):
+        """Call the makrsheet generation method for the selected module."""
+        if queryset.count() == 1:
+            return queryset.first().generate_marksheet()
+        self.message_user(
+            request,
+            "Can only generate a marksheet for a single module at this tyime",
+            level=messages.ERROR,
+            extra_tags="",
+            fail_silently=False,
+        )
+        queryset.update(status="p")
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
@@ -90,7 +108,9 @@ class Test_ScoreAdmin(ImportExportModelAdmin):
     )
     list_filter = list_display
     search_fields = ["user__last_name", "user__username", "test__name", "test__module__name"]
-    inlines =[Test_AttemptInline,]
+    inlines = [
+        Test_AttemptInline,
+    ]
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""

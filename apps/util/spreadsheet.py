@@ -504,14 +504,14 @@ class Spreadsheet:
 
             for ix, ent in enumerate(entries):
                 row = ix + 16
-                self.sheet.cell(row=row, column=1).value = ent.student.display_name
-                self.sheet.cell(row=row, column=2).value = ent.student.programme.name
-                self.sheet.cell(row=row, column=3).value = ent.student.number
+                self.sheet.cell(row=row, column=1).value = ent.display_name
+                self.sheet.cell(row=row, column=2).value = ent.programme.name
+                self.sheet.cell(row=row, column=3).value = ent.number
 #                self.sheet.cell(row=row, column=4).value = ent.status.code
                 for comp, (comp_col, mtype) in component_columns.items():
-                    mks = ent.student.vital_results.filter(vital__name=mtype)
-                    comp_mark = mks.count()>0 and mks.last.passed
-                    self.sheet.cell(row=row, column=comp_col).value = "P" if comp_mark else "F"
+                    mks = ent.vital_results.filter(vital__name=mtype)
+                    comp_mark = mks.count()>0 and mks.last().passed
+                    self.sheet.cell(row=row, column=comp_col).value = "P" if comp_mark else ""
 
             # Now remove excess rows
             if ix + 17 < 275:
@@ -527,8 +527,8 @@ class Spreadsheet:
                 cell = self.sheet.cell(column=3, row=7)
                 cell.value = cell.value.replace("285", str(last_row + 4))
 
-            self.sheet.title = module.courseID
-            self.mod = module.courseID
+            self.sheet.title = module.code
+            self.mod = module.code
         self.sheet = self.workbook[self.workbook.sheetnames[0]]
 
     def respond(self):
