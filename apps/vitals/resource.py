@@ -3,8 +3,8 @@
 
 # external imports
 from import_export import fields, resources, widgets
-
 from minerva.models import Module, Test
+
 # app imports
 from .models import VITAL, VITAL_Result, VITAL_Test_Map
 

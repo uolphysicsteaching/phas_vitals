@@ -1,8 +1,9 @@
+# Python imports
 import re
 
 # Django imports
-from django.db import models
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import models
 from django.utils import timezone as tz
 
 # Create your models here.

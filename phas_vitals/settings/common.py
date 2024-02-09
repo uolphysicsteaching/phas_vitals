@@ -80,7 +80,6 @@ print("#" * 80)
 # these are the apps
 DEFAULT_APPS = (
     [
-        "constance",
         "baton",
         "django.contrib.admin",
         "django.contrib.auth",
@@ -94,6 +93,7 @@ DEFAULT_APPS = (
         "adminsortable2",
         "ajax_select",
         "colorful",  # django-colorful package
+        "constance",
         "cookielaw",
         "corsheaders",
         "dal",

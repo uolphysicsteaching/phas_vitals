@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Util app views"""
 
+# Django imports
 from django.urls import path
 from django.views.generic import TemplateView
 

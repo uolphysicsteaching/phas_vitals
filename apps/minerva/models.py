@@ -5,9 +5,8 @@ from pathlib import Path
 
 # Django imports
 from django.conf import settings
-from django.db import models
 from django.core.exceptions import ObjectDoesNotExist
-
+from django.db import models
 from django.forms import ValidationError
 
 # external imports
