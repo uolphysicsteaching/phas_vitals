@@ -18,7 +18,7 @@ commit:	_commit
 _commit: spell isort black check
 	git add apps/
 	git commit -a
-	git push origin master
+	git push origin
 
 permissions:
 	setfacl --set-file=/home/phygbu/acls.txt -R apps/
