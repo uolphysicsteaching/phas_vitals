@@ -53,6 +53,12 @@ def add_inlines(model, inline, related_name):
         model_admin.fieldsets[0][1]["classes"].append(f"baton-tab-inline-{related_name}")
 
 
+def add_action(model, action_func):
+    """Patch the model admin to add the action."""
+    with get_admin(model) as model_admin:
+        model_admin.actions += (action_func,)
+
+
 def patch_admin(model, **kargs):
     """Monkeypatch the admin site of the given model.
 

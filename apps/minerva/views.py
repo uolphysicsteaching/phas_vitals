@@ -7,19 +7,26 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.forms import ValidationError
 from django.template.response import TemplateResponse
+from django.utils.html import format_html
 from django.views.generic import FormView
+from django.views.generic.edit import FormMixin
 
 # external imports
+import numpy as np
 import pandas as pd
 from accounts.models import Account
+from django_tables2 import SingleTableMixin
+from django_tables2.columns import Column
+from django_tables2.tables import Table
 from pytz import timezone
 from util.views import IsSuperuserViewMixin
 
 # app imports
-from .forms import TestImportForm
-from .models import Test, Test_Attempt, Test_Score
+from .forms import ModuleSelectForm, TestImportForm
+from .models import ModuleEnrollment, Test, Test_Attempt, Test_Score
 
-TZ=timezone(settings.TIME_ZONE)
+TZ = timezone(settings.TIME_ZONE)
+
 
 # Create your views here.
 class ImportTestsView(IsSuperuserViewMixin, FormView):
@@ -140,7 +147,7 @@ class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
             df.Date = pd.to_datetime(df.Date)
             df["AttemptDate"] = pd.to_datetime(df["Attempt Activity"])
             df["AttemptDate"] = df.AttemptDate.apply(TZ.localize)
-            df["Date"]=df.Date.apply(TZ.localize)
+            df["Date"] = df.Date.apply(TZ.localize)
             ret = {"file": df.filename, "rows": []}
             for _, row in df.iterrows():
                 row_report = {} | row.to_dict()
@@ -159,15 +166,132 @@ class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
                 test_attempt, new = Test_Attempt.objects.get_or_create(
                     attempt_id=new_id, test_entry=test_score, attempted=row.AttemptDate
                 )
+                if not new and not np.isnan(test_attempt.score) and np.isnan(row.Value):
+                    continue # Skip over duplicate attempts where the score is NaN
                 test_attempt.score = row.Value
                 test_attempt.modified = row.Date
                 row_report[
                     "message"
                 ] = f"Attempt {row.Column} for {row.Username} at {row.AttemptDate} saved with score {row.Value}"
                 ret["rows"].append(row_report)
-                di=test_attempt.__dict__
                 test_attempt.save()
             results.append(ret)
         context = self.get_context_data()
         context["results"] = results
         return TemplateResponse(self.request, self.template_name, context=context)
+
+
+class BaseTable(Table):
+
+    """Provides a table with columns for student name, number, programme and status code as per marksheets."""
+
+    class Meta:
+        attrs = {"width": "100%"}
+
+    student = Column()
+    number = Column()
+    programme = Column()
+    status = Column()
+
+
+class TestResultColumn(Column):
+
+    """Handles displaying test result information."""
+
+    def __init__(self, **kargs):
+        """Mark the header table to user vertical oriented text."""
+        attrs = kargs.pop("attrs", {})
+        attrs.update({"th": {"class": "vertical"}})
+        kargs["attrs"] = attrs
+        super().__init__(**kargs)
+
+    def render(self, value):
+        match value:
+            case None:
+                ret = ""
+            case {"score": score, "passed": passed, "attempt_count": attempts}:
+                if attempts > 1:
+                    attempts = (
+                        '<span class="position-absolute top-0 start-100 translate-middle p-2'
+                        + 'bg-warning border border-light rounded-circle">'
+                        + '<span class="visually-hidden">Too Many attempts</span>'
+                    )
+                else:
+                    attempts = ""
+                if passed:
+                    ret = f'<span class="badge bg-success">{score:.1f}{attempts}</span>'
+                elif np.isnan(score):
+                    ret = f'<span class="badge bg-primary">{score:.1f}{attempts}</span>'
+                else:
+                    ret = f'<span class="badge bg-danger">{score:.1f}{attempts}</span>'
+            case _:
+                ret = value
+
+        return format_html(ret)
+
+
+class ShowTestResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
+
+    """View to show test results for a module in a table."""
+
+    form_class = ModuleSelectForm
+    table_class = BaseTable
+    template_name = "minerva/test_results.html"
+    context_table_name = "test_results"
+    table_pagination = False
+
+    def __init__(self, *args, **kargs):
+        """Setup instance variables."""
+        self.module = None
+        self.tests = []
+        super().__init__(*args, **kargs)
+
+    def form_valid(self, form):
+        """Update self.module with the module selected in the form."""
+        self.module = form.cleaned_data["module"]
+        if self.module is not None:
+            self.tests = self.module.tests.all().order_by("name")
+        return self.render_to_response(self.get_context_data())
+
+    def get_table_class(self):
+        """Construct the django-tables2 table class for this view."""
+        attrs = {}
+        for test in self.tests:
+            attrs[test.name] = TestResultColumn()
+        klass = type("DynamicTable", (self.table_class,), attrs)
+        return klass
+
+    def get_context_data(self, **kwargs):
+        """Get the cohort into context from the slug."""
+        context = super().get_context_data(**kwargs)
+        return context
+
+    def get_table_data(self):
+        """Fill out the table with data, creating the entries for the MarkType columns to interpret."""
+        table = []
+        entries = (
+            ModuleEnrollment.objects.filter(module=self.module)
+            .prefetch_related("student", "student__test_results", "student__programme", "status")
+            .order_by("student__last_name", "student__first_name")
+        )
+
+        for entry in entries:
+            record = {  # Standard student information entries
+                "student": entry.student.display_name,
+                "number": entry.student.number,
+                "programme": entry.student.programme.name,
+                "status": entry.status.code,
+            }
+            for test in self.tests:  # Add columns for the tests
+                try:
+                    ent=entry.student.test_results.get(test=test)
+                    record[test.name] ={x:getattr(ent,x) for x in ["score", "passed", "attempt_count"]}
+                except ObjectDoesNotExist:
+                    record[test.name] = None
+
+            table.append(record)
+        return table
+
+    def get_queryset(self):
+        """Use get_table_data instead of a queryset."""
+        return self.get_table_data()

@@ -6,6 +6,7 @@ Created on Tue Feb  6 14:33:54 2024
 """
 # Django imports
 from django import forms
+from django.forms.widgets import Select
 
 # external imports
 from util.forms import get_mime
@@ -15,9 +16,9 @@ from .models import Module
 
 
 class TestImportForm(forms.Form):
-    
+
     module = forms.ModelChoiceField(queryset=Module.objects.all())
-    
+
     _pass_files = [
         "application/vnd.ms-excel",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -27,7 +28,7 @@ class TestImportForm(forms.Form):
         "application/csv",
         "text/plain",
     ]
-    
+
     upload_file = forms.FileField()
 
     def clean_spreadsheet(self):
@@ -44,4 +45,9 @@ class TestImportForm(forms.Form):
         if content is None, use self.content as the file."""
 
         return get_mime(content)
-    
+
+class ModuleSelectForm(forms.Form):
+
+    module = forms.ModelChoiceField(
+        required=False, queryset=Module.objects.all(), widget=Select(attrs={"onChange": "this.form.submit();"})
+    )

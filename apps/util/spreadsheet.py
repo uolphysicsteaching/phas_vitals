@@ -492,24 +492,24 @@ class Spreadsheet:
             cell = self.search("V/C")
             code_col = cell.col_idx
             if entries is None:
-                entries = module.students.prefetch_related("vital_results").order_by("last_name","first_name")
+                entries = module.student_enrollments.prefetch_related("student","student__vital_results").order_by("student")
             elif isinstance(entries, dict):
                 entries = (
-                    module.students.filter(**entries).prefetch_related("vital_results").order_by("last_name","first_name")
+                    module.student_enrollments.filter(**entries).prefetch_related("student","student__vital_results").order_by("student")
                 )
             else:
                 entries = (
-                    module.students.filter(entries).prefetch_related("vital_results").order_by("last_name","first_name")
+                    module.student_enrollments.filter(entries).prefetch_related("student","student__vital_results").order_by("student")
                 )
 
             for ix, ent in enumerate(entries):
                 row = ix + 16
-                self.sheet.cell(row=row, column=1).value = ent.display_name
-                self.sheet.cell(row=row, column=2).value = ent.programme.name
-                self.sheet.cell(row=row, column=3).value = ent.number
-#                self.sheet.cell(row=row, column=4).value = ent.status.code
+                self.sheet.cell(row=row, column=1).value = ent.student.display_name
+                self.sheet.cell(row=row, column=2).value = ent.student.programme.name
+                self.sheet.cell(row=row, column=3).value = ent.student.number
+                self.sheet.cell(row=row, column=4).value = ent.status.code
                 for comp, (comp_col, mtype) in component_columns.items():
-                    mks = ent.vital_results.filter(vital__name=mtype)
+                    mks = ent.student.vital_results.filter(vital__name=mtype)
                     comp_mark = mks.count()>0 and mks.last().passed
                     self.sheet.cell(row=row, column=comp_col).value = "P" if comp_mark else ""
 

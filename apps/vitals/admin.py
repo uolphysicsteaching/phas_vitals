@@ -3,7 +3,7 @@ from django.contrib import admin
 
 # external imports
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
-from util.admin import add_inlines
+from util.admin import add_action, add_inlines
 
 # app imports
 from .models import VITAL, VITAL_Result, VITAL_Test_Map
@@ -31,6 +31,26 @@ class VITAL_ResultInline(admin.StackedInline):
 
 
 add_inlines("accounts.Account", VITAL_ResultInline, "vital_results")
+add_inlines("minerva.Test", VITAL_Test_MapInline, "vitals_mappings")
+
+
+@admin.action(description="Force Update of VITALs")
+def update_user_vitals(modelAdmin, request, queryset):
+    """Force an update of all VITALs for the selected users."""
+    for vr in VITAL_Result.objects.filter(user__in=queryset.all()):
+        vr.vital.check_vital(vr.user)
+
+
+@admin.action(description="Force Update of VITALs")
+def update_module_vitals(modelAdmin, request, queryset):
+    """Force an update of all VITALs for the selected users."""
+    vrs=VITAL_Result.objects.filter(user__module_enrollments__module__in=queryset.all())
+    for vr in VITAL_Result.objects.filter(user__modules__in=queryset.all()):
+        vr.vital.check_vital(vr.user)
+
+
+add_action("accounts.Account", update_user_vitals)
+add_action("minerva.Module", update_module_vitals)
 
 
 @admin.register(VITAL)

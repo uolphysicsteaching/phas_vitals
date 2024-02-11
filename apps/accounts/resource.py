@@ -28,6 +28,23 @@ class ProgrammeWidget(widgets.ForeignKeyWidget):
         return qs.last()
 
 
+class AccountWidget(widgets.ForeignKeyWidget):
+
+    """Try to match a user account."""
+
+    def clean(self, value, row=None, *args, **kargs):
+        """Attempt to match to a user account."""
+        qs = self.model.objects.filter(Q(number=value) | Q(username=value))
+        if qs.count() > 0:
+            return qs.first()
+        if "," in value:
+            last_name, first_name = value.split(",")
+            qs = self.model.objects.filter(last_name=last_name, first_name=first_name)
+            if qs.count() > 0:
+                return qs.first()
+        return None
+
+
 class UserResource(resources.ModelResource):
     groups = fields.Field(
         column_name="groups", attribute="groups", widget=widgets.ManyToManyWidget(Group, ";", "name")
@@ -76,22 +93,35 @@ class UserResource(resources.ModelResource):
             parts = row["Email Address"].split("@")
             row["username"] = parts[0].strip().lower()
             row["email"] = row["Email Address"].strip()
+        if "username" not in row and "Email_Address" in row:  # Create username and email columns
+            parts = row["Email_Address"].split("@")
+            row["username"] = parts[0].strip().lower()
+            row["email"] = row["Email_Address"].strip()
         if "first_name" not in row and "last_name" not in row and "Student Name" in row:  # Sort out name
             parts = row["Student Name"].split(", ")
             row["last_name"] = parts[0].strip()
             row["first_name"] = parts[1].strip()
+        elif "First_Name" in row and "Last_Name" in row:
+            row["first_name"] = row["First_Name"]
+            row["last_name"] = row["Last_Name"]
         if "Student ID" in row and "number" not in row:  # Student ID number
             row["number"] = row["Student ID"]
-        if "Class" in row and "groups" not in row:  # Setup a group
+        elif "Student_ID" in row and "number" not in row:  # Student ID number
+            row["number"] = row["Student_ID"]
+        if ("Class" in row or "CRN" in row) and "groups" not in row:  # Setup a group
             row["groups"] = "Student"
         if "groups" in row and row["groups"] is not None and "Instructor" in row["groups"]:
             row["is_staff"] = 1
         if "Term" in row and "cohort" not in row:
             row["cohort"] = row["Term"]
+        elif "Term_Code" in row and "cohort" not in row:
+            row["cohort"] = row["Term_Code"]
         if "Programme" in row and "programme" not in row:
             row["programme"] = row["Programme"]
         if "Registration Status" in row and "registtration_status" not in row:
             row["registration_status"] = row["Registration Status"]
+        elif "ESTS_Code" in row and "registtration_status" not in row:
+            row["registration_status"] = row["ESTS_Code"]
         for bad_field in ["mark_count", "mark", "students"]:  # remove calculated fields from import
             if bad_field in row:
                 del row[bad_field]

@@ -36,13 +36,18 @@ MOD_PATTERN = re.compile(rf"{config.SUBJECT_PREFIX}[0123589][0-9]{{3}}M?")
 
 
 def module_validator(value):
+    """Validate module code patterns."""
     pattern = MOD_PATTERN
     if not isinstance(value, str) or not pattern.match(value):
         raise ValidationError("Module code must be PHYS module code")
 
 
 class ModuleManager(models.Manager):
+
+    """Add extra calculated attributes to the queryset."""
+
     def get_queryset(self):
+        """Annoteate query set."""
         return super().get_queryset().annotate(enrollments=models.Count("students"))
 
 
@@ -75,121 +80,15 @@ class Module(models.Model):
     class Meta:
         ordering = ("code", "exam_code")
         unique_together = ("code", "exam_code")
-        permissions = [
-            ("can_excport", "Can Export Modules as cvs"),
-            ("can_download", "Can Download completed modules"),
-            ("can_list_all", "Can List all modules"),
-        ]
 
     def __str__(self):
+        """Make a simple String representation."""
         return f"{self.code}({self.exam_code:02d}): {self.name}"
 
     @property
     def slug(self):
+        """Include exam code in slug."""
         return f"{self.code}({self.exam_code:02d})"
-
-    @property
-    def plotable(self):
-        return not np.isnan(self.module_mean)
-
-    @property
-    def initials(self):
-        if "-" in self.name:
-            name = self.name.split("-")[0]
-        else:
-            name = self.name
-        parts = [x for x in name.split(" ") if len(x) > 0 and x[0] in "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"]
-        return "".join([x[0] for x in parts]).upper()
-
-    @property
-    def module_variance(self):
-        if self.entries.all().count() == 0:
-            return np.nan
-        marks = self.entries.all().prefetch_related("student").order_by("student__number")
-        variances = np.array([mark.variance for mark in marks])
-        weights = np.ma.MaskedArray(
-            [(1 / mark.student.score_std) if mark.student.score_std > 0 else 0.001 for mark in marks]
-        ).astype(float)
-        mask = np.logical_or(np.isnan(variances), np.isnan(weights))
-        variances = variances[~mask]
-        weights = weights[~mask]
-        if len(weights) == 0:
-            return np.nan
-        return np.average(variances, weights=weights)
-
-    @property
-    def module_mean(self):
-        """Calculate the mean mark for this module."""
-        if self.entries.all().count() == 0:
-            return np.nan
-        scores = np.atleast_2d(np.array(self.entries.values_list("score")))[:, 0].astype(float)
-        scores = scores[~np.isnan(scores)]
-        if len(scores) == 0:
-            return np.nan
-        return np.mean(scores)
-
-    @property
-    def module_median(self):
-        """Calculate the mean mark for this module."""
-        if self.entries.all().count() == 0:
-            return np.nan
-        scores = np.atleast_2d(np.array(self.entries.values_list("score")))[:, 0].astype(float)
-        scores = scores[~np.isnan(scores)]
-        if len(scores) == 0:
-            return np.nan
-        return np.median(scores)
-
-    @property
-    def module_std(self):
-        """Calculate the mean mark for this module."""
-        if self.entries.all().count() == 0:
-            return np.nan
-        scores = np.atleast_2d(np.array(self.entries.values_list("score")))[:, 0].astype(float)
-        scores = scores[~np.isnan(scores)]
-        if len(scores) < 2:
-            return np.nan
-        return np.std(scores)
-
-    @property
-    def pass_mark(self):
-        return 40.0 if self.level < 4 else 50.0
-
-    @property
-    def submitted(self):
-        args = {"submitted": True}
-        if config.RESITS_ONLY:
-            args["status__resit"] = True
-        return self.entries.filter(**args)
-
-    @property
-    def missing(self):
-        args = {"submitted": False}
-        if config.RESITS_ONLY:
-            args["status__resit"] = True
-        return self.entries.filter(**args)
-
-    @property
-    def most_recent_upload(self):
-        """Get the most recent file from the upload directories."""
-        mstats = sorted([(f.lstat().st_mtime, f) for f in self.upload_path.glob("*.xlsx")], reverse=True)
-        if len(mstats) == 0:
-            return None
-        return mstats[0][1]
-
-    @property
-    def resit_upload_path(self):
-        return self.upload_path.parent / "resit"
-
-    @property
-    def semester_upload_path(self):
-        return self.upload_path.parent / f"S{self.semester}"
-
-    def save(self, *args, **kargs):
-        self.level = int(self.code[4])
-        if self.credits == 0 and not "999" in self.code:
-            # Try to guess a sensible default credit level.
-            self.credits = 10 if self.level < 3 else 15
-        super().save(*args, **kargs)
 
     def generate_spreadsheet(self):
         """Generate a spreadsheet object instance for this module."""
@@ -212,6 +111,26 @@ class Module(models.Model):
         else:
             return spreadsheet.as_file(dirname)
 
+class StatusCode(models.Model):
+
+    """represents the Banne Status Code and what it means."""
+
+    LEVELS = (
+        ("normal", "Normal first attempt"),
+        ("first", "First Attempt Resit"),
+        ("second", "Second or further Resit"),
+        ("none", "Not an Attempt"),
+    )
+
+    code = models.CharField(primary_key=True, max_length=2)
+    explanation = models.CharField(blank=True, null=True, max_length=100)
+    capped = models.BooleanField(default=False)
+    valid = models.BooleanField(default=True)
+    resit = models.BooleanField(default=False)
+    level = models.CharField(max_length=10, default="none", choices=LEVELS)
+
+    def __str__(self):
+        return self.code
 
 class ModuleEnrollment(models.Model):
 
@@ -219,6 +138,8 @@ class ModuleEnrollment(models.Model):
 
     module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name="student_enrollments")
     student = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="module_enrollments")
+    status = models.ForeignKey(
+        StatusCode, on_delete=models.SET_DEFAULT, default="RE")
 
     class Meta:
         constraints = [
@@ -266,13 +187,37 @@ class Test(models.Model):
         return f"{self.name} ({self.module.code})"
 
     def natural_key(self):
+        """Return string representation a natural key."""
         return str(self)
+
+    def save(self, **kargs):
+        """Check whether we need to update test_score passing fields."""
+        if self.results.count() > 0:
+            orig = Test.objects.get(pk=self.pk)
+            update_results = orig.passing_score != self.passing_score
+        else:
+            update_results = False
+        super().save(**kargs)
+        if update_results:  # Propagate change in pass mark to test scores
+            for test_score in self.results.all():  # Update all test_scores for both passes and fails
+                test_score.save()
+
+
+class TestScoreManager(models.Manager):
+
+    """Annotate with number of attempts."""
+
+    def get_queryset(self,):
+        """Annoteate query set with number of attempts at test."""
+        return super().get_queryset().annotate(attempt_count=models.Count("attempts"))
 
 
 class Test_Score(models.Model):
 
     """The model that links a particular student to a particular test."""
 
+    objects = TestScoreManager()
+    ### Fields ###########################################################
     user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="test_results")
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="results")
     status = models.CharField(choices=SCORE_STATUS.items(), max_length=50)
@@ -285,25 +230,25 @@ class Test_Score(models.Model):
             models.UniqueConstraint(fields=["test", "user"], name="Singleton mapping student and test_score")
         ]
 
+    def check_passed(self, orig=None):
+        """Check whether the user has passed the test."""
+        best_score = self.attempts.aggregate(models.Max("score", default=0)).get("score__max", 0.0)
+        numerically_passed = bool(best_score and (best_score >= self.test.passing_score))
+        if orig:
+            pass_changed = numerically_passed ^ orig.passed
+        else:
+            pass_changed = None
+        return best_score, numerically_passed, pass_changed
+
     def save(self, **kargs):
         """Correct the passed flag if score is equal to or greate than test.passing_score."""
         if self.pk:
-            if self.test.grading_attemptsAllowed and self.test.grading_attemptsAllowed > 0:
-                attempts = self.attempts.count() <= self.test.grading_attemptsAllowed
-            else:
-                attempts = True
-            best_score = self.attempts.aggregate(models.Max("score", default=0)).get("score__max", None)
-            self.score = self.score if self.score else best_score
-
-            if self.score and self.test.passing_score:
-                numerically_passed = self.score >= self.test.passing_score
-            else:
-                numerically_passed = False
+            orig = Test_Score.objects.get(pk=self.pk)
         else:
-            attempts = False
-            numerically_passed = False
-        send_signal = not self.passed and numerically_passed and attempts
-        self.passed = self.passed or (numerically_passed and attempts)
+            orig = None
+        score, passed, send_signal = self.check_passed(orig)
+        self.score = score
+        self.passed=passed
         super().save(**kargs)
         if send_signal:
             test_passed.send(sender=self.__class__, test=self)

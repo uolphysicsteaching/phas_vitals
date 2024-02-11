@@ -1,10 +1,14 @@
 """Import Export Admin Resources for the minerva app models."""
 
 # external imports
+from accounts.models import Account
+from accounts.resource import AccountWidget
 from import_export import fields, resources, widgets
 
 # app imports
-from .models import Module, Test, Test_Attempt, Test_Score
+from .models import (
+    Module, ModuleEnrollment, StatusCode, Test, Test_Attempt, Test_Score,
+)
 
 # Register your models here.
 
@@ -70,7 +74,7 @@ class Test_ScoreResource(resources.ModelResource):
     user = fields.Field(
         column_name="user",
         attribute="user",
-        widget=widgets.ForeignKeyWidget("accounts.Account", "display_name"),
+        widget=AccountWidget("accounts.Account", "display_name"),
     )
 
     test = fields.Field(
@@ -103,3 +107,51 @@ class Test_AttemptResource(resources.ModelResource):
         attribute="test_entry",
         widget=widgets.ForeignKeyWidget(Test_Score, "id"),
     )
+
+
+class StatusCodeResource(resources.ModelResource):
+
+    """Import-Export resource for Status Codes."""
+
+    class Meta:
+        model = StatusCode
+        fields = ("code", "explanation", "capped", "valid","resit","level")
+        import_id_fields = ["code"]
+
+
+class ModuleEnrollmentReource(resources.ModelResource):
+
+    """Import Export Resource for ModuleEnrollments."""
+
+    class Meta:
+        model = ModuleEnrollment
+        fields = ("module","student","status")
+        import_id_fields = ["module","student"]
+
+    student = fields.Field(
+        column_name="student",
+        attribute="student",
+        widget=AccountWidget(Account, "display_name"),
+    )
+
+    module = fields.Field(
+        column_name="module",
+        attribute="module",
+        widget=widgets.ForeignKeyWidget(Module, "code"),
+    )
+
+    status = fields.Field(
+        column_name="status",
+        attribute="status",
+        widget=widgets.ForeignKeyWidget(StatusCode, "code"),
+    )
+
+    def import_row(self, row, instance_loader, using_transactions=True, dry_run=False, **kwargs):
+        """Match up bad fields."""
+        if "module" not in row and ("Subject_Code" in row and "Module_No" in row):
+            row["module"]=row["Subject_Code"].strip()+str(row["Module_No"])
+        if "student" not in row and "Student_ID" in row:
+            row["student"]=row["Student_ID"]
+        if "status" not in row and "RSTS_Code" in row:
+            row["status"]=row["RSTS_Code"]
+        return super().import_row(row, instance_loader, using_transactions=True, dry_run=False, **kwargs)

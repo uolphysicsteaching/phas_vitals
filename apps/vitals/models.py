@@ -63,12 +63,28 @@ class VITAL(models.Model):
     def natural_key(self):
         return str(self)
 
-    def passed(self, user=None):
+    def passed(self, user, passed=True, date_passed=None):
         """Record the user as having passed this vital."""
+        if not date_passed:
+            date_passed = tz.now()
         result, new = VITAL_Result.objects.get_or_create(vital=self, user=user)
-        result.passed = True
-        result.date_passed = tz.now()
+        result.passed = passed
+        if passed:
+            result.date_passed = date_passed
         result.save()
+
+    def check_vital(self, user):
+        """Check whether a VITAL has been passed by a user."""
+        # Check if any sufficient tests passed
+        sufficient = self.tests_mappings.filter(sufficient=True).values_list("test")
+        if user.test_results.filter(test__in=sufficient, passed=True):
+            return self.passed(user)
+        # Check all necessary tests are passed.
+        necessary = self.tests_mappings.filter(necessary=True).distinct()
+        if user.test_results.filter(test__in=necessary.values_list("test"), passed=True).distinct().count()==necessary.count():
+            return self.passed(user)
+
+
 
     def __str__(self):
         return f"{self.name} ({self.module.code}"
