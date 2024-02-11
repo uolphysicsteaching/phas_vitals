@@ -4,6 +4,30 @@
 import django.db.models.deletion
 from django.db import migrations, models
 
+def forwards_func(apps, schema_editor):
+    # We get the model from the versioned app registry;
+    # if we directly import it, it'll be the wrong version
+    StatusCode = apps.get_model("minerva", "StatusCode")
+    db_alias = schema_editor.connection.alias
+    RE={"explanation": "Enrolled",
+        "capped": False,
+        "valid": True,
+        "resit": False,
+        "level": "normal"}
+    StatusCode.objects.using(db_alias).bulk_create(
+        [
+            StatusCode(**RE),
+        ]
+    )
+
+
+def reverse_func(apps, schema_editor):
+    # forwards_func() creates two Country instances,
+    # so reverse_func() should delete them.
+    StatusCode = apps.get_model("minerva", "StatusCode")
+    db_alias = schema_editor.connection.alias
+    StatusCode.objects.using(db_alias).filter(code="RE").delete()
+
 
 class Migration(migrations.Migration):
 
@@ -23,6 +47,7 @@ class Migration(migrations.Migration):
                 ('level', models.CharField(choices=[('normal', 'Normal first attempt'), ('first', 'First Attempt Resit'), ('second', 'Second or further Resit'), ('none', 'Not an Attempt')], default='none', max_length=10)),
             ],
         ),
+        migrations.RunPython(forwards_func, reverse_func),
         migrations.AddField(
             model_name='moduleenrollment',
             name='status',
