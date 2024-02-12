@@ -34,7 +34,11 @@ class AccountWidget(widgets.ForeignKeyWidget):
 
     def clean(self, value, row=None, *args, **kargs):
         """Attempt to match to a user account."""
-        qs = self.model.objects.filter(Q(number=value) | Q(username=value))
+        try:
+            value=int(value)
+            qs=self.model.objects.filter(number=value)
+        except ValueError:
+            qs = self.model.objects.filter(username=value)
         if qs.count() > 0:
             return qs.first()
         if "," in value:

@@ -30,6 +30,20 @@ class Test_AttemptInline(admin.StackedInline):
 
     model = Test_Attempt
     extra = 0
+    fieldsets = (
+        (
+            "Basic Details",
+            {
+                "fields": (
+                    "test_entry",
+                    ("status","score"),
+                    "text",
+                    ("created", "attempted", "modified"),
+                ),
+            },
+        ),
+    )
+
 
 class ModuleEnrollmentInline(admin.StackedInline):
     """Inline admin for module enrollments."""
@@ -173,6 +187,24 @@ class Test_ScoreAdmin(ImportExportModelAdmin):
     inlines = [
         Test_AttemptInline,
     ]
+    
+    fieldsets = (
+        (
+            "Basic Details",
+            {
+                "fields": (
+                    ("user", "test"),
+                    ("status","score","passed"),
+                    "text",
+
+                ),
+                "classes": [
+                    "baton-tabs-init",
+                    "baton-tab-inline-attempts",
+                ],
+            },
+        ),
+    )
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""

@@ -23,6 +23,7 @@
     {% bootstrap_form form %}
 </form>
 
+{% if module %}
  {% render_table vital_results %}
-
+{% endif %}
 {% endblock content %}

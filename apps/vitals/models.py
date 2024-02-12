@@ -8,8 +8,8 @@ from django.utils import timezone as tz
 
 # Create your models here.
 
-class VITAL_Test_Map(models.Model):
 
+class VITAL_Test_Map(models.Model):
     """The object that provides the mapping between minerva.Tests and vitals.VITAL."""
 
     test = models.ForeignKey("minerva.Test", on_delete=models.CASCADE, related_name="vitals_mappings")
@@ -18,9 +18,7 @@ class VITAL_Test_Map(models.Model):
     sufficient = models.BooleanField(default=True)
 
 
-
 class VITAL_Result(models.Model):
-
     """Provide a model for connecting a VITAL to a student."""
 
     vital = models.ForeignKey("VITAL", on_delete=models.CASCADE, related_name="student_results")
@@ -33,7 +31,6 @@ class VITAL_Result(models.Model):
 
 
 class VITAL_Manager(models.Manager):
-
     """Model Manager for VITALs to support natural keys."""
 
     key_pattern = re.compile(r"(?P<name>.*)\s\((?P<module__code>[^\)]*)\)")
@@ -46,7 +43,6 @@ class VITAL_Manager(models.Manager):
 
 
 class VITAL(models.Model):
-
     """A Verifiable Indicator of Threshold Ability and Learning."""
 
     objects = VITAL_Manager()
@@ -76,15 +72,18 @@ class VITAL(models.Model):
     def check_vital(self, user):
         """Check whether a VITAL has been passed by a user."""
         # Check if any sufficient tests passed
-        sufficient = self.tests_mappings.filter(sufficient=True).values_list("test")
-        if user.test_results.filter(test__in=sufficient, passed=True):
+        sufficient = self.tests_mappings.filter(sufficient=True)
+        if user.test_results.filter(test__vitals_mappings__in=sufficient, passed=True).count() > 0:
             return self.passed(user)
         # Check all necessary tests are passed.
         necessary = self.tests_mappings.filter(necessary=True).distinct()
-        if user.test_results.filter(test__in=necessary.values_list("test"), passed=True).distinct().count()==necessary.count():
+        if (
+            necessary.count() > 0
+            and user.test_results.filter(test__vitals_mappings_in=necessary, passed=True).distinct().count()
+            == necessary.count()
+        ):
             return self.passed(user)
-
-
+        return self.passed(user, False)
 
     def __str__(self):
         return f"{self.name} ({self.module.code}"

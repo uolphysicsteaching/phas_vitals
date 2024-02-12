@@ -145,7 +145,14 @@ class ModuleEnrollment(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["module", "student"], name="Singleton EWnrollment on a module")
         ]
-
+        
+    @property
+    def passed_vitals(self):
+        """Has the user passed all the vitals on this module?"""
+        vitals=self.module.VITALS.all()
+        passed=self.student.vital_results.filter(vital__in=vitals, passed=True)
+        return vitals.count()==passed.count()
+        
 
 class Test_Manager(models.Manager):
 
@@ -220,7 +227,7 @@ class Test_Score(models.Model):
     ### Fields ###########################################################
     user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="test_results")
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="results")
-    status = models.CharField(choices=SCORE_STATUS.items(), max_length=50)
+    status = models.CharField(choices=SCORE_STATUS.items(), max_length=50, blank=True, null=True)
     text = models.TextField(blank=True, null=True)
     score = models.FloatField(null=True, blank=True)
     passed = models.BooleanField(default=False)
@@ -242,14 +249,15 @@ class Test_Score(models.Model):
 
     def save(self, **kargs):
         """Correct the passed flag if score is equal to or greate than test.passing_score."""
-        if self.pk:
+        if self.pk is not None:
             orig = Test_Score.objects.get(pk=self.pk)
         else:
             orig = None
+            super().save()
         score, passed, send_signal = self.check_passed(orig)
         self.score = score
         self.passed=passed
-        super().save(**kargs)
+        super().save()
         if send_signal:
             test_passed.send(sender=self.__class__, test=self)
 
@@ -262,7 +270,7 @@ class Test_Attempt(models.Model):
 
     """Represents one attempt to do a Test by a Student."""
 
-    attempt_id = models.CharField(max_length=255, primary_key=True)
+    attempt_id = models.CharField(max_length=255, unique=True)
     test_entry = models.ForeignKey(Test_Score, on_delete=models.CASCADE, related_name="attempts")
     status = models.CharField(choices=ATTEMPT_STATUS.items(), blank=True, null=True, max_length=40)
     text = models.TextField(blank=True, null=True)
@@ -273,6 +281,8 @@ class Test_Attempt(models.Model):
 
     def save(self, **kargs):
         """Check whether saving this attempt changes the test passed or not."""
+        if self.attempt_id is None:
+            self.attempt_id = f"{self.name}:{self.test_entry.student.username}:{self.attempted}"
         trigger_check = self.pk is None or self.test_entry.score != self.score
         super().save(**kargs)
 

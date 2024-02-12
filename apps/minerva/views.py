@@ -1,7 +1,7 @@
 # Python imports
 import re
 from traceback import format_exc
-
+from textwrap import shorten
 # Django imports
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -9,7 +9,6 @@ from django.forms import ValidationError
 from django.template.response import TemplateResponse
 from django.utils.html import format_html
 from django.views.generic import FormView
-from django.views.generic.edit import FormMixin
 
 # external imports
 import numpy as np
@@ -30,7 +29,6 @@ TZ = timezone(settings.TIME_ZONE)
 
 # Create your views here.
 class ImportTestsView(IsSuperuserViewMixin, FormView):
-
     """Handles uploading the full Gtradebook."""
 
     template_name = "minerva/import_tests.html"
@@ -103,7 +101,6 @@ class ImportTestsView(IsSuperuserViewMixin, FormView):
 
 
 class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
-
     """Handles uploading the Gradebook Hisotry Files."""
 
     template_name = "minerva/import_history.html"
@@ -155,24 +152,31 @@ class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
                     student = Account.objects.get(username=row.Username)
                 except ObjectDoesNotExist:
                     row_report["message"] = f"Unknown User {row.Username}"
+                    ret["rows"].append(row_report)
+                    continue
                 try:
                     test = Test.objects.get(name=row.Column, module=module)
                 except ObjectDoesNotExist:
                     row_report["message"] = "Unknown test {row.Column}"
+                    ret["rows"].append(row_report)
+                    continue
                 test_score, new = Test_Score.objects.get_or_create(user=student, test=test)
-                if new:
-                    test_score.save()
                 new_id = f"{row.Column}:{row.Username}:{row.AttemptDate}"
                 test_attempt, new = Test_Attempt.objects.get_or_create(
                     attempt_id=new_id, test_entry=test_score, attempted=row.AttemptDate
                 )
-                if not new and not np.isnan(test_attempt.score) and np.isnan(row.Value):
-                    continue # Skip over duplicate attempts where the score is NaN
+                if (
+                    not new
+                    and test_attempt.score is not None
+                    and not np.isnan(test_attempt.score)
+                    and np.isnan(row.Value)
+                ):
+                    continue  # Skip over duplicate attempts where the score is NaN
                 test_attempt.score = row.Value
                 test_attempt.modified = row.Date
-                row_report[
-                    "message"
-                ] = f"Attempt {row.Column} for {row.Username} at {row.AttemptDate} saved with score {row.Value}"
+                row_report["message"] = (
+                    f"Attempt {row.Column} for {row.Username} at {row.AttemptDate} saved with score {row.Value}"
+                )
                 ret["rows"].append(row_report)
                 test_attempt.save()
             results.append(ret)
@@ -182,20 +186,20 @@ class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
 
 
 class BaseTable(Table):
-
     """Provides a table with columns for student name, number, programme and status code as per marksheets."""
 
     class Meta:
         attrs = {"width": "100%"}
+        template_name = "django_tables2/bootstrap5.html"
+        orderable  = False
 
-    student = Column()
-    number = Column()
-    programme = Column()
-    status = Column()
+    student = Column(orderable  = False)
+    number = Column(orderable  = False)
+    programme = Column(orderable  = False)
+    status = Column(attrs={"th": {"class": "vertical"}},orderable  = False)
 
 
 class TestResultColumn(Column):
-
     """Handles displaying test result information."""
 
     def __init__(self, **kargs):
@@ -231,7 +235,6 @@ class TestResultColumn(Column):
 
 
 class ShowTestResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
-
     """View to show test results for a module in a table."""
 
     form_class = ModuleSelectForm
@@ -257,13 +260,14 @@ class ShowTestResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
         """Construct the django-tables2 table class for this view."""
         attrs = {}
         for test in self.tests:
-            attrs[test.name] = TestResultColumn()
+            attrs[shorten(test.name, width=30)] = TestResultColumn(orderable  = False)
         klass = type("DynamicTable", (self.table_class,), attrs)
         return klass
 
     def get_context_data(self, **kwargs):
         """Get the cohort into context from the slug."""
         context = super().get_context_data(**kwargs)
+        context["module"]=self.module
         return context
 
     def get_table_data(self):
@@ -284,8 +288,8 @@ class ShowTestResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
             }
             for test in self.tests:  # Add columns for the tests
                 try:
-                    ent=entry.student.test_results.get(test=test)
-                    record[test.name] ={x:getattr(ent,x) for x in ["score", "passed", "attempt_count"]}
+                    ent = entry.student.test_results.get(test=test)
+                    record[shorten(test.name, width=30)] = {x: getattr(ent, x) for x in ["score", "passed", "attempt_count"]}
                 except ObjectDoesNotExist:
                     record[test.name] = None
 
@@ -295,3 +299,17 @@ class ShowTestResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
     def get_queryset(self):
         """Use get_table_data instead of a queryset."""
         return self.get_table_data()
+
+class GenerateModuleMarksheetView(IsSuperuserViewMixin, FormView):
+    """Handles uploading the full Gtradebook."""
+
+    template_name = "minerva/generate_marksheet.html"
+    form_class = ModuleSelectForm
+    success_url = "/minerva/generate_marksheet/"
+
+
+    def form_valid(self,form):
+        """Repsond with a marksheet for the selected module."""
+        module = form.cleaned_data["module"]
+        return module.generate_marksheet()
+        

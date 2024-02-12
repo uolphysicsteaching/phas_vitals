@@ -1,3 +1,6 @@
+from textwrap import shorten
+
+
 # Django imports
 # Create your views here.
 from django.core.exceptions import ObjectDoesNotExist
@@ -15,16 +18,17 @@ from util.views import IsSuperuserViewMixin
 
 
 class BaseTable(Table):
-
     """Provides a table with columns for student name, number, programme and status code as per marksheets."""
 
     class Meta:
         attrs = {"width": "100%"}
+        template_name = "django_tables2/bootstrap5.html"
+        orderable  = False
 
-    student = Column()
-    number = Column()
-    programme = Column()
-    status = Column()
+    student = Column(orderable  = False)
+    number = Column(orderable  = False)
+    programme = Column(orderable  = False)
+    status = Column(attrs={"th": {"class": "vertical"}},orderable  = False)
 
 
 class VITALResultColumn(Column):
@@ -80,13 +84,15 @@ class ShowvitalResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
         """Construct the django-tables2 table class for this view."""
         attrs = {}
         for vital in self.vitals:
-            attrs[vital.name] = VITALResultColumn()
+            attrs[vital.name] = VITALResultColumn(orderable  = False)
+            attrs["Overall"] = VITALResultColumn(orderable  = False)
         klass = type("DynamicTable", (self.table_class,), attrs)
         return klass
 
     def get_context_data(self, **kwargs):
         """Get the cohort into context from the slug."""
         context = super().get_context_data(**kwargs)
+        context["module"]=self.module
         return context
 
     def get_table_data(self):
@@ -104,6 +110,7 @@ class ShowvitalResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
                 "number": entry.student.number,
                 "programme": entry.student.programme.name,
                 "status": entry.status.code,
+                "Overall": {"passed":entry.passed_vitals},
             }
             for vital in self.vitals:  # Add columns for the vitals
                 try:
