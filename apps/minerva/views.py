@@ -2,6 +2,7 @@
 import re
 from traceback import format_exc
 from textwrap import shorten
+
 # Django imports
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -21,7 +22,7 @@ from pytz import timezone
 from util.views import IsSuperuserViewMixin
 
 # app imports
-from .forms import ModuleSelectForm, TestImportForm
+from .forms import ModuleSelectForm, ModuleSelectPlusForm, TestImportForm, TestHistoryImportForm
 from .models import ModuleEnrollment, Test, Test_Attempt, Test_Score
 
 TZ = timezone(settings.TIME_ZONE)
@@ -104,7 +105,7 @@ class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
     """Handles uploading the Gradebook Hisotry Files."""
 
     template_name = "minerva/import_history.html"
-    form_class = TestImportForm
+    form_class = TestHistoryImportForm
     success_url = "/minerva/import_history/"
     data = []
 
@@ -191,12 +192,12 @@ class BaseTable(Table):
     class Meta:
         attrs = {"width": "100%"}
         template_name = "django_tables2/bootstrap5.html"
-        orderable  = False
+        orderable = False
 
-    student = Column(orderable  = False)
-    number = Column(orderable  = False)
-    programme = Column(orderable  = False)
-    status = Column(attrs={"th": {"class": "vertical"}},orderable  = False)
+    student = Column(orderable=False)
+    number = Column(orderable=False)
+    programme = Column(orderable=False)
+    status = Column(attrs={"th": {"class": "vertical"}}, orderable=False)
 
 
 class TestResultColumn(Column):
@@ -207,37 +208,45 @@ class TestResultColumn(Column):
         attrs = kargs.pop("attrs", {})
         attrs.update({"th": {"class": "vertical"}})
         kargs["attrs"] = attrs
+        self.mode = kargs.pop("mode", "score")
         super().__init__(**kargs)
 
     def render(self, value):
         match value:
-            case None:
-                ret = ""
+            case False:
+                ret = '<div class="badge rounded-pil bg-secondary">&nbsp;</div>'
             case {"score": score, "passed": passed, "attempt_count": attempts}:
-                if attempts > 1:
-                    attempts = (
-                        '<span class="position-absolute top-0 start-100 translate-middle p-2'
-                        + 'bg-warning border border-light rounded-circle">'
-                        + '<span class="visually-hidden">Too Many attempts</span>'
-                    )
-                else:
-                    attempts = ""
-                if passed:
-                    ret = f'<span class="badge bg-success">{score:.1f}{attempts}</span>'
-                elif np.isnan(score):
-                    ret = f'<span class="badge bg-primary">{score:.1f}{attempts}</span>'
-                else:
-                    ret = f'<span class="badge bg-danger">{score:.1f}{attempts}</span>'
+                if self.mode == "score":
+                    ret = self.format_score(passed, score)
+                elif self.mode == "attempts":
+                    ret = self.format_attempts(attempts, passed)
             case _:
-                ret = value
+                ret = f'<div class="badge rounded-pil bg-secondary">{value}</div>'
 
         return format_html(ret)
+
+    def format_score(self, passed, score):
+        """Format the html for a score."""
+        if passed:
+            return f'<div class="badge rounded-pil bg-success">{score:.1f}</div>'
+        if np.isnan(score):
+            return f'<div class="badge rounded-pil bg-primary">{score:.1f}</div>'
+        return f'<div class="badge rounded-pil bg-danger">{score:.1f}</div>'
+
+    def format_attempts(self, attempts, passed):
+        """Format some html for counting attempts at passing."""
+        bi_class = "bi bi-emoji-smile" if passed else "bi bi-emoji-frown"
+        if passed:
+            bg_class = "bg-success" if attempts == 1 else "bg-primary"
+        else:
+            bg_class = "bg-warning" if attempts <= 1 else "bg-danger"
+        return f'<div class="badge rounded-pil {bi_class} {bg_class}">&nbsp;</div>'
 
 
 class ShowTestResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
     """View to show test results for a module in a table."""
 
-    form_class = ModuleSelectForm
+    form_class = ModuleSelectPlusForm
     table_class = BaseTable
     template_name = "minerva/test_results.html"
     context_table_name = "test_results"
@@ -246,12 +255,14 @@ class ShowTestResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
     def __init__(self, *args, **kargs):
         """Setup instance variables."""
         self.module = None
+        self.mode = "scor3e"
         self.tests = []
         super().__init__(*args, **kargs)
 
     def form_valid(self, form):
         """Update self.module with the module selected in the form."""
         self.module = form.cleaned_data["module"]
+        self.mode = form.cleaned_data.get("mode", "score")
         if self.module is not None:
             self.tests = self.module.tests.all().order_by("name")
         return self.render_to_response(self.get_context_data())
@@ -260,14 +271,14 @@ class ShowTestResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
         """Construct the django-tables2 table class for this view."""
         attrs = {}
         for test in self.tests:
-            attrs[shorten(test.name, width=30)] = TestResultColumn(orderable  = False)
+            attrs[shorten(test.name, width=30)] = TestResultColumn(orderable=False, mode=self.mode)
         klass = type("DynamicTable", (self.table_class,), attrs)
         return klass
 
     def get_context_data(self, **kwargs):
         """Get the cohort into context from the slug."""
         context = super().get_context_data(**kwargs)
-        context["module"]=self.module
+        context["module"] = self.module
         return context
 
     def get_table_data(self):
@@ -289,7 +300,9 @@ class ShowTestResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
             for test in self.tests:  # Add columns for the tests
                 try:
                     ent = entry.student.test_results.get(test=test)
-                    record[shorten(test.name, width=30)] = {x: getattr(ent, x) for x in ["score", "passed", "attempt_count"]}
+                    record[shorten(test.name, width=30)] = {
+                        x: getattr(ent, x) for x in ["score", "passed", "attempt_count"]
+                    }
                 except ObjectDoesNotExist:
                     record[test.name] = None
 
@@ -300,6 +313,7 @@ class ShowTestResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
         """Use get_table_data instead of a queryset."""
         return self.get_table_data()
 
+
 class GenerateModuleMarksheetView(IsSuperuserViewMixin, FormView):
     """Handles uploading the full Gtradebook."""
 
@@ -307,9 +321,7 @@ class GenerateModuleMarksheetView(IsSuperuserViewMixin, FormView):
     form_class = ModuleSelectForm
     success_url = "/minerva/generate_marksheet/"
 
-
-    def form_valid(self,form):
+    def form_valid(self, form):
         """Repsond with a marksheet for the selected module."""
         module = form.cleaned_data["module"]
         return module.generate_marksheet()
-        

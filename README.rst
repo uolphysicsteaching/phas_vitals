@@ -13,7 +13,7 @@ a suitable mark-sheet for recording the student progress.
 Local (Development) Setup
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Akthiygh the web-app i designed for deployment as a WSGI application on a web-server with networked database server -
+Althouugh the web-app i designed for deployment as a WSGI application on a web-server with networked database server -
 such as Gunicorn/Nginx/PostGresql - it is straightforward to setup and run as a local application, either for
 development or as a 'private' instance.
 
@@ -80,6 +80,14 @@ resources are collected::
 In the second command the forward-slash / will need to be a back-slash \ in Windows. The third command will prompt to
 confirm a copy and the fourth command will prompt for a username (typically Admin), email address and password.
 
+There are some additional fixtures that will probably be useful::
+
+    python manage,py loaddata phas_vitals/fixtures/statuscodes.json
+    python manage,py loaddata phas_vitals/fixtures/programmes.json
+    python manage,py loaddata phas_vitals/fixtures/cohort.json
+    
+These load the Banner ETS registration codes into the site, the common programmes for students, and some initial student cohorts.
+
 5. Startup the Local Server and Connect to the App
 --------------------------------------------------
 
@@ -97,12 +105,12 @@ You will be able to login with the credentials set above for the superuser accou
 After logging in, click on the Admin menu item to access the backend of the system. Using this you can create
 database entries for everything the system requires. Start by creating the following:
 
-    - Cohort objects: Usually specifed as a 6 digit number to represent the academic year, e.g. 202425
+    - Cohort objects: Usually specifed as a 6 digit number to represent the academic year, e.g. 202425 - may be loaded by the cohort.json fixture above
     - Programme Objects: You will need to create a Programme object for each degree programme that a student might
-      be studying. These should match the name and code used by Banner
+      be studying. These should match the name and code used by Banner/ Maybe loaded from the programmes.json fixture above.
     - Student Accounts - these can be imported from Banner module registration files (** needs sorting **) and will
       create user accounts for each student enrolled on the system.
-    - Module objects - these are in the minerva section. At least one Module object will be required and the details
+    - Module objects - these are in the minerva section. At least one Module object will be required and the details.
       provided. Key details and the name and module code. The module code prefix (e.g. PHAS) also needs to be set in
       the *constance* section.
 
@@ -138,3 +146,9 @@ the final codes. As the modules do not have a numerical mark, the Total % column
 the Admin pages, click on Modules in the minerva section.From the list of modules, select the ONE module to generate
 a marksheet for and then select "Generate Spreadsheet" from the drop down menu of actions. Finally click Go and the
 marksheet will download.
+
+9. Exporting Database Objects
+-----------------------------
+
+To make it easier to transfer key tables like VITALS and Modules, all the database entieis can be exported to spreadhseet
+files from one instance of the application and imported into another bia the backed.

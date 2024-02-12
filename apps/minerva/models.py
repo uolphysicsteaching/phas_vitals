@@ -39,7 +39,7 @@ def module_validator(value):
     """Validate module code patterns."""
     pattern = MOD_PATTERN
     if not isinstance(value, str) or not pattern.match(value):
-        raise ValidationError("Module code must be PHYS module code")
+        raise ValidationError(f"Module code must be {config.SUBJECT_PREFIX} module code")
 
 
 class ModuleManager(models.Manager):
@@ -281,10 +281,9 @@ class Test_Attempt(models.Model):
 
     def save(self, **kargs):
         """Check whether saving this attempt changes the test passed or not."""
-        if self.attempt_id is None:
-            self.attempt_id = f"{self.name}:{self.test_entry.student.username}:{self.attempted}"
+        self.attempt_id = f"{self.test_entry.test.name}:{self.test_entry.user.username}:{self.attempted}"
         trigger_check = self.pk is None or self.test_entry.score != self.score
-        super().save(**kargs)
+        super().save()
 
         if trigger_check:  # Every new attempt causes a save to the test_entry
             self.test_entry.save()
