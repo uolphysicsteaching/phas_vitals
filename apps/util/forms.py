@@ -8,7 +8,7 @@ try:
     import magic
 except ImportError:
     magic = None
-    
+
 # Python imports
 from mimetypes import guess_type
 
@@ -108,7 +108,7 @@ class FileSelectForm(forms.Form):
         "application/csv",
         "text/plain",
     ]
-    
+
     spreadsheet = forms.FileField(
         widget=forms.ClearableFileInput(
             attrs={
@@ -124,7 +124,6 @@ class FileSelectForm(forms.Form):
         filetype = self.get_mime(content)
         if filetype and filetype not in self._pass_files:
             raise forms.ValidationError("File is not a valid type {} not in {}".format(filetype, ",".join(self._pass_files)))
-        assert False
         return content
 
     @classmethod

@@ -254,17 +254,11 @@ class Spreadsheet:
                     elif re.compile(r"\d+v").match(str(mk).lower().strip()) or cmnt.strip().lower() == "v":
                         codes.append("V")
                         res = re.compile(r"(\d+)v?").match(str(mk).lower().strip())
-                        try:
-                            marks.append(float(res.group(1)))
-                        except:
-                            assert False, res.group(1)
+                        marks.append(float(res.group(1)))
                     elif re.compile(r"\d+c").match(str(mk).lower().strip()) or cmnt.strip().lower() == "v":
                         codes.append("C")
                         res = re.compile(r"(\d+)v?").match(str(mk).lower().strip())
-                        try:
-                            marks.append(float(res.group(1)))
-                        except:
-                            assert False, res.group(1)
+                        marks.append(float(res.group(1)))
                     else:
                         raise RuntimeError(f"Unable to interpret mark and code {mk} {cmnt}")
             return zip(marks, codes)
@@ -492,14 +486,20 @@ class Spreadsheet:
             cell = self.search("V/C")
             code_col = cell.col_idx
             if entries is None:
-                entries = module.student_enrollments.prefetch_related("student","student__vital_results").order_by("student")
+                entries = module.student_enrollments.prefetch_related("student", "student__vital_results").order_by(
+                    "student"
+                )
             elif isinstance(entries, dict):
                 entries = (
-                    module.student_enrollments.filter(**entries).prefetch_related("student","student__vital_results").order_by("student")
+                    module.student_enrollments.filter(**entries)
+                    .prefetch_related("student", "student__vital_results")
+                    .order_by("student")
                 )
             else:
                 entries = (
-                    module.student_enrollments.filter(entries).prefetch_related("student","student__vital_results").order_by("student")
+                    module.student_enrollments.filter(entries)
+                    .prefetch_related("student", "student__vital_results")
+                    .order_by("student")
                 )
 
             for ix, ent in enumerate(entries):
@@ -510,7 +510,7 @@ class Spreadsheet:
                 self.sheet.cell(row=row, column=4).value = ent.status.code
                 for comp, (comp_col, mtype) in component_columns.items():
                     mks = ent.student.vital_results.filter(vital__name=mtype)
-                    comp_mark = mks.count()>0 and mks.last().passed
+                    comp_mark = mks.count() > 0 and mks.last().passed
                     self.sheet.cell(row=row, column=comp_col).value = "P" if comp_mark else ""
 
             # Now remove excess rows

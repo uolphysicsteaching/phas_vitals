@@ -5,6 +5,7 @@ from collections.abc import Iterable
 from importlib import import_module
 
 # Django imports
+from django.apps import apps
 from django.contrib import admin
 from django.db.models import Model
 
@@ -34,8 +35,7 @@ def get_admin(model):
     """
     if isinstance(model, str):  # Load the correct model
         app_label, model_name = model.split(".")
-        app_module = import_module(f"{app_label}.models", __file__)
-        model = getattr(app_module, model_name)
+        model = apps.get_model(app_label, model_name, require_ready=True)
     if not (isinstance(model, type) and issubclass(model, Model)):
         raise TypeError(f"{model} should be a subclass of django.db.models.Model not a {type(model)}")
     if model not in admin.site._registry:

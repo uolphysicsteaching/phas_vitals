@@ -1,7 +1,7 @@
 # Python imports
 import re
-from traceback import format_exc
 from textwrap import shorten
+from traceback import format_exc
 
 # Django imports
 from django.conf import settings
@@ -22,7 +22,10 @@ from pytz import timezone
 from util.views import IsSuperuserViewMixin
 
 # app imports
-from .forms import ModuleSelectForm, ModuleSelectPlusForm, TestImportForm, TestHistoryImportForm
+from .forms import (
+    ModuleSelectForm, ModuleSelectPlusForm, TestHistoryImportForm,
+    TestImportForm,
+)
 from .models import ModuleEnrollment, Test, Test_Attempt, Test_Score
 
 TZ = timezone(settings.TIME_ZONE)
@@ -322,6 +325,6 @@ class GenerateModuleMarksheetView(IsSuperuserViewMixin, FormView):
     success_url = "/minerva/generate_marksheet/"
 
     def form_valid(self, form):
-        """Repsond with a marksheet for the selected module."""
+        """Respond with a marksheet for the selected module."""
         module = form.cleaned_data["module"]
         return module.generate_marksheet()

@@ -305,7 +305,7 @@ CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
 CONSTANCE_IGNORE_ADMIN_VERSION_CHECK = True
 
 CONSTANCE_CONFIG = {
-    'SUBJECT_PREFIX': ("PHAS", 'Module Subject code prefix'),
+    "SUBJECT_PREFIX": ("PHAS", "Module Subject code prefix"),
 }
 
 CONSTANCE_ADDITIONAL_FIELDS = {
@@ -394,13 +394,18 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {"anon": "100/hour", "user": "1000/hour"},
 }
 
 ###### Import config from apps ############################
 
 for app in CUSTOM_APPS:
     try:  # Look for app.settings module
-        app_settings = import_module(f"{app}.settings", __file__)
+        app_settings = import_module(app + ".settings", __file__)
         for setting in dir(app_settings):
             if setting == setting.upper():  # settings are always ALL_CAPS
                 set_val = getattr(app_settings, setting)

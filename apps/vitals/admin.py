@@ -2,9 +2,9 @@
 from django.contrib import admin
 
 # external imports
+from accounts.models import Account
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 from util.admin import add_action, add_inlines
-from accounts.models import Account
 
 # app imports
 from .models import VITAL, VITAL_Result, VITAL_Test_Map

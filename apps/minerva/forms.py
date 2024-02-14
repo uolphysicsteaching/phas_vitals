@@ -6,8 +6,8 @@ Created on Tue Feb  6 14:33:54 2024
 """
 # Django imports
 from django import forms
-from django.forms.widgets import Select
 from django.db.models import Count
+from django.forms.widgets import Select
 
 # external imports
 from util.forms import get_mime

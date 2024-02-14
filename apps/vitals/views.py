@@ -1,5 +1,5 @@
+# Python imports
 from textwrap import shorten
-
 
 # Django imports
 # Create your views here.
