@@ -1,21 +1,15 @@
-"""
-Created on Fri May 25 12:25:15 2018
-
-@author: phygbu
-"""
+"""Spreadsheet class is used to make Physics and Astronomy Marksheets."""
 # Python imports
 import os
 import re
 from tempfile import NamedTemporaryFile
 
 # Django imports
-from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
 from django.http import HttpResponse
 
 # external imports
 import numpy as np
 import openpyxl as opx
-from openpyxl.styles.alignment import Alignment
 
 
 def save_virtual_workbook(wb):
@@ -305,7 +299,7 @@ class Spreadsheet:
                     col_idx.append(col)
                     try:
                         A_total += float(self.sheet.cell(column=col, row=cell.row + 2).value) / 100.0
-                    except (ValueError,TypeError, AttributeError):
+                    except (ValueError, TypeError, AttributeError):
                         pass
         except Exception:
             return np.ones(len(self.sids)) * np.NaN

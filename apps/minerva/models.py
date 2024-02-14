@@ -1,7 +1,6 @@
 # Python imports
 import re
 from os import path
-from pathlib import Path
 
 # Django imports
 from django.conf import settings
@@ -10,7 +9,6 @@ from django.db import models
 from django.forms import ValidationError
 
 # external imports
-import numpy as np
 from constance import config
 from util.spreadsheet import Spreadsheet
 
@@ -111,6 +109,7 @@ class Module(models.Model):
         else:
             return spreadsheet.as_file(dirname)
 
+
 class StatusCode(models.Model):
 
     """represents the Banne Status Code and what it means."""
@@ -132,27 +131,25 @@ class StatusCode(models.Model):
     def __str__(self):
         return self.code
 
+
 class ModuleEnrollment(models.Model):
 
     """Records students enrolled on modules."""
 
     module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name="student_enrollments")
     student = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="module_enrollments")
-    status = models.ForeignKey(
-        StatusCode, on_delete=models.SET_DEFAULT, default="RE")
+    status = models.ForeignKey(StatusCode, on_delete=models.SET_DEFAULT, default="RE")
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["module", "student"], name="Singleton EWnrollment on a module")
-        ]
-        
+        constraints = [models.UniqueConstraint(fields=["module", "student"], name="Singleton EWnrollment on a module")]
+
     @property
     def passed_vitals(self):
         """Has the user passed all the vitals on this module?"""
-        vitals=self.module.VITALS.all()
-        passed=self.student.vital_results.filter(vital__in=vitals, passed=True)
-        return vitals.count()==passed.count()
-        
+        vitals = self.module.VITALS.all()
+        passed = self.student.vital_results.filter(vital__in=vitals, passed=True)
+        return vitals.count() == passed.count()
+
 
 class Test_Manager(models.Manager):
 
@@ -214,7 +211,9 @@ class TestScoreManager(models.Manager):
 
     """Annotate with number of attempts."""
 
-    def get_queryset(self,):
+    def get_queryset(
+        self,
+    ):
         """Annoteate query set with number of attempts at test."""
         return super().get_queryset().annotate(attempt_count=models.Count("attempts"))
 
@@ -256,7 +255,7 @@ class Test_Score(models.Model):
             super().save()
         score, passed, send_signal = self.check_passed(orig)
         self.score = score
-        self.passed=passed
+        self.passed = passed
         super().save()
         if send_signal:
             test_passed.send(sender=self.__class__, test=self)

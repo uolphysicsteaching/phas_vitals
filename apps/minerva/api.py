@@ -2,7 +2,6 @@
 """Django REST framework API file."""
 
 # Django imports
-from django.contrib.auth.models import Group
 
 # external imports
 from rest_framework import serializers, viewsets

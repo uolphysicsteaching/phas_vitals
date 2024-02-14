@@ -10,6 +10,9 @@ from .models import VITAL, VITAL_Result, VITAL_Test_Map
 
 
 class TestsWidget(widgets.ManyToManyWidget):
+
+    """Import Export Widge for reading Tests that understands the natural key for a test."""
+
     def clean(self, value, row=None, **kwargs):
         """Split the value by separator and then lookup natural keys."""
         if not value:

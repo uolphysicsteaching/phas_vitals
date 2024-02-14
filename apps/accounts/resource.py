@@ -7,7 +7,6 @@ from django.db.models import Q
 
 # external imports
 from import_export import fields, resources, widgets
-from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
 # app imports
 from .models import Account, Cohort, Programme
@@ -17,11 +16,13 @@ class StrippedCharWidget(widgets.CharWidget):
     """Hacked to make sure usernames don't have leading or trailing space spaces."""
 
     def clean(self, value, row=None, *args, **kwargs):
+        """Simply strips white space from the FKey before calling the parent."""
         return super().clean(value, row, *args, **kwargs).strip()
 
 
 class ProgrammeWidget(widgets.ForeignKeyWidget):
     def clean(self, value, row=None, *args, **kwargs):
+        """Do a lookup attempting to match code or name."""
         qs = self.model.objects.filter(Q(code=value) | Q(name=value))
         if qs.count() < 1:
             return None
@@ -35,8 +36,8 @@ class AccountWidget(widgets.ForeignKeyWidget):
     def clean(self, value, row=None, *args, **kargs):
         """Attempt to match to a user account."""
         try:
-            value=int(value)
-            qs=self.model.objects.filter(number=value)
+            value = int(value)
+            qs = self.model.objects.filter(number=value)
         except ValueError:
             qs = self.model.objects.filter(username=value)
         if qs.count() > 0:
@@ -50,6 +51,9 @@ class AccountWidget(widgets.ForeignKeyWidget):
 
 
 class UserResource(resources.ModelResource):
+
+    """Import Export resource class for Account objects."""
+
     groups = fields.Field(
         column_name="groups", attribute="groups", widget=widgets.ManyToManyWidget(Group, ";", "name")
     )
@@ -134,6 +138,9 @@ class UserResource(resources.ModelResource):
 
 
 class GroupResource(resources.ModelResource):
+
+    """Import Export Resource for Group objects."""
+
     class Meta:
         model = Group
         fields = ("name", "permissions")
@@ -141,12 +148,18 @@ class GroupResource(resources.ModelResource):
 
 
 class ProgrammeResource(resources.ModelResource):
+
+    """Import Export Resource class for Programmes."""
+
     class Meta:
         model = Programme
         import_id_fields = ["code"]
 
 
 class CohortResource(resources.ModelResource):
+
+    """Import Export Resource classes for Cohort objects."""
+
     class Meta:
         model = Cohort
         fields = ("name",)

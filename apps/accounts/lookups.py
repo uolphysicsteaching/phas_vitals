@@ -8,7 +8,7 @@ from django.db.models import Q
 from ajax_select import LookupChannel, register
 
 # app imports
-from .models import Account, academic_Q, markers_Q, students_Q, tutor_Q
+from .models import Account, academic_Q, tutor_Q
 
 
 @register("groups")

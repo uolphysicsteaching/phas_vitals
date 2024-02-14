@@ -20,7 +20,6 @@ def get_mime(content):
     """Get the mime type of the current file as a string.
 
     if content is None, use self.content as the file."""
-
     if content is None or not content:
         return ""
 

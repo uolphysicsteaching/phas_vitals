@@ -2,7 +2,7 @@
 from django.contrib import admin, messages
 
 # external imports
-from import_export.admin import ImportExportMixin, ImportExportModelAdmin
+from import_export.admin import ImportExportModelAdmin
 from util.admin import add_inlines
 
 # app imports
@@ -36,7 +36,7 @@ class Test_AttemptInline(admin.StackedInline):
             {
                 "fields": (
                     "test_entry",
-                    ("status","score"),
+                    ("status", "score"),
                     "text",
                     ("created", "attempted", "modified"),
                 ),
@@ -63,7 +63,9 @@ class ModuleAdmin(ImportExportModelAdmin):
     list_display = ("id", "uuid", "courseId", "name")
     list_filter = list_display
     search_fields = ["name", "description", "programmes__name", "programmes__code"]
-    iniines = [ModuleEnrollmentInline,]
+    iniines = [
+        ModuleEnrollmentInline,
+    ]
     actions = ["generate_marksheet"]
 
     fieldsets = (
@@ -72,13 +74,12 @@ class ModuleAdmin(ImportExportModelAdmin):
             {
                 "fields": (
                     ("uuid", "courseId"),
-                    ("code","alt_code","exam_code"),
+                    ("code", "alt_code", "exam_code"),
                     "name",
-                    ("credits","level","semester"),
+                    ("credits", "level", "semester"),
                     "description",
-                    ("module_leader","team_members"),
+                    ("module_leader", "team_members"),
                     ("updater",),
-
                 ),
                 "classes": [
                     "baton-tabs-init",
@@ -87,7 +88,6 @@ class ModuleAdmin(ImportExportModelAdmin):
             },
         ),
     )
-
 
     @admin.action(description="Generate Marksheet")
     def generate_marksheet(self, request, queryset):
@@ -187,16 +187,15 @@ class Test_ScoreAdmin(ImportExportModelAdmin):
     inlines = [
         Test_AttemptInline,
     ]
-    
+
     fieldsets = (
         (
             "Basic Details",
             {
                 "fields": (
                     ("user", "test"),
-                    ("status","score","passed"),
+                    ("status", "score", "passed"),
                     "text",
-
                 ),
                 "classes": [
                     "baton-tabs-init",

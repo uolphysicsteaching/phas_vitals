@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Feb  6 14:33:54 2024
-
-@author: gavin
-"""
+"""Forms for the minerva interacing application."""
 # Django imports
 from django import forms
 from django.db.models import Count
@@ -18,9 +14,11 @@ from .models import Module
 
 class TestImportForm(forms.Form):
 
+    """Form used to select a module and upload file for importing Full Gradbooks from Minerva."""
+
     module = forms.ModelChoiceField(queryset=Module.objects.all())
 
-    _pass_files = [
+    _pass_files = [ # TODO add code into the view to automatically adapt to these accepted file formats.
         "application/vnd.ms-excel",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "application/octet-stream",
@@ -33,6 +31,7 @@ class TestImportForm(forms.Form):
     upload_file = forms.FileField()
 
     def clean_spreadsheet(self):
+        """Make sure the file mimetype and extension look ok."""
         content = self.cleaned_data.get("upload_file", False)
         filetype = self.get_mime(content)
         if filetype and filetype not in self._pass_files:
@@ -52,6 +51,8 @@ class TestImportForm(forms.Form):
 
 class TestHistoryImportForm(forms.Form):
 
+    """This version of the fomr is for uploading the Gradebook History Log."""
+
     module = forms.ModelChoiceField(
         queryset=Module.objects.annotate(tests_count=Count("tests")).filter(tests_count__gt=0)
     )
@@ -69,6 +70,7 @@ class TestHistoryImportForm(forms.Form):
     upload_file = forms.FileField()
 
     def clean_spreadsheet(self):
+        """Check the mime-type and extension to make sure we like this file."""
         content = self.cleaned_data.get("upload_file", False)
         filetype = self.get_mime(content)
         if filetype and filetype not in self._pass_files:
