@@ -1,4 +1,5 @@
 # Python imports
+import re
 import socket
 import sys
 from importlib import import_module
@@ -403,16 +404,19 @@ REST_FRAMEWORK = {
 
 ###### Import config from apps ############################
 
+_setting_pattern = re.compile("A-Z[A-Z0-9_]+")
+
 for app in CUSTOM_APPS:
     try:  # Look for app.settings module
-        app_settings = import_module(app + ".settings", __file__)
+        # This looks like an untrusted import, but it's actually confied to apps living with ./apps/
+        app_settings = import_module(app + ".settings", __file__)  # pylint: disable=non-literal-import
         for setting in dir(app_settings):
-            if setting == setting.upper():  # settings are always ALL_CAPS
-                set_val = getattr(app_settings, setting)
+            if match := _setting_pattern.match(setting):  # settings are always ALL_CAPS_OR_DIGITS only
+                set_val = getattr(app_settings, match.group(0))
                 if isinstance(set_val, dict) and setting in locals():  # Merge app.settings if dictionary
-                    locals()[setting].update(set_val)
+                    locals()[match.group(0)].update(set_val)
                 elif isinstance(set_val, (list, tuple)):  # append app.settings if list or tuple
-                    locals()[setting] = locals()[setting] + set_val
+                    locals()[match.group(0)] = locals()[setting] + set_val
                 else:  # replace with app.settings
                     locals()[setting] = set_val
     except ImportError:

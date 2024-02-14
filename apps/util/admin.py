@@ -2,7 +2,6 @@
 # Python imports
 import contextlib
 from collections.abc import Iterable
-from importlib import import_module
 
 # Django imports
 from django.apps import apps

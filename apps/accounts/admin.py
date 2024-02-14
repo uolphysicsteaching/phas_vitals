@@ -1,24 +1,23 @@
 # Django imports
 from django import forms
-from django.contrib.admin import ModelAdmin, SimpleListFilter, register, site
-from django.contrib.auth.admin import GroupAdmin, UserAdmin
+from django.contrib.admin import SimpleListFilter, register, site, sites
+from django.contrib.auth.admin import GroupAdmin
 from django.contrib.auth.models import Group
 from django.utils.translation import gettext_lazy as _
 
 # external imports
-from import_export import fields, resources, widgets
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
 # app imports
 from .models import Account, Cohort, Programme
 from .resource import (
-    CohortResource, GroupResource, ProgrammeResource, StrippedCharWidget,
-    UserResource,
+    CohortResource, GroupResource, ProgrammeResource, UserResource,
 )
 
 
 class StudentListFilter(SimpleListFilter):
-    "A filter for selecting student accounts sorted by surname"
+
+    """A filter for selecting student accounts sorted by surname."""
 
     # Human-readable title which will be displayed in the
     # right admin sidebar just above the filter options.
@@ -93,10 +92,9 @@ class CohortAdmin(ImportExportModelAdmin):
         """Return the class for importing objects."""
         return CohortResource
 
-
 try:
     site.unregister(Account)
-except:
+except sites.NotRegistered:
     pass
 
 

@@ -305,7 +305,7 @@ class Spreadsheet:
                     col_idx.append(col)
                     try:
                         A_total += float(self.sheet.cell(column=col, row=cell.row + 2).value) / 100.0
-                    except Exception:
+                    except (ValueError,TypeError, AttributeError):
                         pass
         except Exception:
             return np.ones(len(self.sids)) * np.NaN
