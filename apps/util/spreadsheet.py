@@ -1,4 +1,5 @@
 """Spreadsheet class is used to make Physics and Astronomy Marksheets."""
+
 # Python imports
 import os
 import re
@@ -89,7 +90,6 @@ def sub_value(cell, module):
 
 
 class Spreadsheet:
-
     """Class to handle working with Module Marksheets using openpyxl."""
 
     def __init__(self, filename, blank=False):
@@ -276,7 +276,7 @@ class Spreadsheet:
     def coursework_marks(self):
         try:
             cell = self.search("Course")
-        except Exception:
+        except (ValueError, TypeError):
             return np.ones(len(self.sids)) * np.NaN
         if cell is None:
             return np.ones(len(self.sids)) * np.NaN
@@ -301,7 +301,7 @@ class Spreadsheet:
                         A_total += float(self.sheet.cell(column=col, row=cell.row + 2).value) / 100.0
                     except (ValueError, TypeError, AttributeError):
                         pass
-        except Exception:
+        except (ValueError, TypeError):
             return np.ones(len(self.sids)) * np.NaN
         if cell is None or not len(col_idx):
             return np.ones(len(self.sids)) * np.NaN
@@ -314,7 +314,7 @@ class Spreadsheet:
                 if v is not None:
                     try:
                         A_mark += float(v) / A_total
-                    except Exception:
+                    except (ValueError, TypeError, ZeroDivisionError):
                         pass
                 names.append(str(A_mark))
         return names
@@ -478,7 +478,6 @@ class Spreadsheet:
 
             # Now fill in students
             cell = self.search("V/C")
-            code_col = cell.col_idx
             if entries is None:
                 entries = module.student_enrollments.prefetch_related("student", "student__vital_results").order_by(
                     "student"
@@ -502,7 +501,7 @@ class Spreadsheet:
                 self.sheet.cell(row=row, column=2).value = ent.student.programme.name
                 self.sheet.cell(row=row, column=3).value = ent.student.number
                 self.sheet.cell(row=row, column=4).value = ent.status.code
-                for comp, (comp_col, mtype) in component_columns.items():
+                for _, (comp_col, mtype) in component_columns.items():
                     mks = ent.student.vital_results.filter(vital__name=mtype)
                     comp_mark = mks.count() > 0 and mks.last().passed
                     self.sheet.cell(row=row, column=comp_col).value = "P" if comp_mark else ""

@@ -63,7 +63,7 @@ class VITAL(models.Model):
         """Record the user as having passed this vital."""
         if not date_passed:
             date_passed = tz.now()
-        result, new = VITAL_Result.objects.get_or_create(vital=self, user=user)
+        result, _ = VITAL_Result.objects.get_or_create(vital=self, user=user)
         result.passed = passed
         if passed:
             result.date_passed = date_passed

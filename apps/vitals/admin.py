@@ -54,7 +54,6 @@ def update_user_vitals(modelAdmin, request, queryset):
 @admin.action(description="Force Update of VITALs")
 def update_module_vitals(modelAdmin, request, queryset):
     """Force an update of all VITALs for the selected users."""
-    vrs = VITAL_Result.objects.filter(user__module_enrollments__module__in=queryset.all())
     for vr in VITAL_Result.objects.filter(user__modules__in=queryset.all()):
         vr.vital.check_vital(vr.user)
 
