@@ -352,14 +352,40 @@ BATON = {
         {
             "type": "app",
             "name": "accounts",
-            "label": "Authentication",
-            "icon": "fa fa-lock",
+            "label": "AUsers and Accounts",
+            "icon": "fa fa-users",
             "default_open": True,
             "models": (
                 {"name": "account", "label": "Users"},
                 {"name": "cohort", "label": "Student Cohorts"},
                 {"name": "programme", "label": "Programmes"},
                 {"name": "group", "label": "Groups"},
+            ),
+        },
+        {
+            "type": "app",
+            "name": "minerva",
+            "label": "Minerva Interaction",
+            "icon": "fa fa-graduation-cap",
+            "default_open": False,
+            "models": (
+                {"name": "module", "label": "Modules"},
+                {"name": "moduleenrollment", "label": "Module Enroillments"},
+                {"name": "test", "label": "Tests"},
+                {"name": "test_score", "label": "Test Scores"},
+                {"name": "test_attempt", "label": "Test Attempts"},
+            ),
+        },
+        {
+            "type": "app",
+            "name": "vitals",
+            "label": "VITALs",
+            "icon": "fa fa-heartbeat",
+            "default_open": False,
+            "models": (
+                {"name": "vital", "label": "VITALs"},
+                {"name": "vital_result", "label": "VITAL Awards"},
+                {"name": "vital_test_map", "label": "VITAL Test Maps"},
             ),
         },
         # { 'type': 'title', 'label': 'Contents', 'apps': ('flatpages', ) },
@@ -404,10 +430,14 @@ REST_FRAMEWORK = {
 
 ###### Import config from apps ############################
 
-_setting_pattern = re.compile("A-Z[A-Z0-9_]+")
+_setting_pattern = re.compile("[A-Z][A-Z0-9_]+")
+_app_pattern = re.compile("[a-z][a-z0-9_]+")
 
 for app in CUSTOM_APPS:
-    safe_app= _setting_pattern.match(app).group(0)
+    try:
+        safe_app= _app_pattern.match(app).group(0)
+    except AttributeError:
+        breakpoint()
     try:  # Look for app.settings module
         # This looks like an untrusted import, but it's actually confied to apps living with ./apps/
         app_settings = import_module(safe_app + ".settings", __file__)  # nosemgrep
