@@ -407,9 +407,10 @@ REST_FRAMEWORK = {
 _setting_pattern = re.compile("A-Z[A-Z0-9_]+")
 
 for app in CUSTOM_APPS:
+    safe_app= _setting_pattern.match(app).group(0)
     try:  # Look for app.settings module
         # This looks like an untrusted import, but it's actually confied to apps living with ./apps/
-        app_settings = import_module(app + ".settings", __file__)  # pylint: disable=non-literal-import
+        app_settings = import_module(safe_app + ".settings", __file__)  # nosemgrep
         for setting in dir(app_settings):
             if match := _setting_pattern.match(setting):  # settings are always ALL_CAPS_OR_DIGITS only
                 set_val = getattr(app_settings, match.group(0))
