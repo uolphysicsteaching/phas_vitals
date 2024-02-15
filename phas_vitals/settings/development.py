@@ -1,10 +1,9 @@
 # Python imports
-from os.path import join
 
 # app imports
 # project imports
 from .common import *
-from .secrets import DATABASES
+from .secrets import DATABASES  # pylint: disable=unuse-import
 
 # uncomment the following line to include i18n
 # from .i18n import *

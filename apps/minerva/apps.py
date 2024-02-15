@@ -13,6 +13,6 @@ class MinervaConfig(AppConfig):
         """When app is up and running, import api."""
         try:
             # app imports
-            from . import api
+            from . import api  # pylint: disable=unused-import
         except ImportError:
             pass

@@ -3,7 +3,6 @@ from django.apps import AppConfig
 
 
 class VitalsConfig(AppConfig):
-
     """Config class for VITALS."""
 
     default_auto_field = "django.db.models.BigAutoField"
@@ -12,4 +11,8 @@ class VitalsConfig(AppConfig):
     def ready(self):
         """Import the singal handler when we're good to start."""
         # app imports
-        from . import signals
+        try:
+            from . import signals  # pylint: disable=unused-import
+            from . import api  # pylint: disable=unused-import
+        except ImportError:
+            pass

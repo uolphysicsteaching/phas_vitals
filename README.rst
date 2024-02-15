@@ -10,6 +10,11 @@ pass marks and then to use the pass/fail status of individual tests to map to pa
 *Verifiable Indicators of Thresold Ability and Learning* - VITALs. Finally the application should be able to produce
 a suitable mark-sheet for recording the student progress.
 
+|Codacy Badge|
+
+.. |Codacy Badge| image:: https://app.codacy.com/project/badge/Grade/12037780d11942af86f393139869ad56
+   :target: https://app.codacy.com/gh/uolphysicsteaching/phas_vitals/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade
+
 Local (Development) Setup
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
