@@ -1,4 +1,5 @@
 # Python imports
+import csv
 import re
 from textwrap import shorten
 from traceback import format_exc
@@ -6,8 +7,10 @@ from traceback import format_exc
 # Django imports
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.utils import IntegrityError
 from django.forms import ValidationError
 from django.template.response import TemplateResponse
+from django.http import StreamingHttpResponse
 from django.utils.html import format_html
 from django.views.generic import FormView
 
@@ -20,15 +23,32 @@ from django_tables2.columns import Column
 from django_tables2.tables import Table
 from pytz import timezone
 from util.views import IsSuperuserViewMixin
+from accounts.models import Account, Cohort
 
 # app imports
 from .forms import (
-    ModuleSelectForm, ModuleSelectPlusForm, TestHistoryImportForm,
+    ModuleSelectForm,
+    ModuleSelectPlusForm,
+    TestHistoryImportForm,
     TestImportForm,
 )
 from .models import ModuleEnrollment, Test, Test_Attempt, Test_Score
 
 TZ = timezone(settings.TIME_ZONE)
+
+
+def _delimiter(filename):
+    """Return the delimiter of a file."""
+    for enc in ["utf-8", "utf-16"]:
+        try:
+            with open(filename, "r", encoding=enc) as data:
+                sniffer = csv.Sniffer()
+                dialect = sniffer.sniff(data.readline())
+                if dialect.delimiter == "\x00":
+                    raise UnicodeError
+                return dialect.delimiter, enc
+        except UnicodeError:
+            continue
 
 
 # Create your views here.
@@ -55,8 +75,8 @@ class ImportTestsView(IsSuperuserViewMixin, FormView):
                     try:
                         df = pd.read_excel(f.temporary_file_path())
                     except ValueError:
-                        df = pd.read_csv(f.temporary_file_path())
-                    df = df.set_index("Student ID")
+                        delimiter, enc = _delimiter(f.temporary_file_path())
+                        df = pd.read_csv(f.temporary_file_path(), delimiter=delimiter, encoding=enc)
                     df.filename = f
                     self.data.append(df)
             except AssertionError:
@@ -98,10 +118,85 @@ class ImportTestsView(IsSuperuserViewMixin, FormView):
                         ret["cols"].append(f"Found existing column {name} {test_id=}")
                 else:
                     ret["cols"].append(f"Unmatched column name {col}")
+            ret["users"] = []
+            for ix, row in df.iterrows():
+                if row["Availability"] == "No" or np.isnan(row["Student ID"]):
+                    continue
+                first_name = row["First Name"]
+                last_name = row["Last Name"]
+                sid = int(row["Student ID"])
+                username = row["Username"]
+                user, _new = Account.objects.get_or_create(username=username)
+                user.first_name = first_name
+                user.last_name = last_name
+                user.number = sid
+                user.cohort = Cohort.current
+                user.save()
+                if new:
+                    ret["users"].append(f"New user {user.display_name} created")
+                else:
+                    ret["users"].append(f"Existing user {user.display_name} updated")
+
             results.append(ret)
         context = self.get_context_data()
         context["results"] = results
         return TemplateResponse(self.request, self.template_name, context=context)
+
+
+class StreamingImportTestsView(ImportTestsView):
+
+    """A streaming response version of the full grade centre processor."""
+
+    def form_valid(self, form):
+        """Process the uploaded Gradebook data."""
+        self.form = form
+        response = StreamingHttpResponse(iter(self.response_generator()))
+        response["Content-Type"] = "text/plain"
+        return response
+
+    def response_generator(self):
+        """Yield rows for a table."""
+        results = []
+        module = self.form.cleaned_data["module"]
+        for df in self.data:
+            for col in df.columns:
+                if match := self.test_name.search(col):
+                    name = match.groupdict()["name"]
+                    test_id = match.groupdict()["test_id"]
+                    possible = float(match.groupdict()["total"])
+                    test, new = Test.objects.get_or_create(test_id=test_id, module=module)
+                    if new:
+                        test.name = name
+                        test.score_possible = possible
+                        test.passing_score = 0.8 * possible
+                        test.save()
+                        yield f"<tr><td>Saving new test {name} {possible=} {test_id=}</td></tr>"
+                    else:
+                        test.name = name
+                        test.score_possible = possible
+                        test.passing_score = 0.8 * possible
+                        test.save()
+
+                        yield f"<tr><td>ound existing column {name} {test_id=}</td></tr>"
+                else:
+                    yield f"<tr><td>Unmatched column name {col}</td></tr>"
+            for ix, row in df.iterrows():
+                if row["Availability"] == "No" or np.isnan(row["Student ID"]):
+                    continue
+                first_name = row["First Name"]
+                last_name = row["Last Name"]
+                sid = int(row["Student ID"])
+                username = row["Username"]
+                user, _new = Account.objects.get_or_create(username=username)
+                user.first_name = first_name
+                user.last_name = last_name
+                user.number = sid
+                user.cohort = Cohort.current
+                user.save()
+                if new:
+                    yield f"<tr><td>New user {user.display_name} created</tr></td>"
+                else:
+                    yield f"<tr><td>Existing user {user.display_name} updated</td></tr>"
 
 
 class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
@@ -125,7 +220,8 @@ class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
                     try:
                         df = pd.read_excel(f.temporary_file_path())
                     except ValueError:
-                        df = pd.read_csv(f.temporary_file_path())
+                        delimiter, enc = _delimiter(f.temporary_file_path())
+                        df = pd.read_csv(f.temporary_file_path(), delimiter=delimiter, encoding=enc)
                     df.filename = f
                     self.data.append(df)
             except AssertionError:
@@ -178,15 +274,75 @@ class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
                     continue  # Skip over duplicate attempts where the score is NaN
                 test_attempt.score = row.Value
                 test_attempt.modified = row.Date
-                row_report["message"] = (
-                    f"Attempt {row.Column} for {row.Username} at {row.AttemptDate} saved with score {row.Value}"
-                )
+                row_report[
+                    "message"
+                ] = f"Attempt {row.Column} for {row.Username} at {row.AttemptDate} saved with score {row.Value}"
                 ret["rows"].append(row_report)
                 test_attempt.save()
             results.append(ret)
         context = self.get_context_data()
         context["results"] = results
         return TemplateResponse(self.request, self.template_name, context=context)
+
+
+class StreamingImportTestsHistoryView(ImportTestHistoryView):
+
+    """Streaming version of the ImportTestHistoryView."""
+
+    def form_valid(self, form):
+        """Process the uploaded Gradebook data."""
+        self.form = form
+        response = StreamingHttpResponse(iter(self.response_generator()))
+        response["Content-Type"] = "text/plain"
+        return response
+
+    def response_generator(self):
+        """Yield rows for a table."""
+        module = self.form.cleaned_data["module"]
+        for df in self.data:
+            df.Date = pd.to_datetime(df.Date)
+            df["AttemptDate"] = pd.to_datetime(df["Attempt Activity"])
+            df["AttemptDate"] = df.AttemptDate.apply(TZ.localize)
+            if df["Date"][0].tzinfo is None:
+                df["Date"] = df.Date.apply(TZ.localize)
+            for _, row in df.iterrows():
+                row_report = {} | row.to_dict()
+                try:
+                    student = Account.objects.get(username=row.Username)
+                except ObjectDoesNotExist:
+                    print("Yield")
+                    yield f"<tr><td>Unknown User {row.Username}</td></tr>"
+                    continue
+                try:
+                    test = Test.objects.get(name=row.Column, module=module)
+                except ObjectDoesNotExist:
+                    print("Yield")
+                    yield "<tr><td>Unknown test {row.Column}</td></tr>"
+                    continue
+                test_score, new = Test_Score.objects.get_or_create(user=student, test=test)
+                new_id = f"{row.Column}:{row.Username}:{row.AttemptDate}"
+                test_attempt, new = Test_Attempt.objects.get_or_create(
+                    attempt_id=new_id, test_entry=test_score
+                )
+                if (
+                    not new
+                    and test_attempt.score is not None
+                    and not np.isnan(test_attempt.score)
+                    and np.isnan(row.Value)
+                ):
+                    continue  # Skip over duplicate attempts where the score is NaN
+                test_attempt.score = row.Value
+                test_attempt.modified = row.Date
+                test_attempt.attempted = row.AttemptDate
+                try:
+                    test_attempt.save()
+                except IntegrityError:
+                    yield f"<r><td class='bg bg-danger'>Database error for {test_attempt}</td></tr>"
+                    continue
+                yield (
+                    f"<tr><td>Attempt {row.Column} for {row.Username} at {row.AttemptDate}"
+                    + f" saved with score {row.Value}</td></tr>"
+                )
 
 
 class BaseTable(Table):

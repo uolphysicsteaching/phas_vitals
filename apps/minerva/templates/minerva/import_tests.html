@@ -4,6 +4,44 @@
 {% block javascript %}
 {{ block.super }}
 {{ form.media }}
+<script>
+$(document).ready(function() {
+    $('#selectform').submit(function(event) {
+        event.preventDefault();
+        var formData = new FormData(this);
+        alert(formData);
+        var last_response_len = false;
+        $.ajax({
+            url: '/minerva/import_tests_stream/',
+            type: 'POST',
+            data: formData,
+            enctype: 'multipart/form-data',
+            processData: false,
+            contentType: false,
+            xhrFields: {
+                onprogress: function(e) {
+                    var this_response, response = e.currentTarget.response;
+                    if(last_response_len === false) {
+                        this_response = response;
+                        last_response_len = response.length;
+                    } else {
+                        this_response = response.substring(last_response_len);
+                        last_response_len = response.length;
+                    }
+                    $("#response").append(this_response);
+                }
+            }
+        })
+        .done(function(data)
+        {
+        })
+        .fail(function(data)
+        {
+            console.log('Error: ', data);
+        });
+    });
+});
+</script>
 {% endblock %}
 
 {% block content %}
@@ -15,17 +53,7 @@
 {% bootstrap_button "Upload" button_type="submit" button_class="btn-primary" %}
 </form>
 
-{% for result in results %}
-<table>
-<tr>
-<th> File : {{resjult.file }}</th>
-</tr>
-{% for col in result.cols %}
-<tr>
-<td>{{ col }}</td>
-</tr>
-{% endfor %}
+<table id="response">
 </table>
-{% endfor %}
 
 {% endblock content %}

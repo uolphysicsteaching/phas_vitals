@@ -278,6 +278,10 @@ class Test_Attempt(models.Model):
     attempted = models.DateTimeField(blank=True, null=True)
     modified = models.DateTimeField(blank=True, null=True)
 
+    def __str__(self):
+        """Simple string representation."""
+        return f"{self.attempt_id} - for {self.test_entry}"
+
     def save(self, **kargs):
         """Check whether saving this attempt changes the test passed or not."""
         self.attempt_id = f"{self.test_entry.test.name}:{self.test_entry.user.username}:{self.attempted}"
