@@ -9,7 +9,6 @@ $(document).ready(function() {
     $('#selectform').submit(function(event) {
         event.preventDefault();
         var formData = new FormData(this);
-        alert(formData);
         var last_response_len = false;
         $.ajax({
             url: '/minerva/import_tests_stream/',

@@ -17,7 +17,6 @@ from django.views.generic import FormView
 # external imports
 import numpy as np
 import pandas as pd
-from accounts.models import Account
 from django_tables2 import SingleTableMixin
 from django_tables2.columns import Column
 from django_tables2.tables import Table
@@ -58,9 +57,15 @@ class ImportTestsView(IsSuperuserViewMixin, FormView):
     template_name = "minerva/import_tests.html"
     form_class = TestImportForm
     success_url = "/minerva/import_tests/"
+
+
+class StreamingImportTestsView(ImportTestsView):
+
+    """A streaming response version of the full grade centre processor."""
+
     data = []
 
-    test_name = re.compile("(?P<name>.*)\s\[Total\ Pts\:\s(?P<total>[0-9\.]+)\sScore\]\s\|(?P<test_id>.*)")
+    test_name = re.compile(r"(?P<name>.*)\s\[Total\ Pts\:\s(?P<total>[0-9\.]+)\sScore\]\s\|(?P<test_id>.*)")
 
     def post(self, request, *args, **kwargs):
         """Handle form posting with cutsom work around exceoptions."""
@@ -93,62 +98,6 @@ class ImportTestsView(IsSuperuserViewMixin, FormView):
 
     def form_valid(self, form):
         """Process the uploaded Gradebook data."""
-        results = []
-        module = form.cleaned_data["module"]
-        for df in self.data:
-            ret = {"file": df.filename, "cols": []}
-            for col in df.columns:
-                if match := self.test_name.search(col):
-                    name = match.groupdict()["name"]
-                    test_id = match.groupdict()["test_id"]
-                    possible = float(match.groupdict()["total"])
-                    test, new = Test.objects.get_or_create(test_id=test_id, module=module)
-                    if new:
-                        ret["cols"].append(f"Saving new test {name} {possible=} {test_id=}")
-                        test.name = name
-                        test.score_possible = possible
-                        test.passing_score = 0.8 * possible
-                        test.save()
-                    else:
-                        test.name = name
-                        test.score_possible = possible
-                        test.passing_score = 0.8 * possible
-                        test.save()
-
-                        ret["cols"].append(f"Found existing column {name} {test_id=}")
-                else:
-                    ret["cols"].append(f"Unmatched column name {col}")
-            ret["users"] = []
-            for ix, row in df.iterrows():
-                if row["Availability"] == "No" or np.isnan(row["Student ID"]):
-                    continue
-                first_name = row["First Name"]
-                last_name = row["Last Name"]
-                sid = int(row["Student ID"])
-                username = row["Username"]
-                user, _new = Account.objects.get_or_create(username=username)
-                user.first_name = first_name
-                user.last_name = last_name
-                user.number = sid
-                user.cohort = Cohort.current
-                user.save()
-                if new:
-                    ret["users"].append(f"New user {user.display_name} created")
-                else:
-                    ret["users"].append(f"Existing user {user.display_name} updated")
-
-            results.append(ret)
-        context = self.get_context_data()
-        context["results"] = results
-        return TemplateResponse(self.request, self.template_name, context=context)
-
-
-class StreamingImportTestsView(ImportTestsView):
-
-    """A streaming response version of the full grade centre processor."""
-
-    def form_valid(self, form):
-        """Process the uploaded Gradebook data."""
         self.form = form
         response = StreamingHttpResponse(iter(self.response_generator()))
         response["Content-Type"] = "text/plain"
@@ -156,7 +105,6 @@ class StreamingImportTestsView(ImportTestsView):
 
     def response_generator(self):
         """Yield rows for a table."""
-        results = []
         module = self.form.cleaned_data["module"]
         for df in self.data:
             for col in df.columns:
@@ -180,7 +128,7 @@ class StreamingImportTestsView(ImportTestsView):
                         yield f"<tr><td>ound existing column {name} {test_id=}</td></tr>"
                 else:
                     yield f"<tr><td>Unmatched column name {col}</td></tr>"
-            for ix, row in df.iterrows():
+            for _, row in df.iterrows():
                 if row["Availability"] == "No" or np.isnan(row["Student ID"]):
                     continue
                 first_name = row["First Name"]
@@ -205,6 +153,12 @@ class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
     template_name = "minerva/import_history.html"
     form_class = TestHistoryImportForm
     success_url = "/minerva/import_history/"
+
+
+class StreamingImportTestsHistoryView(ImportTestHistoryView):
+
+    """Streaming version of the ImportTestHistoryView."""
+
     data = []
 
     def post(self, request, *args, **kwargs):
@@ -237,59 +191,6 @@ class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
             return self.form_invalid(form)
 
     def form_valid(self, form):
-        """Process the uploaded test hisotry data."""
-        results = []
-        module = form.cleaned_data["module"]
-        for df in self.data:
-            df.Date = pd.to_datetime(df.Date)
-            df["AttemptDate"] = pd.to_datetime(df["Attempt Activity"])
-            df["AttemptDate"] = df.AttemptDate.apply(TZ.localize)
-            df["Date"] = df.Date.apply(TZ.localize)
-            ret = {"file": df.filename, "rows": []}
-            for _, row in df.iterrows():
-                row_report = {} | row.to_dict()
-                try:
-                    student = Account.objects.get(username=row.Username)
-                except ObjectDoesNotExist:
-                    row_report["message"] = f"Unknown User {row.Username}"
-                    ret["rows"].append(row_report)
-                    continue
-                try:
-                    test = Test.objects.get(name=row.Column, module=module)
-                except ObjectDoesNotExist:
-                    row_report["message"] = "Unknown test {row.Column}"
-                    ret["rows"].append(row_report)
-                    continue
-                test_score, new = Test_Score.objects.get_or_create(user=student, test=test)
-                new_id = f"{row.Column}:{row.Username}:{row.AttemptDate}"
-                test_attempt, new = Test_Attempt.objects.get_or_create(
-                    attempt_id=new_id, test_entry=test_score, attempted=row.AttemptDate
-                )
-                if (
-                    not new
-                    and test_attempt.score is not None
-                    and not np.isnan(test_attempt.score)
-                    and np.isnan(row.Value)
-                ):
-                    continue  # Skip over duplicate attempts where the score is NaN
-                test_attempt.score = row.Value
-                test_attempt.modified = row.Date
-                row_report[
-                    "message"
-                ] = f"Attempt {row.Column} for {row.Username} at {row.AttemptDate} saved with score {row.Value}"
-                ret["rows"].append(row_report)
-                test_attempt.save()
-            results.append(ret)
-        context = self.get_context_data()
-        context["results"] = results
-        return TemplateResponse(self.request, self.template_name, context=context)
-
-
-class StreamingImportTestsHistoryView(ImportTestHistoryView):
-
-    """Streaming version of the ImportTestHistoryView."""
-
-    def form_valid(self, form):
         """Process the uploaded Gradebook data."""
         self.form = form
         response = StreamingHttpResponse(iter(self.response_generator()))
@@ -306,7 +207,6 @@ class StreamingImportTestsHistoryView(ImportTestHistoryView):
             if df["Date"][0].tzinfo is None:
                 df["Date"] = df.Date.apply(TZ.localize)
             for _, row in df.iterrows():
-                row_report = {} | row.to_dict()
                 try:
                     student = Account.objects.get(username=row.Username)
                 except ObjectDoesNotExist:
@@ -321,9 +221,7 @@ class StreamingImportTestsHistoryView(ImportTestHistoryView):
                     continue
                 test_score, new = Test_Score.objects.get_or_create(user=student, test=test)
                 new_id = f"{row.Column}:{row.Username}:{row.AttemptDate}"
-                test_attempt, new = Test_Attempt.objects.get_or_create(
-                    attempt_id=new_id, test_entry=test_score
-                )
+                test_attempt, new = Test_Attempt.objects.get_or_create(attempt_id=new_id, test_entry=test_score)
                 if (
                     not new
                     and test_attempt.score is not None
