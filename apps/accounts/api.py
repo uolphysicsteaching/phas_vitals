@@ -17,7 +17,6 @@ from .models import Account, Cohort, Programme
 
 # Serializers define the API representation.
 class AccountSerializer(serializers.ModelSerializer):
-
     """Main Account Serialiser."""
 
     class Meta:
@@ -38,7 +37,6 @@ class AccountSerializer(serializers.ModelSerializer):
 
 
 class GroupSerializer(serializers.ModelSerializer):
-
     """Serialiser for Group Objects."""
 
     class Meta:
@@ -47,7 +45,6 @@ class GroupSerializer(serializers.ModelSerializer):
 
 
 class ProgrammeSerializer(serializers.ModelSerializer):
-
     """Serialiser for Programmes."""
 
     class Meta:
@@ -56,7 +53,6 @@ class ProgrammeSerializer(serializers.ModelSerializer):
 
 
 class CohortSerializer(serializers.ModelSerializer):
-
     """Serialiser for Student Cohorts."""
 
     representation = serializers.CharField(max_length=20, read_only=True, source="__str__")
@@ -70,7 +66,6 @@ class CohortSerializer(serializers.ModelSerializer):
 
 
 class AccountViewSet(viewsets.ReadOnlyModelViewSet):
-
     """Default Viewset for Account objects."""
 
     queryset = Account.objects.all()
@@ -87,7 +82,6 @@ class AccountViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
-
     """Default ViewSet for Group Objects."""
 
     queryset = Group.objects.all()
@@ -96,7 +90,6 @@ class GroupViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class CohortViewSet(viewsets.ReadOnlyModelViewSet):
-
     """Default Viewset for Cohort Objects."""
 
     queryset = Cohort.objects.all()
@@ -105,7 +98,6 @@ class CohortViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class ProgrammeViewSet(viewsets.ReadOnlyModelViewSet):
-
     """Default Viewset for Programme Objects."""
 
     queryset = Programme.objects.all()

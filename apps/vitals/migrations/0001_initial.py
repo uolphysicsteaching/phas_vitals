@@ -87,9 +87,7 @@ class Migration(migrations.Migration):
                 ("passed", models.BooleanField(default=False)),
                 (
                     "date_passed",
-                    models.DateTimeField(
-                        blank=True, null=True, verbose_name="Date Achieved"
-                    ),
+                    models.DateTimeField(blank=True, null=True, verbose_name="Date Achieved"),
                 ),
                 (
                     "user",
@@ -129,14 +127,10 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name="vital_result",
-            constraint=models.UniqueConstraint(
-                fields=("vital", "user"), name="Singleton mapping student and vital"
-            ),
+            constraint=models.UniqueConstraint(fields=("vital", "user"), name="Singleton mapping student and vital"),
         ),
         migrations.AddConstraint(
             model_name="vital",
-            constraint=models.UniqueConstraint(
-                fields=("name", "module"), name="Singleton VITAL name per module"
-            ),
+            constraint=models.UniqueConstraint(fields=("name", "module"), name="Singleton VITAL name per module"),
         ),
     ]

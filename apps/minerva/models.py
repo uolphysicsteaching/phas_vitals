@@ -41,7 +41,6 @@ def module_validator(value):
 
 
 class ModuleManager(models.Manager):
-
     """Add extra calculated attributes to the queryset."""
 
     def get_queryset(self):
@@ -50,7 +49,6 @@ class ModuleManager(models.Manager):
 
 
 class Module(models.Model):
-
     """Represents a single module marksheet."""
 
     uuid = models.CharField(max_length=32)
@@ -71,7 +69,9 @@ class Module(models.Model):
     updater = models.ForeignKey(
         "accounts.Account", on_delete=models.SET_NULL, blank=True, null=True, related_name=None
     )
-
+    parent_module = models.ForeignKey(
+        "Module", on_delete=models.SET_NULL, default=None, null=True, blank=True, related_name="sub_modules"
+    )
     students = models.ManyToManyField("accounts.Account", related_name="modules", through="ModuleEnrollment")
     objects = ModuleManager()
 
@@ -111,7 +111,6 @@ class Module(models.Model):
 
 
 class StatusCode(models.Model):
-
     """represents the Banne Status Code and what it means."""
 
     LEVELS = (
@@ -133,7 +132,6 @@ class StatusCode(models.Model):
 
 
 class ModuleEnrollment(models.Model):
-
     """Records students enrolled on modules."""
 
     module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name="student_enrollments")
@@ -152,7 +150,6 @@ class ModuleEnrollment(models.Model):
 
 
 class Test_Manager(models.Manager):
-
     """Manager class for Test objects to support natural keys."""
 
     key_pattern = re.compile(r"(?P<name>.*)\s\((?P<module__code>[^\)]*)\)")
@@ -165,7 +162,6 @@ class Test_Manager(models.Manager):
 
 
 class Test(models.Model):
-
     """Represents a single Gradebook column."""
 
     objects = Test_Manager()
@@ -208,7 +204,6 @@ class Test(models.Model):
 
 
 class TestScoreManager(models.Manager):
-
     """Annotate with number of attempts."""
 
     def get_queryset(
@@ -219,7 +214,6 @@ class TestScoreManager(models.Manager):
 
 
 class Test_Score(models.Model):
-
     """The model that links a particular student to a particular test."""
 
     objects = TestScoreManager()
@@ -266,7 +260,6 @@ class Test_Score(models.Model):
 
 
 class Test_Attempt(models.Model):
-
     """Represents one attempt to do a Test by a Student."""
 
     attempt_id = models.CharField(max_length=255, unique=True)

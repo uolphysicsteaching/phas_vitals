@@ -10,7 +10,6 @@ from .models import VITAL, VITAL_Result, VITAL_Test_Map
 
 
 class TestsWidget(widgets.ManyToManyWidget):
-
     """Import Export Widge for reading Tests that understands the natural key for a test."""
 
     def clean(self, value, row=None, **kwargs):
@@ -33,7 +32,6 @@ class TestsWidget(widgets.ManyToManyWidget):
 
 
 class VITALResource(resources.ModelResource):
-
     """Import Export Resource for VITAL objects."""
 
     class Meta:
@@ -51,7 +49,6 @@ class VITALResource(resources.ModelResource):
 
 
 class VITAL_ResultResource(resources.ModelResource):
-
     """Import Export Resource for VITAL_Results."""
 
     class Meta:
@@ -73,7 +70,6 @@ class VITAL_ResultResource(resources.ModelResource):
 
 
 class VITAL_Test_MapResource(resources.ModelResource):
-
     """Import Export Resource for  VITAL_Test_Mappings."""
 
     class Meta:

@@ -12,7 +12,8 @@ class VitalsConfig(AppConfig):
         """Import the singal handler when we're good to start."""
         # app imports
         try:
-            from . import signals  # pylint: disable=unused-import
+            # app imports
             from . import api  # pylint: disable=unused-import
+            from . import signals  # pylint: disable=unused-import
         except ImportError:
             pass

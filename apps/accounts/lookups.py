@@ -13,7 +13,6 @@ from .models import Account, academic_Q, tutor_Q
 
 @register("groups")
 class GroupLookup(LookupChannel):
-
     """Lockup for Group Objects."""
 
     model = Group

@@ -7,11 +7,20 @@ from util.admin import add_inlines
 
 # app imports
 from .models import (
-    Module, ModuleEnrollment, StatusCode, Test, Test_Attempt, Test_Score,
+    Module,
+    ModuleEnrollment,
+    StatusCode,
+    Test,
+    Test_Attempt,
+    Test_Score,
 )
 from .resource import (
-    ModuleEnrollmentReource, ModuleResource, StatusCodeResource,
-    Test_AttemptResource, Test_ScoreResource, TestResource,
+    ModuleEnrollmentReource,
+    ModuleResource,
+    StatusCodeResource,
+    Test_AttemptResource,
+    Test_ScoreResource,
+    TestResource,
 )
 
 # Register your models here.
@@ -73,7 +82,7 @@ class ModuleAdmin(ImportExportModelAdmin):
             "Basic Details",
             {
                 "fields": (
-                    ("uuid", "courseId"),
+                    ("uuid", "courseId", "parent_module"),
                     ("code", "alt_code", "exam_code"),
                     "name",
                     ("credits", "level", "semester"),
@@ -246,7 +255,6 @@ class Test_AtemptAdmin(ImportExportModelAdmin):
 
 @admin.register(StatusCode)
 class StatusCodeAdmin(ImportExportModelAdmin):
-
     """Admin Class for Status Code Resources."""
 
     list_display = ["code", "explanation", "capped", "valid", "resit", "level"]
@@ -264,7 +272,6 @@ class StatusCodeAdmin(ImportExportModelAdmin):
 
 @admin.register(ModuleEnrollment)
 class ModuleEnrollmentAdmin(ImportExportModelAdmin):
-
     """Admin interface for ModuleEnrollment objects."""
 
     list_display = ("module", "student", "status")

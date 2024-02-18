@@ -1,7 +1,7 @@
 # Django imports
 from django import forms
 from django.contrib.admin import SimpleListFilter, register, site, sites
-from django.contrib.auth.admin import GroupAdmin
+from django.contrib.auth.admin import GroupAdmin, UserAdmin
 from django.contrib.auth.models import Group
 from django.utils.translation import gettext_lazy as _
 
@@ -11,12 +11,14 @@ from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 # app imports
 from .models import Account, Cohort, Programme
 from .resource import (
-    CohortResource, GroupResource, ProgrammeResource, UserResource,
+    CohortResource,
+    GroupResource,
+    ProgrammeResource,
+    UserResource,
 )
 
 
 class StudentListFilter(SimpleListFilter):
-
     """A filter for selecting student accounts sorted by surname."""
 
     # Human-readable title which will be displayed in the
@@ -50,7 +52,6 @@ site.unregister(Group)
 
 
 class UserAdminForm(forms.ModelForm):
-
     """Tweaks to the User Admin account form."""
 
     class Meta:
@@ -64,7 +65,6 @@ class UserAdminForm(forms.ModelForm):
 
 @register(Programme)
 class ProgrammeAdmin(ImportExportModelAdmin):
-
     """Admin interface for Programme Objects."""
 
     list_display = ("name", "code")
@@ -92,6 +92,7 @@ class CohortAdmin(ImportExportModelAdmin):
         """Return the class for importing objects."""
         return CohortResource
 
+
 try:
     site.unregister(Account)
 except sites.NotRegistered:
@@ -99,7 +100,7 @@ except sites.NotRegistered:
 
 
 @register(Account)
-class AccountAdmin(ImportExportModelAdmin):
+class AccountAdmin(ImportExportMixin, UserAdmin):
     """Sectioned Admin interface for Account Objects."""  # TODO: Add Tabs if Baton allows it
 
     form = UserAdminForm
@@ -111,7 +112,7 @@ class AccountAdmin(ImportExportModelAdmin):
                 "fields": [
                     ("username", "number", "cohort"),
                     ("title", "first_name", "last_name"),
-                    "email",
+                    ("email", "apt"),
                     ("programme", "registration_status"),
                 ],
                 "classes": [
@@ -138,8 +139,9 @@ class AccountAdmin(ImportExportModelAdmin):
             },
         ),
     )
-    list_display = ["username", "last_name", "first_name", "cohort", "programme", "is_staff"]
-    list_filter = ("username", "groups", "cohort", "programme", "is_staff", "is_superuser")
+    list_display = ["username", "last_name", "first_name", "apt", "cohort", "programme", "is_staff", "is_superuser"]
+    list_editable = ["apt", "cohort", "programme", "is_staff", "is_superuser"]
+    list_filter = ("apt", "groups", "cohort", "programme", "is_staff", "is_superuser")
     search_fields = (
         "username",
         "first_name",

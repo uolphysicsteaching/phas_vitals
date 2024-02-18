@@ -13,12 +13,11 @@ from .models import Module
 
 
 class TestImportForm(forms.Form):
-
     """Form used to select a module and upload file for importing Full Gradbooks from Minerva."""
 
     module = forms.ModelChoiceField(queryset=Module.objects.all())
 
-    _pass_files = [ # TODO add code into the view to automatically adapt to these accepted file formats.
+    _pass_files = [  # TODO add code into the view to automatically adapt to these accepted file formats.
         "application/vnd.ms-excel",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "application/octet-stream",
@@ -50,7 +49,6 @@ class TestImportForm(forms.Form):
 
 
 class TestHistoryImportForm(forms.Form):
-
     """This version of the fomr is for uploading the Gradebook History Log."""
 
     module = forms.ModelChoiceField(

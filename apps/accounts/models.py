@@ -14,7 +14,7 @@ from six import string_types
 # Some useful query objects
 
 academic_Q = Q(groups__name="Instructor") | Q(is_staff=True)
-tutor_Q = Q(groups__name="Grader") | Q(groups__name="Teaching Assistant")
+tutor_Q = Q(groups__name="Grader") | Q(groups__name="Teaching Assistant") | Q(is_staff=True)
 students_Q = Q(groups__name="Student")
 markers_Q = models.Q(groups__name="Grader") | models.Q(is_staff=True) | models.Q(is_superuser=True)
 
@@ -78,7 +78,6 @@ class Cohort(models.Model):
 
 
 class Programme(models.Model):
-
     """Represents a programme of study that a student might be on."""
 
     name = models.CharField(max_length=150, default="Unknown")
@@ -97,7 +96,6 @@ class Programme(models.Model):
 
 
 class Account(AbstractUser):
-
     """Custom user class that has information about student registrations, programmes etc."""
 
     class Meta:

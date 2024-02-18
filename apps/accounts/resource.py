@@ -12,6 +12,29 @@ from import_export import fields, resources, widgets
 from .models import Account, Cohort, Programme
 
 
+def _none(value):
+    """Simple pass through."""
+    return value
+
+
+def _user_from_email(value):
+    """Extract a username from an email address."""
+    ret = value.split("@")[0].strip().lower()
+    return ret
+
+
+def _fname_from_name(value):
+    """Return the first Word in the value."""
+    words = [x for x in value.split(" ") if x != ""]
+    return words[0].title()
+
+
+def _lname_from_name(value):
+    """Return the last Word in the value."""
+    words = [x for x in value.split(" ") if x != ""]
+    return words[-1].title()
+
+
 class StrippedCharWidget(widgets.CharWidget):
     """Hacked to make sure usernames don't have leading or trailing space spaces."""
 
@@ -30,7 +53,6 @@ class ProgrammeWidget(widgets.ForeignKeyWidget):
 
 
 class AccountWidget(widgets.ForeignKeyWidget):
-
     """Try to match a user account."""
 
     def clean(self, value, row=None, *args, **kargs):
@@ -47,11 +69,17 @@ class AccountWidget(widgets.ForeignKeyWidget):
             qs = self.model.objects.filter(last_name=last_name, first_name=first_name)
             if qs.count() > 0:
                 return qs.first()
+        elif " " in value:
+            values = [x for x in value.split(" ") if x != ""]
+            if values:
+                first_name, last_name = values[0], values[-1]
+                qs = self.model.objects.filter(last_name=last_name, first_name=first_name)
+                if qs.count() > 0:
+                    return qs.first()
         return None
 
 
 class UserResource(resources.ModelResource):
-
     """Import Export resource class for Account objects."""
 
     groups = fields.Field(
@@ -64,10 +92,10 @@ class UserResource(resources.ModelResource):
         widget=ProgrammeWidget(Programme, "code"),
     )
 
-    tutor = fields.Field(
-        column_name="tutor",
-        attribute="tutor",
-        widget=widgets.ForeignKeyWidget(Account, "display_name"),
+    apt = fields.Field(
+        column_name="apt",
+        attribute="apt",
+        widget=AccountWidget(Account, "display_name"),
     )
 
     username = fields.Field(column_name="username", attribute="username", widget=StrippedCharWidget())
@@ -91,45 +119,52 @@ class UserResource(resources.ModelResource):
             "cohort",
             "programme",
             "registration_status",
-            "tutor",
+            "apt",
         )
         import_id_fields = ["username"]
 
+    field_mappings = {
+        "username": {
+            "username": _none,
+            "Email Address": _user_from_email,
+            "Email_Address": _user_from_email,
+            "Email": _user_from_email,
+        },
+        "email": {"email": _none, "Email Address": _none, "Email_Address": _none, "Email": _none},
+        "number": {"number": _none, "SID": _none, "Student_ID": _none, "Student ID": _none},
+        "first_name": {
+            "first_name": _none,
+            "First_Name": _none,
+            "First Name": _none,
+            "Student_Name": _fname_from_name,
+            "Student Name": _fname_from_name,
+        },
+        "last_name": {
+            "last_name": _none,
+            "Last_Name": _none,
+            "Last Name": _none,
+            "Student_Name": _lname_from_name,
+            "Student Name": _lname_from_name,
+        },
+        "cohort": {"cohort": _none, "Term": _none, "Term_Code": _none},
+        "programme": {"programme": _none, "Programme": _none},
+        "registtration_status": {"registtration_status": _none, "Registration Status": _none, "ESTS_Code": _none},
+        "apt": {"apt": _none, "tutor": _none, "Tutor Name": _none},
+    }
+
     def import_row(self, row, instance_loader, using_transactions=True, dry_run=False, **kwargs):
         """Match up bad fields."""
-        if "username" not in row and "Email Address" in row:  # Create username and email columns
-            parts = row["Email Address"].split("@")
-            row["username"] = parts[0].strip().lower()
-            row["email"] = row["Email Address"].strip()
-        if "username" not in row and "Email_Address" in row:  # Create username and email columns
-            parts = row["Email_Address"].split("@")
-            row["username"] = parts[0].strip().lower()
-            row["email"] = row["Email_Address"].strip()
-        if "first_name" not in row and "last_name" not in row and "Student Name" in row:  # Sort out name
-            parts = row["Student Name"].split(", ")
-            row["last_name"] = parts[0].strip()
-            row["first_name"] = parts[1].strip()
-        elif "First_Name" in row and "Last_Name" in row:
-            row["first_name"] = row["First_Name"]
-            row["last_name"] = row["Last_Name"]
-        if "Student ID" in row and "number" not in row:  # Student ID number
-            row["number"] = row["Student ID"]
-        elif "Student_ID" in row and "number" not in row:  # Student ID number
-            row["number"] = row["Student_ID"]
+        # sortout fields:
+        for field, mappings in self.field_mappings.items():
+            for col, func in mappings.items():
+                if col in row:
+                    row[field] = func(row[col])
+                    break
+
         if ("Class" in row or "CRN" in row) and "groups" not in row:  # Setup a group
             row["groups"] = "Student"
         if "groups" in row and row["groups"] is not None and "Instructor" in row["groups"]:
             row["is_staff"] = 1
-        if "Term" in row and "cohort" not in row:
-            row["cohort"] = row["Term"]
-        elif "Term_Code" in row and "cohort" not in row:
-            row["cohort"] = row["Term_Code"]
-        if "Programme" in row and "programme" not in row:
-            row["programme"] = row["Programme"]
-        if "Registration Status" in row and "registtration_status" not in row:
-            row["registration_status"] = row["Registration Status"]
-        elif "ESTS_Code" in row and "registtration_status" not in row:
-            row["registration_status"] = row["ESTS_Code"]
         for bad_field in ["mark_count", "mark", "students"]:  # remove calculated fields from import
             if bad_field in row:
                 del row[bad_field]
@@ -138,7 +173,6 @@ class UserResource(resources.ModelResource):
 
 
 class GroupResource(resources.ModelResource):
-
     """Import Export Resource for Group objects."""
 
     class Meta:
@@ -148,7 +182,6 @@ class GroupResource(resources.ModelResource):
 
 
 class ProgrammeResource(resources.ModelResource):
-
     """Import Export Resource class for Programmes."""
 
     class Meta:
@@ -157,7 +190,6 @@ class ProgrammeResource(resources.ModelResource):
 
 
 class CohortResource(resources.ModelResource):
-
     """Import Export Resource classes for Cohort objects."""
 
     class Meta:

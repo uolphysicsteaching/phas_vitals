@@ -7,7 +7,5 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path("vitals_view/", views.ShowvitalResults.as_view()),
-
-
+    path("vitals_view/", views.ShowVitralResultsView.as_view()),
 ]

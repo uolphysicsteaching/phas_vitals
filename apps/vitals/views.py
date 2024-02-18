@@ -4,7 +4,8 @@
 # Create your views here.
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.html import format_html
-from django.views.generic import FormView
+from django.views.generic import DetailView, FormView
+from django.views.generic.edit import FormMixin
 
 # external imports
 from django_tables2 import SingleTableMixin
@@ -12,7 +13,12 @@ from django_tables2.columns import Column
 from django_tables2.tables import Table
 from minerva.forms import ModuleSelectForm
 from minerva.models import ModuleEnrollment
-from util.views import IsSuperuserViewMixin
+from util.views import (
+    IsStaffViewMixin,
+    IsStudentViewixin,
+    IsSuperuserViewMixin,
+    RedirectView,
+)
 
 
 class BaseTable(Table):
@@ -30,7 +36,6 @@ class BaseTable(Table):
 
 
 class VITALResultColumn(Column):
-
     """Handles displaying test result information."""
 
     def __init__(self, **kargs):
@@ -55,8 +60,7 @@ class VITALResultColumn(Column):
         return format_html(ret)
 
 
-class ShowvitalResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
-
+class BaseShowvitalResults(SingleTableMixin, FormView):
     """View to show vital results for a module in a table."""
 
     form_class = ModuleSelectForm
@@ -93,14 +97,14 @@ class ShowvitalResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
         context["module"] = self.module
         return context
 
+    def get_entries(Self):
+        """Override this mewothd in actuall classes."""
+        raise NotImplementedError("You must supply a get_entries method.")
+
     def get_table_data(self):
         """Fill out the table with data, creating the entries for the MarkType columns to interpret."""
         table = []
-        entries = (
-            ModuleEnrollment.objects.filter(module=self.module)
-            .prefetch_related("student", "student__vital_results", "student__programme", "status")
-            .order_by("student__last_name", "student__first_name")
-        )
+        entries = self.get_entries()
 
         for entry in entries:
             record = {  # Standard student information entries
@@ -123,3 +127,39 @@ class ShowvitalResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
     def get_queryset(self):
         """Use get_table_data instead of a queryset."""
         return self.get_table_data()
+
+
+class ShowAllVitalResultsView(IsSuperuserViewMixin, BaseShowvitalResults):
+    """Show all the student VITAL results."""
+
+    def get_entries(self):
+        """Get all module enrollments for the module."""
+        return (
+            ModuleEnrollment.objects.filter(module=self.module)
+            .prefetch_related("student", "student__vital_results", "student__programme", "status")
+            .order_by("student__last_name", "student__first_name")
+        )
+
+
+class ShowTutorVitalResultsView(IsStaffViewMixin, BaseShowvitalResults):
+    """Show all the student VITAL results."""
+
+    def get_entries(self):
+        """Get all module enrollments for the module."""
+        return (
+            ModuleEnrollment.objects.filter(module=self.module, student__apt=self.request.user)
+            .prefetch_related("student", "student__vital_results", "student__programme", "status")
+            .order_by("student__last_name", "student__first_name")
+        )
+
+
+class ShowMyVitalResultsView(IsStudentViewixin, FormMixin, DetailView):
+    """TODO write the individual student VITALs view."""
+
+
+class ShowVitralResultsView(RedirectView):
+    """Endpoint for the VITALS results views."""
+
+    superuser_view = ShowAllVitalResultsView
+    staff_view = ShowTutorVitalResultsView
+    logged_in_view = ShowMyVitalResultsView

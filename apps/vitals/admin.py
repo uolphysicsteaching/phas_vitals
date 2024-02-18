@@ -9,14 +9,15 @@ from util.admin import add_action, add_inlines
 # app imports
 from .models import VITAL, VITAL_Result, VITAL_Test_Map
 from .resource import (
-    VITAL_ResultResource, VITAL_Test_MapResource, VITALResource,
+    VITAL_ResultResource,
+    VITAL_Test_MapResource,
+    VITALResource,
 )
 
 # Register your models here.
 
 
 class VITAL_Test_MapInline(admin.StackedInline):
-
     """Inline Admin for Test Mapping for use with VITALs."""
 
     model = VITAL_Test_Map
@@ -24,7 +25,6 @@ class VITAL_Test_MapInline(admin.StackedInline):
 
 
 class VITAL_ResultInline(admin.StackedInline):
-
     """Inline admin for Test Result mapping for VITALS."""
 
     model = VITAL_Result
@@ -32,7 +32,6 @@ class VITAL_ResultInline(admin.StackedInline):
 
 
 class VITALInline(admin.StackedInline):
-
     """Inline admin for VITALS."""
 
     model = VITAL
@@ -73,7 +72,6 @@ add_action("minerva.Module", update_module_vitals)
 
 @admin.register(VITAL)
 class VITALAdmin(ImportExportModelAdmin):
-
     """Admin class for VITALs."""
 
     list_display = ("name", "module")
@@ -105,7 +103,6 @@ class VITALAdmin(ImportExportModelAdmin):
 
 @admin.register(VITAL_Test_Map)
 class VITAL_Test_MapAdmin(ImportExportModelAdmin):
-
     """Admin Interface for Mappings between Tests and VITALs."""
 
     list_display = ("test", "vital", "necessary", "sufficient")
@@ -123,7 +120,6 @@ class VITAL_Test_MapAdmin(ImportExportModelAdmin):
 
 @admin.register(VITAL_Result)
 class VITAL_ResultAdmin(ImportExportModelAdmin):
-
     """Admin interface for VITAL Results."""
 
     list_display = ("vital", "user", "date_passed")

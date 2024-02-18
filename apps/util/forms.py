@@ -39,13 +39,12 @@ def get_mime(content):
 
 
 class MultipleFileInput(forms.ClearableFileInput):
-
     """Override the fil widget to allow multiple files."""
 
     allow_multiple_selected = True
 
-class MultipleFileField(forms.FileField):
 
+class MultipleFileField(forms.FileField):
     """Use the MultipleFileWiodget to handle single or multiple file uploads."""
 
     def __init__(self, *args, **kwargs):
@@ -96,7 +95,6 @@ class ExtFileField(MultipleFileField):
                 raise forms.ValidationError(f"{ext} is not allowed filetype!")
 
 
-
 class FileSelectForm(forms.Form):
     _pass_files = [
         "application/vnd.ms-excel",
@@ -122,7 +120,9 @@ class FileSelectForm(forms.Form):
         content = self.cleaned_data.get("spreadsheet", False)
         filetype = self.get_mime(content)
         if filetype and filetype not in self._pass_files:
-            raise forms.ValidationError("File is not a valid type {} not in {}".format(filetype, ",".join(self._pass_files)))
+            raise forms.ValidationError(
+                "File is not a valid type {} not in {}".format(filetype, ",".join(self._pass_files))
+            )
         return content
 
     @classmethod

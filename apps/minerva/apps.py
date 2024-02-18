@@ -3,7 +3,6 @@ from django.apps import AppConfig
 
 
 class MinervaConfig(AppConfig):
-
     """Django app config object for minerva interface app."""
 
     default_auto_field = "django.db.models.BigAutoField"

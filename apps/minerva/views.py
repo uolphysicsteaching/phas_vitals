@@ -9,20 +9,26 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.utils import IntegrityError
 from django.forms import ValidationError
-from django.template.response import TemplateResponse
 from django.http import StreamingHttpResponse
+from django.template.response import TemplateResponse
 from django.utils.html import format_html
-from django.views.generic import FormView
+from django.views.generic import DetailView, FormView
+from django.views.generic.edit import FormMixin
 
 # external imports
 import numpy as np
 import pandas as pd
+from accounts.models import Account, Cohort
 from django_tables2 import SingleTableMixin
 from django_tables2.columns import Column
 from django_tables2.tables import Table
 from pytz import timezone
-from util.views import IsSuperuserViewMixin
-from accounts.models import Account, Cohort
+from util.views import (
+    IsStaffViewMixin,
+    IsStudentViewixin,
+    IsSuperuserViewMixin,
+    RedirectView,
+)
 
 # app imports
 from .forms import (
@@ -60,7 +66,6 @@ class ImportTestsView(IsSuperuserViewMixin, FormView):
 
 
 class StreamingImportTestsView(ImportTestsView):
-
     """A streaming response version of the full grade centre processor."""
 
     data = []
@@ -141,6 +146,9 @@ class StreamingImportTestsView(ImportTestsView):
                 user.number = sid
                 user.cohort = Cohort.current
                 user.save()
+                ModuleEnrollment.objects.get_or_create(module=self.module, student=user)
+                for mod in self.module.sub_modules.all():
+                    ModuleEnrollment.objects.get_or_create(module=mod, student=user)
                 if new:
                     yield f"<tr><td>New user {user.display_name} created</tr></td>"
                 else:
@@ -156,7 +164,6 @@ class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
 
 
 class StreamingImportTestsHistoryView(ImportTestHistoryView):
-
     """Streaming version of the ImportTestHistoryView."""
 
     data = []
@@ -300,8 +307,8 @@ class TestResultColumn(Column):
         return f'<div class="badge rounded-pil {bi_class} {bg_class}">&nbsp;</div>'
 
 
-class ShowTestResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
-    """View to show test results for a module in a table."""
+class BaseShowTestResultsView(SingleTableMixin, FormView):
+    """Most of the machinery to show a table of student test results."""
 
     form_class = ModuleSelectPlusForm
     table_class = BaseTable
@@ -338,14 +345,14 @@ class ShowTestResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
         context["module"] = self.module
         return context
 
+    def get_entries(self):
+        """Override to return the data required."""
+        raise NotImplementedError("Need to override the get_entries method.")
+
     def get_table_data(self):
         """Fill out the table with data, creating the entries for the MarkType columns to interpret."""
         table = []
-        entries = (
-            ModuleEnrollment.objects.filter(module=self.module)
-            .prefetch_related("student", "student__test_results", "student__programme", "status")
-            .order_by("student__last_name", "student__first_name")
-        )
+        entries = self.get_entries()
 
         for entry in entries:
             record = {  # Standard student information entries
@@ -369,6 +376,42 @@ class ShowTestResults(IsSuperuserViewMixin, SingleTableMixin, FormView):
     def get_queryset(self):
         """Use get_table_data instead of a queryset."""
         return self.get_table_data()
+
+
+class ShowAllTestResultsViiew(IsSuperuserViewMixin, BaseShowTestResultsView):
+    """Show a table of all student test results."""
+
+    def get_entries(self):
+        """Method to get the students to include in the table."""
+        return (
+            ModuleEnrollment.objects.filter(module=self.module)
+            .prefetch_related("student", "student__test_results", "student__programme", "status")
+            .order_by("student__last_name", "student__first_name")
+        )
+
+
+class ShowTutorTestResultsViiew(IsStaffViewMixin, BaseShowTestResultsView):
+    """Show a table of student test results for the current user's tutees."""
+
+    def get_entries(self):
+        """Method to get the students to include in the table."""
+        return (
+            ModuleEnrollment.objects.filter(module=self.module, student__apt=self.request.user)
+            .prefetch_related("student", "student__test_results", "student__programme", "status")
+            .order_by("student__last_name", "student__first_name")
+        )
+
+
+class ShowMyTestResultsViiew(IsStudentViewixin, FormMixin, DetailView):
+    """TODO: write this view."""
+
+
+class ShowTestResults(RedirectView):
+    """Redirect to a more specialised view for handling the test results for different cases."""
+
+    superuser_view = ShowAllTestResultsViiew
+    staff_view = ShowTutorTestResultsViiew
+    logged_in_view = ShowMyTestResultsViiew
 
 
 class GenerateModuleMarksheetView(IsSuperuserViewMixin, FormView):

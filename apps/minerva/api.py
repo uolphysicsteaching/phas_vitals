@@ -16,7 +16,6 @@ from .models import Module, Test, Test_Attempt, Test_Score
 
 
 class ModuleSerializer(serializers.ModelSerializer):
-
     """Serialises minerva.Module."""
 
     class Meta:
@@ -25,7 +24,6 @@ class ModuleSerializer(serializers.ModelSerializer):
 
 
 class TestSerializer(serializers.ModelSerializer):
-
     """Serialises minerva.Test."""
 
     class Meta:
@@ -34,7 +32,6 @@ class TestSerializer(serializers.ModelSerializer):
 
 
 class TestAttemptSerializer(serializers.ModelSerializer):
-
     """Serialises minerva.Test_Attmept."""
 
     class Meta:
@@ -43,7 +40,6 @@ class TestAttemptSerializer(serializers.ModelSerializer):
 
 
 class TestScoreSerializer(serializers.ModelSerializer):
-
     """Serialises minerva.Test_Score."""
 
     class Meta:
@@ -55,7 +51,6 @@ class TestScoreSerializer(serializers.ModelSerializer):
 
 
 class ModuleViewSet(viewsets.ReadOnlyModelViewSet):
-
     """Default Viewset for Account objects."""
 
     queryset = Module.objects.all()
@@ -63,7 +58,6 @@ class ModuleViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class TestViewSet(viewsets.ReadOnlyModelViewSet):
-
     """Default Viewset for Account objects."""
 
     queryset = Test.objects.all()
@@ -71,7 +65,6 @@ class TestViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class TestAttemptViewSet(viewsets.ReadOnlyModelViewSet):
-
     """Default Viewset for Account objects."""
 
     queryset = Test_Attempt.objects.all()
@@ -79,7 +72,6 @@ class TestAttemptViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class TestScoreViewSet(viewsets.ReadOnlyModelViewSet):
-
     """Default Viewset for Account objects."""
 
     queryset = Test_Score.objects.all()

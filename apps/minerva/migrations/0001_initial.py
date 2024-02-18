@@ -34,9 +34,7 @@ class Migration(migrations.Migration):
                 ("courseId", models.CharField(blank=True, max_length=255, null=True)),
                 (
                     "code",
-                    models.CharField(
-                        max_length=11, validators=[minerva.models.module_validator]
-                    ),
+                    models.CharField(max_length=11, validators=[minerva.models.module_validator]),
                 ),
                 ("alt_code", models.CharField(blank=True, max_length=11, null=True)),
                 ("credits", models.IntegerField(default=0)),
@@ -105,39 +103,27 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "score_possible",
-                    models.FloatField(
-                        default=100, verbose_name="Maximum possible score"
-                    ),
+                    models.FloatField(default=100, verbose_name="Maximum possible score"),
                 ),
                 (
                     "passing_score",
-                    models.FloatField(
-                        default=80, verbose_name="Maximum possible score"
-                    ),
+                    models.FloatField(default=80, verbose_name="Maximum possible score"),
                 ),
                 (
                     "grading_due",
-                    models.DateTimeField(
-                        blank=True, null=True, verbose_name="Minerva Due Date"
-                    ),
+                    models.DateTimeField(blank=True, null=True, verbose_name="Minerva Due Date"),
                 ),
                 (
                     "release_date",
-                    models.DateTimeField(
-                        blank=True, null=True, verbose_name="Test Available Date"
-                    ),
+                    models.DateTimeField(blank=True, null=True, verbose_name="Test Available Date"),
                 ),
                 (
                     "recommended_date",
-                    models.DateTimeField(
-                        blank=True, null=True, verbose_name="Recomemnded Attempt Date"
-                    ),
+                    models.DateTimeField(blank=True, null=True, verbose_name="Recomemnded Attempt Date"),
                 ),
                 (
                     "grading_attemptsAllowed",
-                    models.IntegerField(
-                        blank=True, null=True, verbose_name="Number of allowed attempts"
-                    ),
+                    models.IntegerField(blank=True, null=True, verbose_name="Number of allowed attempts"),
                 ),
                 (
                     "module",
@@ -303,9 +289,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="module",
             name="team_members",
-            field=models.ManyToManyField(
-                blank=True, related_name="_module_teams", to=settings.AUTH_USER_MODEL
-            ),
+            field=models.ManyToManyField(blank=True, related_name="_module_teams", to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddField(
             model_name="module",
@@ -325,15 +309,11 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name="test",
-            constraint=models.UniqueConstraint(
-                fields=("module", "name"), name="Singleton name of a test per module"
-            ),
+            constraint=models.UniqueConstraint(fields=("module", "name"), name="Singleton name of a test per module"),
         ),
         migrations.AddConstraint(
             model_name="moduleenrollment",
-            constraint=models.UniqueConstraint(
-                fields=("module", "student"), name="Singleton EWnrollment on a module"
-            ),
+            constraint=models.UniqueConstraint(fields=("module", "student"), name="Singleton EWnrollment on a module"),
         ),
         migrations.AlterUniqueTogether(
             name="module",

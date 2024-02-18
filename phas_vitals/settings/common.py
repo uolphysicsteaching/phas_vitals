@@ -435,7 +435,7 @@ _app_pattern = re.compile("[a-z][a-z0-9_]+")
 
 for app in CUSTOM_APPS:
     try:
-        safe_app= _app_pattern.match(app).group(0)
+        safe_app = _app_pattern.match(app).group(0)
     except AttributeError:
         breakpoint()
     try:  # Look for app.settings module

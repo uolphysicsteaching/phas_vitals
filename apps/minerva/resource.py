@@ -7,14 +7,18 @@ from import_export import fields, resources, widgets
 
 # app imports
 from .models import (
-    Module, ModuleEnrollment, StatusCode, Test, Test_Attempt, Test_Score,
+    Module,
+    ModuleEnrollment,
+    StatusCode,
+    Test,
+    Test_Attempt,
+    Test_Score,
 )
 
 # Register your models here.
 
 
 class ModuleResource(resources.ModelResource):
-
     """Import Export Resource for Module objects."""
 
     class Meta:
@@ -30,7 +34,6 @@ class ModuleResource(resources.ModelResource):
 
 
 class TestResource(resources.ModelResource):
-
     """Import Export Resource for Test objects."""
 
     class Meta:
@@ -57,7 +60,6 @@ class TestResource(resources.ModelResource):
 
 
 class Test_ScoreResource(resources.ModelResource):
-
     """Import Export Resource for Test_Score objects."""
 
     class Meta:
@@ -85,7 +87,6 @@ class Test_ScoreResource(resources.ModelResource):
 
 
 class Test_AttemptResource(resources.ModelResource):
-
     """Import Export Resource for Test_Attempt objects."""
 
     class Meta:
@@ -110,23 +111,21 @@ class Test_AttemptResource(resources.ModelResource):
 
 
 class StatusCodeResource(resources.ModelResource):
-
     """Import-Export resource for Status Codes."""
 
     class Meta:
         model = StatusCode
-        fields = ("code", "explanation", "capped", "valid","resit","level")
+        fields = ("code", "explanation", "capped", "valid", "resit", "level")
         import_id_fields = ["code"]
 
 
 class ModuleEnrollmentReource(resources.ModelResource):
-
     """Import Export Resource for ModuleEnrollments."""
 
     class Meta:
         model = ModuleEnrollment
-        fields = ("module","student","status")
-        import_id_fields = ["module","student"]
+        fields = ("module", "student", "status")
+        import_id_fields = ["module", "student"]
 
     student = fields.Field(
         column_name="student",
@@ -149,9 +148,9 @@ class ModuleEnrollmentReource(resources.ModelResource):
     def import_row(self, row, instance_loader, using_transactions=True, dry_run=False, **kwargs):
         """Match up bad fields."""
         if "module" not in row and ("Subject_Code" in row and "Module_No" in row):
-            row["module"]=row["Subject_Code"].strip()+str(row["Module_No"])
+            row["module"] = row["Subject_Code"].strip() + str(row["Module_No"])
         if "student" not in row and "Student_ID" in row:
-            row["student"]=row["Student_ID"]
+            row["student"] = row["Student_ID"]
         if "status" not in row and "RSTS_Code" in row:
-            row["status"]=row["RSTS_Code"]
+            row["status"] = row["RSTS_Code"]
         return super().import_row(row, instance_loader, using_transactions=True, dry_run=False, **kwargs)

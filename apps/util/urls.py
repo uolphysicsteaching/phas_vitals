@@ -3,8 +3,8 @@
 
 # Django imports
 from django.urls import path
-from django.views.generic import TemplateView
 
-urlpatterns = [
-    path('tools/', TemplateView.as_view(template_name='util/tools.html'))
-]
+# app imports
+from .views import SuperuserTemplateView
+
+urlpatterns = [path("tools/", SuperuserTemplateView.as_view(template_name="util/tools.html"))]
