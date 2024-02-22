@@ -91,7 +91,14 @@ dodgy:
   run: false
 
 pyflakes:
-  run: true
+  run: false
 
 frosted:
   run: true
+
+pycodestyle:
+  disable:
+    - N815
+    - N816
+  options:
+    max-line-length: 119
