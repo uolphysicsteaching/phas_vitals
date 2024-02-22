@@ -439,12 +439,14 @@ for app in CUSTOM_APPS:
         breakpoint()
     try:  # Look for app.settings module
         # This looks like an untrusted import, but it's actually confied to apps living with ./apps/
-        app_settings = import_module(safe_app + ".settings", __file__)  # nosemgrep
+        # nosemgrep
+        app_settings = import_module(safe_app + ".settings", __file__)
         for setting in dir(app_settings):
             if match := _setting_pattern.match(setting):  # settings are always ALL_CAPS_OR_DIGITS only
                 set_val = getattr(app_settings, match.group(0))
                 if isinstance(set_val, dict) and setting in locals():  # Merge app.settings if dictionary
-                    locals()[match.group(0)].update(set_val)  # nosemgrep
+                    # nosemgrep
+                    locals()[match.group(0)].update(set_val)
                 elif isinstance(set_val, (list, tuple)):  # append app.settings if list or tuple
                     locals()[match.group(0)] = locals()[setting] + set_val
                 else:  # replace with app.settings

@@ -25,6 +25,9 @@ ignore-paths:
 ignore-patterns:
   - ^.*doc\/conf\.py
 
+uses:
+  - django
+
 pep8:
   run: true
   enable:
@@ -58,7 +61,6 @@ pep257:
     - D202
     - D204
     - D205
-    - D212
     - D300
     - D400
     - D301
@@ -88,6 +90,8 @@ mccabe:
   run: true
   options:
     max-complexity: 15
+  disable:
+  - MC0000
 
 dodgy:
   run: false
