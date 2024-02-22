@@ -17,10 +17,11 @@ class StudentSelectForm(forms.Form):
     )
 
     def __init__(self, *args, **kargs):
+        """Filter accounts for students."""
         filters = kargs.pop("filters", tuple(tuple()))
         super(StudentSelectForm, self).__init__(*args, **kargs)
-        for field, filter in filters:
-            Qs = [Q(**{k: filter[k]}) for k in filter]
+        for field, filt in filters:
+            Qs = [Q(**{k: filt[k]}) for k in filt]
             if len(Qs) > 1:
                 Qs_f = Qs[0]
                 for Qs_i in Qs[1:]:

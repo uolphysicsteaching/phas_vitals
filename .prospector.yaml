@@ -1,0 +1,97 @@
+#doc-warnings: true
+#test-warnings: false
+#strictness: medium
+#max-line-length: 160
+#uses:
+#autodetect: true
+#requirements:
+#ignore-patterns:
+#  - ^.*kgui\.py$
+#  - ^.*doc\/conf\.py
+#python-targets:
+#  - 3
+#pylint:
+#  disable:
+#    - protected-access
+autodetect: yes
+strictness: medium
+test-warnings: false
+doc-warnings: true
+
+ignore-paths:
+  - .git
+  - coverage
+
+ignore-patterns:
+  - ^.*doc\/conf\.py
+
+pep8:
+  run: true
+  enable:
+    - W601
+  disable:
+    - W605
+    - E741
+    - E742
+    - E743
+  options:
+    max-line-length: 120
+    single-line-if-stmt: false
+
+pylint:
+  run: false
+  disable:
+    - E0402
+    - W0212
+
+  options:
+    max-args: 10
+    max-locals: 20
+    max-line-length: 160
+    max-module-lines: 2000
+    ignore-long-lines: ^\s*((# )?<?https?://\S+>?)|(""".*)$
+
+pep257:
+  enable:
+    - D200
+    - D201
+    - D202
+    - D204
+    - D205
+    - D209
+    - D212
+    - D300
+    - D400
+    - D301
+    - D402
+    - D403
+    - D404
+    - D405
+  disable:
+    - D203
+    - D213
+    - D406
+    - D407
+    - D408
+    - D409
+    - D410
+    - D413
+    - D417
+  run: true
+
+pyroma:
+  run: true
+
+mccabe:
+  run: true
+  options:
+    max-complexity: 15
+
+dodgy:
+  run: false
+
+pyflakes:
+  run: true
+
+frosted:
+  run: true

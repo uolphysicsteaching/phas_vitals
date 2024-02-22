@@ -15,6 +15,7 @@ if __name__ == "__main__":
         try:
             # Django imports
             import django
+            _ = django.conf.settings
         except ImportError:
             raise ImportError(
                 "Couldn't import Django. Are you sure it's installed and "

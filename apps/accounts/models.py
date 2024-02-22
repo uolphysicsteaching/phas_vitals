@@ -22,7 +22,7 @@ markers_Q = models.Q(groups__name="Grader") | models.Q(is_staff=True) | models.Q
 def update_new_user(user):
     """If a new user is a student and not a member of a cohort, assign them to the current cohort."""
     if not user.cohort and not (user.is_staff or user.is_superuser):
-        cohort, _ = Cohort.current()
+        cohort, _ = Cohort.current
         user.cohort = cohort
     return user
 
