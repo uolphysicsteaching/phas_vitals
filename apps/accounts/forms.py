@@ -4,13 +4,11 @@ from django import forms
 from django.db.models import Count, Q
 from django.forms.widgets import Select
 
-
 # app imports
 from .models import Account, Cohort, academic_Q, students_Q
 
 
 class StudentSelectForm(forms.Form):
-
     """A form to select students with."""
 
     user = forms.ModelChoiceField(
@@ -33,7 +31,6 @@ class StudentSelectForm(forms.Form):
 
 
 class StaffSelectForm(forms.Form):
-
     """A Form to select staff with."""
 
     staff = forms.ModelChoiceField(
@@ -43,7 +40,6 @@ class StaffSelectForm(forms.Form):
 
 
 class TutorSelectForm(forms.Form):
-
     """A form to setlect staff who have tutorial students with."""
 
     class Media:
