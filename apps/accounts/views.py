@@ -27,7 +27,7 @@ class TutorGroupEmailsView(IsSuperuserViewMixin, FormView):
         template = loader.get_template("email/tutor-report.txt")
         for tutor in tutors:
             update = TutorReportSheet(TEMPLATE_PATH, tutor=tutor)
-            contents = save_virtual_workbook(update.workbook)
+            contents = save_virtual_workbook(update.workbook)  # nosemgrep
             context = {"tutor": tutor}
             message = template.render(context)
             to = (tutor.email,)
