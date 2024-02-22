@@ -3,14 +3,88 @@
 # Python imports
 import os
 import re
+from abc import abstractmethod
 from tempfile import NamedTemporaryFile
+from textwrap import shorten
 
 # Django imports
+from django.db.models import Count
 from django.http import HttpResponse
 
 # external imports
 import numpy as np
 import openpyxl as opx
+from constance import config
+from openpyxl.styles import PatternFill
+
+# Set up some fill colours
+
+red_fill = PatternFill(patternType="solid", start_color="FF0000")
+green_fill = PatternFill(patternType="solid", start_color="00FF00")
+blue_fill = PatternFill(patternType="solid", start_color="0000FF")
+yellow_fill = PatternFill(patternType="solid", start_color="FFFF00")
+
+##### Monkeypatch navigation properties into Cell ################
+
+
+def _left(self):
+    """Monkey Patch property of Cell for the cell to the left."""
+    ws = self.parent
+    if self.column == 1:
+        raise ValueError("Already at column 1 ! Cannot move left")
+    return ws.cell(row=self.row, column=self.column - 1)
+
+
+setattr(opx.cell.Cell, "left", property(fget=_left))
+
+
+def _right(self):
+    """Monkey Patch property of Cell for the cell to the right."""
+    ws = self.parent
+    if self.column == ws.max_column:
+        raise ValueError("Already at last column ! Cannot move right")
+    return ws.cell(row=self.row, column=self.column + 1)
+
+
+setattr(opx.cell.Cell, "right", property(fget=_right))
+
+
+def _up(self):
+    """Monkey Patch property of Cell for the cell to the left."""
+    ws = self.parent
+    if self.row == 1:
+        raise ValueError("Already at top row ! Cannot move up")
+    return ws.cell(row=self.row - 1, column=self.column)
+
+
+setattr(opx.cell.Cell, "up", property(fget=_up))
+
+
+def _down(self):
+    """Monkey Patch property of Cell for the cell to the left."""
+    ws = self.parent
+    if self.row == ws.max_row:
+        raise ValueError("Already at bottom row ! Cannot move down")
+    return ws.cell(row=self.row + 1, column=self.column)
+
+
+setattr(opx.cell.Cell, "down", property(fget=_down))
+
+
+def _move(self, delta_row=0, delta_column=0):
+    """Return the cell that is at the specified relative position to this cell."""
+    ws = self.parent
+    nr = self.row + delta_row
+    nc = self.column + delta_column
+    if not 1 <= nr <= ws.max_row:
+        raise ValueError("Attempted to navigate to a row that is off the worksaheet")
+    if not 1 <= nc <= ws.max_column:
+        raise ValueError("Attempted to navigate to a column that is off the worksheet.")
+    return ws.cell(row=nr, column=nc)
+
+
+setattr(opx.cell.Cell, "move", _move)
+####################################################################
 
 
 def save_virtual_workbook(wb):
@@ -35,42 +109,6 @@ def save_virtual_workbook(wb):
     return new_file_object
 
 
-def right(sheet, cell):
-    """Rerturn the cell to the right of the given cell."""
-    if cell is None or sheet is None:
-        raise ValueError("Cannot find a starting cell")
-    col = cell.col_idx + 1
-    row = cell.row
-    return sheet.cell(row=row, column=col)
-
-
-def left(sheet, cell):
-    """Rerturn the cell to the left of the given cell."""
-    if cell is None or sheet is None:
-        raise ValueError("Cannot find a starting cell")
-    col = cell.col_idx - 1
-    row = cell.row
-    return sheet.cell(row=row, column=col)
-
-
-def below(sheet, cell):
-    """Rerturn the cell below the given cell."""
-    if cell is None or sheet is None:
-        raise ValueError("Cannot find a starting cell")
-    col = cell.col_idx
-    row = cell.row + 1
-    return sheet.cell(row=row, column=col)
-
-
-def aboove(sheet, cell):
-    """Rerturn the cell above the given cell."""
-    if cell is None or sheet is None:
-        raise ValueError("Cannot find a starting cell")
-    col = cell.col_idx
-    row = cell.row - 1
-    return sheet.cell(row=row, column=col)
-
-
 def sub_value(cell, module):
     """Use a cell value of te form self.attr.attr|format to replace it with a number."""
     parts = str(cell.value).split("|")
@@ -89,22 +127,103 @@ def sub_value(cell, module):
     cell.number_format = parts[1]
 
 
-class Spreadsheet:
+class BaseSpreadsheet:
+    """Base class for manipulating spreadsheets."""
+
+    def __init__(self, filename, blank=False):
+        """Create the spreadsheet object or load from disk."""
+        self.workbook = opx.load_workbook(filename, data_only=not blank)
+        self.sheet = self.workbook[self.workbook.sheetnames[0]]
+        self.errors = []
+
+    @abstractmethod
+    def get_name(self):
+        """Return a string representing the name of trhis spreadsheet."""
+        raise NotImplementedError("Must provide a get_name method")
+
+    def search(self, *text, start_row=1, start_col=1, from_cell=None):
+        """Search for text in the current worksheet.
+
+        Args:
+            text  (string): Cell contents to locate.
+
+        Keyword Arguments:
+            start_row (int):
+                Row to start search from (see also from_cell)
+            start_col (int):
+                Column to start search from (see also from_cell)
+            from_cell (Cell):
+                Start the search from this cell, overriding start_row and start_col
+
+        Returns:
+            (cell) the openpyxl cell containing the text.
+        """
+        if isinstance(from_cell, opx.cell.Cell):  # Override start_row and start_col
+            start_row = from_cell.row
+            start_col = from_cell.column
+        for ix in range(start_row, self.sheet.max_row + 1):  # Loop over rows
+            for iy in range(start_col, self.sheet.max_column + 1):  # Loop over columns
+                cell = self.sheet.cell(row=ix, column=iy)
+                if str(cell.value).strip() == text[0].strip():  # First test matches
+                    for iz, text in enumerate(text[1:]):  # Loop over next tests
+                        cell2 = self.sheet.cell(row=ix + iz + 1, column=iy)  # look at rows down
+                        if str(cell2.value).strip() != text[0].strip():  # If test doesn't match, break out of tests
+                            break
+                    else:  # Didn't break out of tests, so return cell found as all tests match
+                        return cell
+                    if len(text) != 1:  # If multiple tests then one of them failed, so carry on looking
+                        continue
+                    return cell  # One test and it amtched so return cell
+        return None
+
+    def is_non_blank(self, cell):
+        """Return True if cell is not blank."""
+        cell = cell.value
+        try:
+            cell = str(cell).strip()
+        except (TypeError, ValueError):
+            raise RuntimeError("Oops, found a cell that didn't want to be a string!")
+        return cell != ""
+
+    def respond(self):
+        """Create a stream for the current workbook."""
+        response = HttpResponse(
+            content=save_virtual_workbook(self.workbook),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = f"attachment; filename={self.get_name()}"
+        return response
+
+    def as_file(self, dirname):
+        """Save the workbook to a particular path."""
+        if not os.path.exists(dirname):
+            os.makedirs(dirname, exist_ok=True)
+        filename = os.path.join(dirname, self.get_name())
+        self.workbook.save(filename)
+        return filename
+
+    @abstractmethod
+    def fill_in(self, *args, **kwargs):
+        """Fill in a spreadsheet from some data sources."""
+        raise NotImplementedError("fil_in needs to be implemented in concrete subclasses.")
+
+
+class Spreadsheet(BaseSpreadsheet):
     """Class to handle working with Module Marksheets using openpyxl."""
 
     def __init__(self, filename, blank=False):
-        self.workbook = opx.load_workbook(filename, data_only=not blank)
-        self.sheet = self.workbook[self.workbook.sheetnames[0]]
+        """Create the spreadsheet object and initialise if as a marksheet."""
+        super().__init__(filename, blank)
         if not blank:
             self.sids = self.find_sid_cells()
         else:
             self.sids = None
-        self.errors = []
-        self.mod = "PHYSLXXX"
+        self.mod = f"{config.SUBJECT_PREFIX}LXXX"
         self.components = self.get_components()
 
     @property
     def first_row(self):
+        """Return the first row which has student IDs."""
         sidcell = self.search(str(list(self.sids.keys())[0]))
         if sidcell is None:
             raise RuntimeError("Can't find the first student.")
@@ -112,8 +231,9 @@ class Spreadsheet:
 
     @property
     def module_code(self):
+        """Return the module code for this marksheet."""
         try:
-            ret = str(right(self.sheet, self.search("Module Code:")).value).replace(" ", "")
+            ret = str(self.search("Module Code:").right.value).replace(" ", "")
             if ret.endswith(")"):
                 return ret[:-4]
             return ret
@@ -122,12 +242,13 @@ class Spreadsheet:
 
     @property
     def module_exam_code(self):
+        """Return the module exam code."""
         try:
-            return int(right(self.sheet, self.search("Module Exam Code:")).value).replace(" ", "")
+            return int(self.search("Module Exam Code:").right.value).replace(" ", "")
         except ValueError:
             pass
         try:
-            ret = str(right(self.sheet, self.search("Module Code:")).value).replace(" ", "")
+            ret = str(self.search("Module Code:").right.value).replace(" ", "")
             if ret.endswith(")"):
                 return int(ret[-3:-1])
             else:
@@ -137,13 +258,15 @@ class Spreadsheet:
 
     @property
     def module_title(self):
+        """Return the module title."""
         try:
-            return str(right(self.sheet, self.search("Module Title:")).value).strip()
+            return str(self.search("Module Title:").right.value).strip()
         except ValueError:
             raise RuntimeError("Uploaded Workbook is missing a module title!")
 
     @property
     def student_names(self):
+        """Return the student names."""
         cell = self.search("Name")
         if cell is None:
             raise RuntimeError("Unable to locate the names of the students - no cell containing 'Name'?")
@@ -156,12 +279,14 @@ class Spreadsheet:
 
     @property
     def student_numbers(self):
+        """Return the student numbers."""
         if self.sids is None:
             self.sids = self.find_sid_cells()
         return self.sids
 
     @property
     def student_programmes(self):
+        """Return the student programmes."""
         cell = self.search("Programme")
         if cell is None:
             raise RuntimeError("Unable to locate the Programmes of the students - no cell 'Programme'")
@@ -174,6 +299,7 @@ class Spreadsheet:
 
     @property
     def student_status(self):
+        """Return the student status records."""
         cell = self.search("Status")
         if cell is None:
             raise RuntimeError("Unable to locate the Status fields of the students - no cell 'Status'?")
@@ -186,6 +312,7 @@ class Spreadsheet:
 
     @property
     def student_marks(self):
+        """Return the student total marks."""
         cell = self.search("Total", "%")
         if cell is None:
             raise RuntimeError("Unable to locate the total score fields of the students- no cell 'Total'?")
@@ -203,7 +330,8 @@ class Spreadsheet:
         mark will either be a float or the string "AB".
         code will either be "", "v-code" or "c-code".
 
-        Handles both new and old spreadsheets."""
+        Handles both new and old spreadsheets.
+        """
         cell = self.search("Code")
         codes = []
         marks = []
@@ -259,6 +387,7 @@ class Spreadsheet:
 
     @property
     def student_comments(self):
+        """Return the comments."""
         for label in ["Moderated", "Comment"]:
             cell = self.search(label)
             if cell is not None:
@@ -274,6 +403,7 @@ class Spreadsheet:
 
     @property
     def coursework_marks(self):
+        """Return the coursework marks - where there is a component called Coursework."""
         try:
             cell = self.search("Course")
         except (ValueError, TypeError):
@@ -289,6 +419,7 @@ class Spreadsheet:
 
     @property
     def section_A_marks(self):
+        """Find the marks in a Section A."""
         A_total = 0.4
         try:
             cell = self.search("Section/Question:  ")
@@ -321,6 +452,7 @@ class Spreadsheet:
 
     @property
     def entries(self):
+        """Return all the entries for this marksheet."""
         for record in zip(
             self.student_names,
             self.student_numbers,
@@ -338,29 +470,9 @@ class Spreadsheet:
                 )
             }
 
-    def search(self, *text):
-        """Search for text in the current worksheet.
-
-        Args:
-            text  (string): Cell contents to locate
-
-        Returns:
-            (cell) the openpyxl cell containing the text.
-        """
-        for ix in range(1, self.sheet.max_row + 1):  # Loop over rows
-            for iy in range(1, self.sheet.max_column + 1):  # Loop over columns
-                cell = self.sheet.cell(row=ix, column=iy)
-                if str(cell.value).strip() == text[0].strip():  # First test matches
-                    for iz, text in enumerate(text[1:]):  # Loop over next tests
-                        cell2 = self.sheet.cell(row=ix + iz + 1, column=iy)  # look at rows down
-                        if str(cell2.value).strip() != text[0].strip():  # If test doesn't match, break out of tests
-                            break
-                    else:  # Didn't break out of tests, so return cell found as all tests match
-                        return cell
-                    if len(text) != 1:  # If multiple tests then one of them failed, so carry on looking
-                        continue
-                    return cell  # One test and it amtched so return cell
-        return None
+    def get_name(self):
+        """Module name is the spreadsheet name."""
+        return f"{self.mod}.xlsx"
 
     def is_sid(self, cell):
         """Return true if cell contents looks like a student ID."""
@@ -370,15 +482,6 @@ class Spreadsheet:
         except (TypeError, ValueError):
             return False
         return 200000000 < cell < 210000000
-
-    def is_non_blank(self, cell):
-        """Return True if cell is not blank."""
-        cell = cell.value
-        try:
-            cell = str(cell).strip()
-        except (TypeError, ValueError):
-            raise RuntimeError("Oops, found a cell that didn't want to be a string!")
-        return cell != ""
 
     def is_mark(self, cell):
         """Return True for cells that contain numbers between 0 and 100."""
@@ -437,12 +540,15 @@ class Spreadsheet:
             col = self.components[comp].col_idx
         except IndexError:
             raise ValueError(
-                f"Cannot find a column for component {component} - the spreadsheet must match the website's list of module components."
+                f"Cannot find a column for component {component} - the spreadsheet must"
+                + " match the website's list of module components."
             )
         return self.sheet.cell(row=row, column=col).value
 
-    def fill_in(self, module, entries=None):
+    def fill_in(self, *args, **kwargs):
         """Fill in details from a module."""
+        module = args[0]
+        entries = kwargs.get("entries", None)
 
         # Iterate over all worksheets in the template
         for sheet in self.workbook.sheetnames:
@@ -524,19 +630,136 @@ class Spreadsheet:
             self.mod = module.code
         self.sheet = self.workbook[self.workbook.sheetnames[0]]
 
-    def respond(self):
-        """Create a stream for the current workbook."""
-        response = HttpResponse(
-            content=save_virtual_workbook(self.workbook),
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-        response["Content-Disposition"] = f"attachment; filename={self.mod}.xlsx"
-        return response
 
-    def as_file(self, dirname):
-        """Save the workbook to a particular path."""
-        if not os.path.exists(dirname):
-            os.makedirs(dirname, exist_ok=True)
-        filename = os.path.join(dirname, f"{self.mod}.xlsx")
-        self.workbook.save(filename)
-        return filename
+class TutorReportSheet(BaseSpreadsheet):
+    """Spreadsheet for the Tutor report."""
+
+    def __init__(self, filename, blank=False, tutor=None, tests_class=None, vitals_class=None):
+        """Create the spreadsheet object or load from disk."""
+        super().__init__(filename, blank)
+        self.vitals_sheet = self.workbook[self.workbook.sheetnames[1]]
+        self.tests_sheet = self.workbook[self.workbook.sheetnames[0]]
+        self.tutor = tutor
+        self.Test = tests_class
+        self.VITAL = vitals_class
+        self.sidmap = []
+        self.namemap = []
+        if self.tutor:
+            if self.Test is None:
+                self.Test = self.tutor.tests.model
+            if self.VITAL is None:
+                self.VITAL = self.tutor.VITALS.model
+            self.enter_student_details()
+            self.enter_test_names()
+            self.enter_vtials_names()
+            self.enter_test_results()
+            self.enter_test_attempts()
+            self.enter_vital_results()
+
+    def get_name(self):
+        """Use Tutor initials as name."""
+        return f"{self.tutor.initials}.xlsx"
+
+    def _fill_in_details(self, working_cell):
+        """Complete student name, programme and SID entries."""
+        sidmap = {}
+        for student in self.tutor.tutees.all().order_by("last_name", "first_name"):
+            working_cell.value = f"{student.last_name}, {student.first_name}"
+            working_cell.right.value = f"{student.programme.name}"
+            working_cell.right.right.value = f"{student.number}"
+            sidmap[student.number] = working_cell.row
+            working_cell = working_cell.down
+        self.sidmap.append(sidmap)
+
+    def enter_student_details(self):
+        """Use tutor to build a list of student details and enter into spreadsheet."""
+        self.sheet = self.tests_sheet
+        working_cell = self.search("Student Name").down
+        self._fill_in_details(working_cell)
+        working_cell = self.search("Student Name", from_cell=working_cell).down
+        self._fill_in_details(working_cell)
+        self.sheet = self.vitals_sheet
+        working_cell = self.search("Student Name").down
+        self._fill_in_details(working_cell)
+
+    def _enter_names(self, cell, names, counts):
+        """Fill in a bunch of test/vital names with merged modules."""
+        start = cell
+        namemap = {}
+        for thing in names:
+            cell.value = f"{shorten(thing.name,30)}"
+            alignment = cell.alignment.copy(text_rotation=90)
+            cell.alignment = alignment
+            namemap[thing.pk] = cell.column
+            cell = cell.right
+        cell = start.up
+        self.namemap.append(namemap)
+        for module, number in counts.items():
+            self.sheet.merge_cells(
+                start_row=cell.row, start_column=cell.column, end_row=cell.row, end_column=cell.column + number - 1
+            )
+            cell.value = module
+            cell = cell.move(delta_column=number)
+
+    def enter_test_names(self):
+        """Enter all of the test names."""
+        if self.Test is None:
+            return
+        tests = self.Test.objects.filter(results__user__apt=self.tutor).distinct().order_by("module", "name")
+        counts = {}
+        for test in tests:
+            counts[test.module.code] = tests.filter(module=test.module).count()
+        self.sheet = self.tests_sheet
+        cell = self.search("SID").right
+        self._enter_names(cell, tests, counts)
+        cell = self.search("SID", from_cell=cell.left.down).right
+        self._enter_names(cell, tests, counts)
+
+    def enter_vtials_names(self):
+        """Enter the names of the VITALs into the second sheet."""
+        if self.VITAL is None:
+            return
+        vitals = self.VITAL.objects.filter(student_results__user__apt=self.tutor).distinct().order_by("module", "name")
+        counts = {}
+        for vital in vitals:
+            counts[vital.module.code] = vitals.filter(module=vital.module).count()
+        self.sheet = self.vitals_sheet
+        cell = self.search("SID").right
+        self._enter_names(cell, vitals, counts)
+
+    def enter_test_results(self):
+        """Enter the test scores into the spreadsheet."""
+        self.sheet = self.tests_sheet
+        for sid, row in self.sidmap[0].items():
+            student = self.tutor.tutees.get(number=sid)
+            for test_score in student.test_results.all():
+                column = self.namemap[0][test_score.test.pk]
+                cell = self.sheet.cell(row=row, column=column)
+                cell.value = test_score.score
+                cell.fill = green_fill if test_score.passed else red_fill
+
+    def enter_test_attempts(self):
+        """Enter the test scores into the spreadsheet."""
+        self.sheet = self.tests_sheet
+        for sid, row in self.sidmap[1].items():
+            student = self.tutor.tutees.get(number=sid)
+            for test_score in student.test_results.all():
+                attempts = test_score.attempts.count()
+                column = self.namemap[1][test_score.test.pk]
+                cell = self.sheet.cell(row=row, column=column)
+                cell.value = attempts
+                if test_score.passed:
+                    cell.fill = green_fill if attempts < 2 else yellow_fill
+                else:
+                    cell.fill = blue_fill if attempts < 2 else red_fill
+
+    def enter_vital_results(self):
+        """Enter the test scores into the spreadsheet."""
+        self.sheet = self.vitals_sheet
+        for sid, row in self.sidmap[2].items():
+            student = self.tutor.tutees.get(number=sid)
+            for vital_result in student.vital_results.all():
+                column = self.namemap[2][vital_result.vital.pk]
+                cell = self.sheet.cell(row=row, column=column)
+                cell.value = "P" if vital_result.passed else "F"
+                cell.fill = green_fill if vital_result.passed else red_fill

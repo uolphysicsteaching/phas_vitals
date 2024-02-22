@@ -1,10 +1,14 @@
 # Python imports
 from os.path import basename, dirname
 
-# from django.urls import path, re_path
+# Django imports
+from django.urls import path
 
-# from . import views
+# app imports
+from . import views
 
 app_name = basename(dirname(__file__))
 
-urlpatterns = []
+urlpatterns = [
+    path("tutor_email/", views.TutorGroupEmailsView.as_view()),
+]

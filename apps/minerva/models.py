@@ -178,6 +178,7 @@ class Test(models.Model):
     release_date = models.DateTimeField(blank=True, null=True, verbose_name="Test Available Date")
     recommended_date = models.DateTimeField(blank=True, null=True, verbose_name="Recomemnded Attempt Date")
     grading_attemptsAllowed = models.IntegerField(blank=True, null=True, verbose_name="Number of allowed attempts")
+    students = models.ManyToManyField("accounts.Account", through="Test_Score", related_name="tests")
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["module", "name"], name="Singleton name of a test per module")]
