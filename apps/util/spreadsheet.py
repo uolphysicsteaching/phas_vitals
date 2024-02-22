@@ -8,7 +8,6 @@ from tempfile import NamedTemporaryFile
 from textwrap import shorten
 
 # Django imports
-from django.db.models import Count
 from django.http import HttpResponse
 
 # external imports
@@ -471,7 +470,7 @@ class Spreadsheet(BaseSpreadsheet):
             }
 
     def get_name(self):
-        """Module name is the spreadsheet name."""
+        """Return module name as the spreadsheet name."""
         return f"{self.mod}.xlsx"
 
     def is_sid(self, cell):

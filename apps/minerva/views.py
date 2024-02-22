@@ -10,7 +10,6 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.utils import IntegrityError
 from django.forms import ValidationError
 from django.http import StreamingHttpResponse
-from django.template.response import TemplateResponse
 from django.utils.html import format_html
 from django.views.generic import DetailView, FormView
 from django.views.generic.edit import FormMixin
