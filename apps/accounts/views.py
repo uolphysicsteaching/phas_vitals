@@ -27,9 +27,9 @@ class TutorGroupEmailsView(IsSuperuserViewMixin, FormView):
         template = loader.get_template("email/tutor-report.txt")
         for tutor in tutors:
             update = TutorReportSheet(TEMPLATE_PATH, tutor=tutor)
-            contents = save_virtual_workbook(update.workbook)  # nosemgrep
+            contents = save_virtual_workbook(update.workbook)
             context = {"tutor": tutor}
-            message = template.render(context)
+            message = template.render(context)  # nosemgrep
             to = (tutor.email,)
             sender = settings.DEFAULT_FROM_EMAIL
             subject = "Physics and Astronomy VITALs Tutorial Update"
