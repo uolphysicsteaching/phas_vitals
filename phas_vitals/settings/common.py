@@ -196,10 +196,10 @@ MEDIA_URL = "/media/"
 
 # ##### Settings for CSRF protection
 try:
-    DNS_NAME = f"{SITE_NAME}.your.domain.name"
+    DNS_NAME = f"{SITE_NAME}.leeds.ac.uk"
     IP_ADDR = socket.gethostbyname(DNS_NAME)
 except socket.gaierror:
-    DNS_NAME = "loxcalhost"
+    DNS_NAME = "localhost"
     IP_ADDR = "127.0.0.1"
 
 ALLOWED_HOSTS = [DNS_NAME, IP_ADDR, "localhost", "127.0.0.1"]
@@ -224,7 +224,6 @@ FILE_UPLOAD_HANDLERS = ("django.core.files.uploadhandler.TemporaryFileUploadHand
 
 # ##### DEBUG CONFIGURATION ###############################
 DEBUG = False
-
 
 # ##### INTERNATIONALIZATION ##############################
 
@@ -287,11 +286,11 @@ LOGGING = {
 
 ####### EMAIL SETTINGS ####################################
 
-EMAIL_HOST = ADMINS[0][1]
-EMAIL_PORT = 587
-EMAIL_SUBJECT_PREFIX = f"{SITE_NAME} :"
-EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = f"no-reply@{DNS_NAME}"
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.leeds.ac.uk'
+EMAIL_PORT = 25
+EMAIL_USE_TLS = False
+DEFAULT_FROM_EMAIL = f"no-reply@{SITE_NAME}.leeds.ac.uk"
 
 
 ####### GRAPPELI Settings ##################################
