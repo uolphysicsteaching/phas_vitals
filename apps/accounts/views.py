@@ -3,18 +3,16 @@ from django.conf import settings
 from django.core.mail import EmailMessage
 from django.template import loader
 from django.views.generic import FormView
-
-# external imports
-from util.spreadsheet import TutorReportSheet, save_virtual_workbook
 from util.views import IsSuperuserViewMixin
+from util.spreadsheet import TutorReportSheet, save_virtual_workbook
 
-# app imports
 from .forms import TutorSelectForm
 
 TEMPLATE_PATH = settings.PROJECT_ROOT_PATH / "run" / "templates" / "Tutor_Report.xlsx"
 
 
 class TutorGroupEmailsView(IsSuperuserViewMixin, FormView):
+
     """Select tutprs to send progress spreadsheets to."""
 
     form_class = TutorSelectForm
@@ -27,7 +25,7 @@ class TutorGroupEmailsView(IsSuperuserViewMixin, FormView):
         template = loader.get_template("email/tutor-report.txt")
         for tutor in tutors:
             update = TutorReportSheet(TEMPLATE_PATH, tutor=tutor)
-            contents = save_virtual_workbook(update.workbook)  # nosemgrep
+            contents = save_virtual_workbook(update.workbook)
             context = {"tutor": tutor}
             message = template.render(context)
             to = (tutor.email,)

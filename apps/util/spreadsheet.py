@@ -1,6 +1,7 @@
 """Spreadsheet class is used to make Physics and Astronomy Marksheets."""
 
 # Python imports
+from abc import abstractmethod
 import os
 import re
 from abc import abstractmethod
@@ -8,13 +9,13 @@ from tempfile import NamedTemporaryFile
 from textwrap import shorten
 
 # Django imports
+from constance import config
 from django.db.models import Count
 from django.http import HttpResponse
 
 # external imports
 import numpy as np
 import openpyxl as opx
-from constance import config
 from openpyxl.styles import PatternFill
 
 # Set up some fill colours
@@ -72,7 +73,7 @@ setattr(opx.cell.Cell, "down", property(fget=_down))
 
 
 def _move(self, delta_row=0, delta_column=0):
-    """Return the cell that is at the specified relative position to this cell."""
+    """Return trhe cell that is at the specified relative position to this cell."""
     ws = self.parent
     nr = self.row + delta_row
     nc = self.column + delta_column
@@ -128,6 +129,7 @@ def sub_value(cell, module):
 
 
 class BaseSpreadsheet:
+
     """Base class for manipulating spreadsheets."""
 
     def __init__(self, filename, blank=False):
@@ -138,7 +140,7 @@ class BaseSpreadsheet:
 
     @abstractmethod
     def get_name(self):
-        """Return a string representing the name of trhis spreadsheet."""
+        """Return a string representing the name of trhis spreadhseet."""
         raise NotImplementedError("Must provide a get_name method")
 
     def search(self, *text, start_row=1, start_col=1, from_cell=None):
@@ -632,6 +634,7 @@ class Spreadsheet(BaseSpreadsheet):
 
 
 class TutorReportSheet(BaseSpreadsheet):
+
     """Spreadsheet for the Tutor report."""
 
     def __init__(self, filename, blank=False, tutor=None, tests_class=None, vitals_class=None):
