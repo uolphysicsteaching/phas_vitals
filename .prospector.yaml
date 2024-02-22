@@ -58,7 +58,6 @@ pep257:
     - D202
     - D204
     - D205
-    - D209
     - D212
     - D300
     - D400
@@ -68,7 +67,10 @@ pep257:
     - D404
     - D405
   disable:
+    - D106
     - D203
+    - D209
+    - D212
     - D213
     - D406
     - D407
@@ -98,6 +100,7 @@ frosted:
 
 pycodestyle:
   disable:
+    - E901
     - N815
     - N816
   options:
