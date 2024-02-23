@@ -1,2 +1,5 @@
-"""The PSRB app will eventually provide the infrastructure to manage course relationships with accreditation 
-standards."""
+"""PSRB app pakacge.
+
+Will eventually provide the infrastructure to manage course relationships with accreditation 
+standards.
+"""
