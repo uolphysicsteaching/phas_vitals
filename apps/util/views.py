@@ -69,7 +69,8 @@ class RedirectView(View):
     is_authenticated: selg.get_logged_in_view()->self.logged_in_view or self.anonymous_view
     group-map -> self.get_group_view()->self.group_map - find key that matches group.
 
-    The first one that matches the condition and returns a non-None group is used to provide a dispatch method."""
+    The first one that matches the condition and returns a non-None group is used to provide a dispatch method.
+    """
 
     def get_superuser_view(self, request):
         """If the request user is a super user return superuser_view attribute or None."""

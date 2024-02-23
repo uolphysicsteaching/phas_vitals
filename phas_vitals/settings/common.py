@@ -387,12 +387,6 @@ BATON = {
                 {"name": "vital_test_map", "label": "VITAL Test Maps"},
             ),
         },
-        # { 'type': 'title', 'label': 'Contents', 'apps': ('flatpages', ) },
-        # { 'type': 'model', 'label': 'Pages', 'name': 'flatpage', 'app': 'flatpages' },
-        # { 'type': 'free', 'label': 'Custom Link', 'url': 'http://www.google.it', 'perms': ('flatpages.add_flatpage', 'auth.change_user') },
-        # { 'type': 'free', 'label': 'My parent voice', 'children': [
-        #     { 'type': 'model', 'label': 'A Model', 'name': 'mymodelname', 'app': 'myapp', 'icon': 'fa fa-gavel' },
-        #     { 'type': 'free', 'label': 'Another custom link', 'url': 'http://www.google.it' },
         # ] },
     ),
     # 'ANALYTICS': {
@@ -440,13 +434,13 @@ for app in CUSTOM_APPS:
     try:  # Look for app.settings module
         # This looks like an untrusted import, but it's actually confied to apps living with ./apps/
         # nosemgrep
-        app_settings = import_module(safe_app + ".settings", __file__)
+        app_settings = import_module(safe_app + ".settings", __file__)  # nosemgrep
         for setting in dir(app_settings):
             if match := _setting_pattern.match(setting):  # settings are always ALL_CAPS_OR_DIGITS only
                 set_val = getattr(app_settings, match.group(0))
                 if isinstance(set_val, dict) and setting in locals():  # Merge app.settings if dictionary
                     # nosemgrep
-                    locals()[match.group(0)].update(set_val)
+                    locals()[match.group(0)].update(set_val)  # nosemgrep
                 elif isinstance(set_val, (list, tuple)):  # append app.settings if list or tuple
                     locals()[match.group(0)] = locals()[setting] + set_val
                 else:  # replace with app.settings

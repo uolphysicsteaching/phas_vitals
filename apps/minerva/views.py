@@ -189,7 +189,10 @@ class StreamingImportTestsHistoryView(ImportTestHistoryView):
             except Exception as e:
                 form.add_error(
                     None,
-                    f"Could not read Gradebook History  file due to: {e} with {f.temporary_file_path()} {format_exc()}",
+                    (
+                        f"Could not read Gradebook History  file due to: {e} with"
+                        + " {f.temporary_file_path()} {format_exc()}"
+                    ),
                 )
                 return self.form_invalid(form)
             return self.form_valid(form)

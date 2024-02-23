@@ -49,10 +49,12 @@ class MultipleFileField(forms.FileField):
     """Use the MultipleFileWiodget to handle single or multiple file uploads."""
 
     def __init__(self, *args, **kwargs):
+        """Construct multiuple upload file form and set default widget argument."""
         kwargs.setdefault("widget", MultipleFileInput())
         super().__init__(*args, **kwargs)
 
     def clean(self, data, initial=None):
+        """Clean for either single or multiple files."""
         single_file_clean = super().clean
         if isinstance(data, (list, tuple)):
             result = [single_file_clean(d, initial) for d in data]

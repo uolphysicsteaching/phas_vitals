@@ -1,1 +1,1 @@
-"""Database migrations for the PSRB app"""
+"""Database migrations for the PSRB app."""
