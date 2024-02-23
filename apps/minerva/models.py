@@ -128,6 +128,7 @@ class StatusCode(models.Model):
     level = models.CharField(max_length=10, default="none", choices=LEVELS)
 
     def __str__(self):
+        """Represent the status by its code."""
         return self.code
 
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Util app views"""
+"""Util app views."""
 
 # Django imports
 from django.urls import path

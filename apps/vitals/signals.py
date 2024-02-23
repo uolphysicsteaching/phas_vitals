@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sun Feb  4 16:36:47 2024
-
-@author: phygbu
-"""
+"""Signal functions for the VITALs app."""
 # Django imports
 from django.dispatch import receiver
 

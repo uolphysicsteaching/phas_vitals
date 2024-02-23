@@ -1,3 +1,5 @@
+"""Views for the uil app - mainly mixin classes."""
+
 # Django imports
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.views.generic import TemplateView, View

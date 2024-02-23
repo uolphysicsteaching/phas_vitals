@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Common Form Classes"""
+"""Common Form Classes."""
 # Python imports
 import os
 
@@ -19,7 +19,8 @@ from django import forms
 def get_mime(content):
     """Get the mime type of the current file as a string.
 
-    if content is None, use self.content as the file."""
+    if content is None, use self.content as the file.
+    """
     if content is None or not content:
         return ""
 
@@ -78,12 +79,14 @@ class ExtFileField(MultipleFileField):
     """
 
     def __init__(self, *args, **kwargs):
+        """Create form and setup allowed extensions."""
         ext_whitelist = kwargs.pop("ext_whitelist")
         self.ext_whitelist = [i.lower() for i in ext_whitelist]
 
         super().__init__(*args, **kwargs)
 
     def clean(self, *args, **kwargs):
+        """Enforce files matching whitelist."""
         data = super().clean(*args, **kwargs)
         if not isinstance(data, list):
             data = [data]
@@ -96,6 +99,8 @@ class ExtFileField(MultipleFileField):
 
 
 class FileSelectForm(forms.Form):
+    """Form class for secting a file of allowed mime-type."""
+
     _pass_files = [
         "application/vnd.ms-excel",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -117,6 +122,7 @@ class FileSelectForm(forms.Form):
     )
 
     def clean_spreadsheet(self):
+        """Check mimetype of file is allowed."""
         content = self.cleaned_data.get("spreadsheet", False)
         filetype = self.get_mime(content)
         if filetype and filetype not in self._pass_files:
@@ -129,6 +135,6 @@ class FileSelectForm(forms.Form):
     def get_mime(cls, content):
         """Get the mime type of the current file as a string.
 
-        if content is None, use self.content as the file."""
-
+        if content is None, use self.content as the file.
+        """
         return get_mime(content)

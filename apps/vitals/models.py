@@ -57,6 +57,7 @@ class VITAL(models.Model):
         constraints = [models.UniqueConstraint(fields=["name", "module"], name="Singleton VITAL name per module")]
 
     def natural_key(self):
+        """Set natural key of a VITAL to be the string representation."""
         return str(self)
 
     def passed(self, user, passed=True, date_passed=None):
@@ -86,4 +87,5 @@ class VITAL(models.Model):
         return self.passed(user, False)
 
     def __str__(self):
+        """Use name and code as a string representation."""
         return f"{self.name} ({self.module.code}"
