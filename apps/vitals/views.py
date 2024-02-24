@@ -10,29 +10,15 @@ from django.views.generic.edit import FormMixin
 # external imports
 from django_tables2 import SingleTableMixin
 from django_tables2.columns import Column
-from django_tables2.tables import Table
 from minerva.forms import ModuleSelectForm
 from minerva.models import ModuleEnrollment
+from util.tables import BaseTable
 from util.views import (
     IsStaffViewMixin,
     IsStudentViewixin,
     IsSuperuserViewMixin,
     RedirectView,
 )
-
-
-class BaseTable(Table):
-    """Provides a table with columns for student name, number, programme and status code as per marksheets."""
-
-    class Meta:
-        attrs = {"width": "100%"}
-        template_name = "django_tables2/bootstrap5.html"
-        orderable = False
-
-    student = Column(orderable=False)
-    number = Column(orderable=False)
-    programme = Column(orderable=False)
-    status = Column(attrs={"th": {"class": "vertical"}}, orderable=False)
 
 
 class VITALResultColumn(Column):
@@ -79,7 +65,7 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
         """Update self.module with the module selected in the form."""
         self.module = form.cleaned_data["module"]
         if self.module is not None:
-            self.vitals = self.module.VITALS.all().order_by("name")
+            self.vitals = self.module.VITALS.all().order_by("start_date", "name")
         return self.render_to_response(self.get_context_data())
 
     def get_table_class(self):

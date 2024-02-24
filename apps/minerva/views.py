@@ -20,8 +20,8 @@ import pandas as pd
 from accounts.models import Account, Cohort
 from django_tables2 import SingleTableMixin
 from django_tables2.columns import Column
-from django_tables2.tables import Table
 from pytz import timezone
+from util.tables import BaseTable
 from util.views import (
     IsStaffViewMixin,
     IsStudentViewixin,
@@ -110,6 +110,7 @@ class StreamingImportTestsView(ImportTestsView):
     def response_generator(self):
         """Yield rows for a table."""
         module = self.form.cleaned_data["module"]
+        alt = False
         for df in self.data:
             for col in df.columns:
                 if match := self.test_name.search(col):
@@ -117,21 +118,23 @@ class StreamingImportTestsView(ImportTestsView):
                     test_id = match.groupdict()["test_id"]
                     possible = float(match.groupdict()["total"])
                     test, new = Test.objects.get_or_create(test_id=test_id, module=module)
+                    cls = "light" if not alt else "secondary"
+                    alt = not alt
                     if new:
                         test.name = name
                         test.score_possible = possible
                         test.passing_score = 0.8 * possible
                         test.save()
-                        yield f"<tr><td>Saving new test {name} {possible=} {test_id=}</td></tr>"
+                        yield f"<tr class='tb-{cls}'><td>Saving new test {name} {possible=} {test_id=}</td></tr>"
                     else:
                         test.name = name
                         test.score_possible = possible
                         test.passing_score = 0.8 * possible
                         test.save()
 
-                        yield f"<tr><td>ound existing column {name} {test_id=}</td></tr>"
+                        yield f"<tr class='tb-success'><td>ound existing column {name} {test_id=}</td></tr>"
                 else:
-                    yield f"<tr><td>Unmatched column name {col}</td></tr>"
+                    yield f"<tr class='tb-warning'><td>Unmatched column name {col}</td></tr>"
             for _, row in df.iterrows():
                 if row["Availability"] == "No" or np.isnan(row["Student ID"]):
                     continue
@@ -148,10 +151,12 @@ class StreamingImportTestsView(ImportTestsView):
                 ModuleEnrollment.objects.get_or_create(module=self.module, student=user)
                 for mod in self.module.sub_modules.all():
                     ModuleEnrollment.objects.get_or_create(module=mod, student=user)
+                cls = "light" if not alt else "secondary"
+                alt = not alt
                 if new:
-                    yield f"<tr><td>New user {user.display_name} created</tr></td>"
+                    yield f"<tr class='tb-success'><td>New user {user.display_name} created</tr></td>"
                 else:
-                    yield f"<tr><td>Existing user {user.display_name} updated</td></tr>"
+                    yield f"<tr class='tb-{cls}'><td>Existing user {user.display_name} updated</td></tr>"
 
 
 class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
@@ -209,6 +214,7 @@ class StreamingImportTestsHistoryView(ImportTestHistoryView):
     def response_generator(self):
         """Yield rows for a table."""
         module = self.form.cleaned_data["module"]
+        alt = False
         for df in self.data:
             df.Date = pd.to_datetime(df.Date)
             df["AttemptDate"] = pd.to_datetime(df["Attempt Activity"])
@@ -220,13 +226,13 @@ class StreamingImportTestsHistoryView(ImportTestHistoryView):
                     student = Account.objects.get(username=row.Username)
                 except ObjectDoesNotExist:
                     print("Yield")
-                    yield f"<tr><td>Unknown User {row.Username}</td></tr>"
+                    yield f"<tr class='tb-warning'><td>Unknown User {row.Username}</td></tr>"
                     continue
                 try:
                     test = Test.objects.get(name=row.Column, module=module)
                 except ObjectDoesNotExist:
                     print("Yield")
-                    yield "<tr><td>Unknown test {row.Column}</td></tr>"
+                    yield "<tr class='tb-warning'><td>Unknown test {row.Column}</td></tr>"
                     continue
                 test_score, new = Test_Score.objects.get_or_create(user=student, test=test)
                 new_id = f"{row.Column}:{row.Username}:{row.AttemptDate}"
@@ -244,26 +250,14 @@ class StreamingImportTestsHistoryView(ImportTestHistoryView):
                 try:
                     test_attempt.save()
                 except IntegrityError:
-                    yield f"<r><td class='bg bg-danger'>Database error for {test_attempt}</td></tr>"
+                    yield f"<r class='bg tb-danger'><td>Database error for {test_attempt}</td></tr>"
                     continue
+                cls = "light" if not alt else "secondary"
+                alt = not alt
                 yield (
-                    f"<tr><td>Attempt {row.Column} for {row.Username} at {row.AttemptDate}"
+                    f"<tr class='tb-{cls}'><td>Attempt {row.Column} for {row.Username} at {row.AttemptDate}"
                     + f" saved with score {row.Value}</td></tr>"
                 )
-
-
-class BaseTable(Table):
-    """Provides a table with columns for student name, number, programme and status code as per marksheets."""
-
-    class Meta:
-        attrs = {"width": "100%"}
-        template_name = "django_tables2/bootstrap5.html"
-        orderable = False
-
-    student = Column(orderable=False)
-    number = Column(orderable=False)
-    programme = Column(orderable=False)
-    status = Column(attrs={"th": {"class": "vertical"}}, orderable=False)
 
 
 class TestResultColumn(Column):
@@ -330,7 +324,7 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
         self.module = form.cleaned_data["module"]
         self.mode = form.cleaned_data.get("mode", "score")
         if self.module is not None:
-            self.tests = self.module.tests.all().order_by("name")
+            self.tests = self.module.tests.all().order_by("release_date", "name")
         return self.render_to_response(self.get_context_data())
 
     def get_table_class(self):

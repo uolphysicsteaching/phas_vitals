@@ -704,7 +704,7 @@ class TutorReportSheet(BaseSpreadsheet):
         """Enter all of the test names."""
         if self.Test is None:
             return
-        tests = self.Test.objects.filter(results__user__apt=self.tutor).distinct().order_by("module", "name")
+        tests = self.Test.objects.filter(results__user__apt=self.tutor).distinct().order_by("module", "release_date")
         counts = {}
         for test in tests:
             counts[test.module.code] = tests.filter(module=test.module).count()
@@ -718,7 +718,11 @@ class TutorReportSheet(BaseSpreadsheet):
         """Enter the names of the VITALs into the second sheet."""
         if self.VITAL is None:
             return
-        vitals = self.VITAL.objects.filter(student_results__user__apt=self.tutor).distinct().order_by("module", "name")
+        vitals = (
+            self.VITAL.objects.filter(student_results__user__apt=self.tutor)
+            .distinct()
+            .order_by("module", "start_date")
+        )
         counts = {}
         for vital in vitals:
             counts[vital.module.code] = vitals.filter(module=vital.module).count()

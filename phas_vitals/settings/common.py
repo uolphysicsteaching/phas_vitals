@@ -403,6 +403,10 @@ GRAPH_MODELS = {
 }
 
 
+# #### DJNAGO-TABLES2 #####################################
+
+DJANGO_TABLES2_TEMPLATE = "django_tables2/bootstrap5-responsive.html"
+
 ###### Django REST Framework Settings #####################
 
 REST_FRAMEWORK = {

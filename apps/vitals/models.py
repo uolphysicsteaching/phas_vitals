@@ -41,6 +41,16 @@ class VITAL_Manager(models.Manager):
             return self.get(**match.groupdict())
         raise ObjectDoesNotExist(f"No VITAL {name}")
 
+    def get_queryset(self):
+        """Annoteate the queryset with date information."""
+        qs = super().get_queryset()
+        qs = qs.annotate(
+            release=models.Min("tests__release_date"),
+            start_date=models.Min("tests__recommended_date"),
+            end_date=models.Max("tests__recommended_date"),
+        )
+        return qs
+
 
 class VITAL(models.Model):
     """A Verifiable Indicator of Threshold Ability and Learning."""
