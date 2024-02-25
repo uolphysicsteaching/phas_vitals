@@ -144,7 +144,7 @@ class ModuleEnrollment(models.Model):
 
     @property
     def passed_vitals(self):
-        """Has the user passed all the vitals on this module?"""
+        """Determine if the the user has passed all the vitals on this module."""
         vitals = self.module.VITALS.all()
         passed = self.student.vital_results.filter(vital__in=vitals, passed=True)
         return vitals.count() == passed.count()

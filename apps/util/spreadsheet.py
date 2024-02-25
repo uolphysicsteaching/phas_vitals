@@ -140,6 +140,14 @@ class BaseSpreadsheet:
         """Return a string representing the name of trhis spreadsheet."""
         raise NotImplementedError("Must provide a get_name method")
 
+    def _sub_cells_from_attrs(self, obj):
+        """Look for cells that can be substituted with attrobutes of the spreadsheet."""
+        for ix in range(1, self.sheet.max_row + 1):  # Loop over rows
+            for iy in range(1, self.sheet.max_column + 1):  # Loop over columns
+                cell = self.sheet.cell(row=ix, column=iy)
+                if str(cell.value).startswith("self."):
+                    sub_value(cell, obj)
+
     def search(self, *text, start_row=1, start_col=1, from_cell=None):
         """Search for text in the current worksheet.
 
@@ -322,6 +330,68 @@ class Spreadsheet(BaseSpreadsheet):
             names.append(str(self.sheet.cell(column=c, row=iy).value))
         return names
 
+    def _student_mark_codes_code_cell(self, cell):
+        """Return a list of tuples of (student_mark,code) where there is a Code cell.
+
+        This for the newwer format of PHYS marksheets.
+        """
+        c = cell.col_idx
+        codes = []
+        marks = []
+        ix = self.first_row
+        for iy in range(ix, ix + len(self.sids)):
+            codes.append(str(self.sheet.cell(column=c, row=iy).value).upper())
+            if codes[-1] == "NONE":
+                codes[-1] = ""
+        for ix, mk in enumerate(self.student_marks):
+            try:
+                marks.append(float(mk))
+            except ValueError:
+                if mk is None or str(mk) == "None":
+                    marks.append(np.NaN)
+                elif str(mk).strip().startswith("AB"):
+                    marks.append("AB")
+                    codes[ix] += "AB"
+                else:
+                    raise RuntimeError(
+                        "New Style nmarksheets should only have numbers of AB in the Total column! {} ({})".format(
+                            mk, type(mk)
+                        )
+                    )
+        return zip(marks, codes)
+
+    def _student_mark_codes_no_code_cell(self):
+        """Return a list of tuples of (student_mark,code) where there is no Code cell.
+
+        This is for the older format of PHYS marksheets.
+        """
+        codes = []
+        marks = []
+        for mk, cmnt in zip(self.student_marks, self.student_comments):
+            try:
+                marks.append(float(mk))
+                if cmnt.strip().lower() == "v":
+                    codes.append("V")
+                elif cmnt.strip().lower() == "c":
+                    codes.append("C")
+                else:
+                    codes.append("")
+            except ValueError:
+                if str(mk).strip().upper().startswith("AB"):
+                    marks.append("AB")
+                    codes.append("")
+                elif re.compile(r"\d+v").match(str(mk).lower().strip()) or cmnt.strip().lower() == "v":
+                    codes.append("V")
+                    res = re.compile(r"(\d+)v?").match(str(mk).lower().strip())
+                    marks.append(float(res.group(1)))
+                elif re.compile(r"\d+c").match(str(mk).lower().strip()) or cmnt.strip().lower() == "v":
+                    codes.append("C")
+                    res = re.compile(r"(\d+)v?").match(str(mk).lower().strip())
+                    marks.append(float(res.group(1)))
+                else:
+                    raise RuntimeError(f"Unable to interpret mark and code {mk} {cmnt}")
+        return zip(marks, codes)
+
     @property
     def student_mark_codes(self):
         """Return an iterator of tuples of (student mark,code).
@@ -331,58 +401,9 @@ class Spreadsheet(BaseSpreadsheet):
 
         Handles both new and old spreadsheets.
         """
-        cell = self.search("Code")
-        codes = []
-        marks = []
-
-        if cell is not None:
-            c = cell.col_idx
-            ix = self.first_row
-            for iy in range(ix, ix + len(self.sids)):
-                codes.append(str(self.sheet.cell(column=c, row=iy).value).upper())
-                if codes[-1] == "NONE":
-                    codes[-1] = ""
-            for ix, mk in enumerate(self.student_marks):
-                try:
-                    marks.append(float(mk))
-                except ValueError:
-                    if mk is None or str(mk) == "None":
-                        marks.append(np.NaN)
-                    elif str(mk).strip().startswith("AB"):
-                        marks.append("AB")
-                        codes[ix] += "AB"
-                    else:
-                        raise RuntimeError(
-                            "New Style nmarksheets should only have numbers of AB in the Total column! {} ({})".format(
-                                mk, type(mk)
-                            )
-                        )
-            return list(zip(marks, codes))
-        else:
-            for mk, cmnt in zip(self.student_marks, self.student_comments):
-                try:
-                    marks.append(float(mk))
-                    if cmnt.strip().lower() == "v":
-                        codes.append("V")
-                    elif cmnt.strip().lower() == "c":
-                        codes.append("C")
-                    else:
-                        codes.append("")
-                except ValueError:
-                    if str(mk).strip().upper().startswith("AB"):
-                        marks.append("AB")
-                        codes.append("")
-                    elif re.compile(r"\d+v").match(str(mk).lower().strip()) or cmnt.strip().lower() == "v":
-                        codes.append("V")
-                        res = re.compile(r"(\d+)v?").match(str(mk).lower().strip())
-                        marks.append(float(res.group(1)))
-                    elif re.compile(r"\d+c").match(str(mk).lower().strip()) or cmnt.strip().lower() == "v":
-                        codes.append("C")
-                        res = re.compile(r"(\d+)v?").match(str(mk).lower().strip())
-                        marks.append(float(res.group(1)))
-                    else:
-                        raise RuntimeError(f"Unable to interpret mark and code {mk} {cmnt}")
-            return zip(marks, codes)
+        if cell := self.search("Code") is not None:
+            return self._student_mark_codes_code_cell(cell)
+        return self._student_mark_codes_no_code_cell()
 
     @property
     def student_comments(self):
@@ -544,72 +565,74 @@ class Spreadsheet(BaseSpreadsheet):
             )
         return self.sheet.cell(row=row, column=col).value
 
+    def _fill_in_components(self, module):
+        """Fill in VITALS component labels on marksheet."""
+        mh = 0
+        component_columns = {}
+        for c, ix in zip(module.VITALS.all(), range(5, 5 + module.VITALS.count())):
+            component_columns[c] = (ix, c.name)
+            cell = self.sheet.cell(row=11, column=ix)
+            cell.value = c.name
+            mh = max(len(c.name), mh)
+            if len(c.name) > 2:
+                alignment = cell.alignment.copy(text_rotation=90)
+                cell.alignment = alignment
+            else:
+                alignment = cell.alignment.copy(text_rotation=0)
+                cell.alignment = alignment
+            cell = self.sheet.cell(row=12, column=ix)
+            cell.value = "P/F"
+            cell = self.sheet.cell(row=13, column=ix)
+            cell.value = 1.0
+        if mh > 2:
+            self.sheet.row_dimensions[11].height = 6.5 * mh
+        return component_columns
+
+    def _enter_student_entries(self, module, component_columns, entries):
+        """Get student entries and fill in components."""
+        if entries is None:
+            entries = module.student_enrollments.prefetch_related("student", "student__vital_results").order_by(
+                "student"
+            )
+        elif isinstance(entries, dict):
+            entries = (
+                module.student_enrollments.filter(**entries)
+                .prefetch_related("student", "student__vital_results")
+                .order_by("student")
+            )
+        else:
+            entries = (
+                module.student_enrollments.filter(entries)
+                .prefetch_related("student", "student__vital_results")
+                .order_by("student")
+            )
+
+        for ix, ent in enumerate(entries):
+            row = ix + 16
+            self.sheet.cell(row=row, column=1).value = ent.student.display_name
+            self.sheet.cell(row=row, column=2).value = ent.student.programme.name
+            self.sheet.cell(row=row, column=3).value = ent.student.number
+            self.sheet.cell(row=row, column=4).value = ent.status.code
+            for _, (comp_col, mtype) in component_columns.items():
+                mks = ent.student.vital_results.filter(vital__name=mtype)
+                comp_mark = mks.count() > 0 and mks.last().passed
+                self.sheet.cell(row=row, column=comp_col).value = "P" if comp_mark else ""
+        return ix
+
     def fill_in(self, *args, **kwargs):
         """Fill in details from a module."""
         module = args[0]
-        entries = kwargs.get("entries", None)
 
         # Iterate over all worksheets in the template
         for sheet in self.workbook.sheetnames:
             self.sheet = self.workbook[sheet]
-
-            # fill in all cells from module attributes
-            for ix in range(1, self.sheet.max_row + 1):  # Loop over rows
-                for iy in range(1, self.sheet.max_column + 1):  # Loop over columns
-                    cell = self.sheet.cell(row=ix, column=iy)
-                    if str(cell.value).startswith("self."):
-                        sub_value(cell, module)
-
+            # Substitute markshete details
+            self._sub_cells_from_attrs(module)
             # Now fill in components
-            mh = 0
-            component_columns = {}
-            for c, ix in zip(module.VITALS.all(), range(5, 5 + module.VITALS.count())):
-                component_columns[c] = (ix, c.name)
-                cell = self.sheet.cell(row=11, column=ix)
-                cell.value = c.name
-                mh = max(len(c.name), mh)
-                if len(c.name) > 2:
-                    alignment = cell.alignment.copy(text_rotation=90)
-                    cell.alignment = alignment
-                else:
-                    alignment = cell.alignment.copy(text_rotation=0)
-                    cell.alignment = alignment
-                cell = self.sheet.cell(row=12, column=ix)
-                cell.value = "P/F"
-                cell = self.sheet.cell(row=13, column=ix)
-                cell.value = 1.0
-            if mh > 2:
-                self.sheet.row_dimensions[11].height = 6.5 * mh
+            component_columns = self._fill_in_components(module)
 
             # Now fill in students
-            cell = self.search("V/C")
-            if entries is None:
-                entries = module.student_enrollments.prefetch_related("student", "student__vital_results").order_by(
-                    "student"
-                )
-            elif isinstance(entries, dict):
-                entries = (
-                    module.student_enrollments.filter(**entries)
-                    .prefetch_related("student", "student__vital_results")
-                    .order_by("student")
-                )
-            else:
-                entries = (
-                    module.student_enrollments.filter(entries)
-                    .prefetch_related("student", "student__vital_results")
-                    .order_by("student")
-                )
-
-            for ix, ent in enumerate(entries):
-                row = ix + 16
-                self.sheet.cell(row=row, column=1).value = ent.student.display_name
-                self.sheet.cell(row=row, column=2).value = ent.student.programme.name
-                self.sheet.cell(row=row, column=3).value = ent.student.number
-                self.sheet.cell(row=row, column=4).value = ent.status.code
-                for _, (comp_col, mtype) in component_columns.items():
-                    mks = ent.student.vital_results.filter(vital__name=mtype)
-                    comp_mark = mks.count() > 0 and mks.last().passed
-                    self.sheet.cell(row=row, column=comp_col).value = "P" if comp_mark else ""
+            ix = self._enter_student_entries(module, component_columns, kwargs.get("entries", None))
 
             # Now remove excess rows
             if ix + 17 < 275:
