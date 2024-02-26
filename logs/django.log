@@ -7683,3 +7683,396 @@ Traceback (most recent call last):
     for test in self.tests.order_by("release_date"):
                 ^^^^^^^^^^^^^^^^^^^
 AttributeError: 'list' object has no attribute 'order_by'
+Internal Server Error: /vitals/vitals_view/
+Traceback (most recent call last):
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\util\views.py", line 114, in dispatch
+    return view.as_view()(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\contrib\auth\mixins.py", line 135, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\edit.py", line 153, in post
+    return self.form_valid(form)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 76, in form_valid
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 89, in get_context_data
+    context = super().get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 161, in get_context_data
+    table = self.get_table(**self.get_table_kwargs())
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 121, in get_table
+    table_class = self.get_table_class()
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 82, in get_table_class
+    attrs[vital.name] = VITALResultColumn(orderable=False, vital=vital)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 37, in __init__
+    attrs.update({"th": {"class": f"vertical {self.status_class_map[vital.status]}"}})
+                                              ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+KeyError: 'Finished'
+Internal Server Error: /vitals/vitals_view/
+Traceback (most recent call last):
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\util\views.py", line 114, in dispatch
+    return view.as_view()(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\contrib\auth\mixins.py", line 135, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\edit.py", line 153, in post
+    return self.form_valid(form)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 76, in form_valid
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 89, in get_context_data
+    context = super().get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 161, in get_context_data
+    table = self.get_table(**self.get_table_kwargs())
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 121, in get_table
+    table_class = self.get_table_class()
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 83, in get_table_class
+    attrs["Overall"] = VITALResultColumn(orderable=False)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 36, in __init__
+    vital = kargs.pop("vital")
+            ^^^^^^^^^^^^^^^^^^
+KeyError: 'vital'
+Internal Server Error: /vitals/vitals_view/
+Traceback (most recent call last):
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\util\views.py", line 114, in dispatch
+    return view.as_view()(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\contrib\auth\mixins.py", line 135, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\edit.py", line 153, in post
+    return self.form_valid(form)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 88, in form_valid
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 102, in get_context_data
+    context = super().get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 161, in get_context_data
+    table = self.get_table(**self.get_table_kwargs())
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 121, in get_table
+    table_class = self.get_table_class()
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 97, in get_table_class
+    setattr(klass._meta,"row_attrs",{"class":"student_link","data_id":self._row_id})
+                                                                      ^^^^^^^^^^^^
+AttributeError: 'ShowTutorVitalResultsView' object has no attribute '_row_id'
+Internal Server Error: /vitals/vitals_view/
+Traceback (most recent call last):
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\util\views.py", line 114, in dispatch
+    return view.as_view()(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\contrib\auth\mixins.py", line 135, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\edit.py", line 153, in post
+    return self.form_valid(form)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 88, in form_valid
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 102, in get_context_data
+    context = super().get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 161, in get_context_data
+    table = self.get_table(**self.get_table_kwargs())
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 121, in get_table
+    table_class = self.get_table_class()
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 97, in get_table_class
+    setattr(klass._meta,"row_attrs",{"class":"student_link","data_id":self._row_id})
+                                                                      ^^^^^^^^^^^^
+AttributeError: 'ShowTutorVitalResultsView' object has no attribute '_row_id'
+Internal Server Error: /vitals/vitals_view/
+Traceback (most recent call last):
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\util\views.py", line 114, in dispatch
+    return view.as_view()(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\contrib\auth\mixins.py", line 135, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\edit.py", line 153, in post
+    return self.form_valid(form)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 92, in form_valid
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 106, in get_context_data
+    context = super().get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 161, in get_context_data
+    table = self.get_table(**self.get_table_kwargs())
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 121, in get_table
+    table_class = self.get_table_class()
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 101, in get_table_class
+    setattr(klass._meta,"row_attrs",{"class":"student_link","data_id":self._row_id})
+                                                                      ^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 84, in _row_id
+    self._ix=(self._ix+1)%len(self._entries)
+             ~~~~~~~~~~~~^^~~~~~~~~~~~~~~~~~
+ZeroDivisionError: integer modulo by zero
+Internal Server Error: /vitals/vitals_view/
+Traceback (most recent call last):
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\util\views.py", line 114, in dispatch
+    return view.as_view()(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\contrib\auth\mixins.py", line 135, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\edit.py", line 153, in post
+    return self.form_valid(form)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 94, in form_valid
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 108, in get_context_data
+    context = super().get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 161, in get_context_data
+    table = self.get_table(**self.get_table_kwargs())
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 121, in get_table
+    table_class = self.get_table_class()
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 103, in get_table_class
+    setattr(klass._meta,"row_attrs",{"class":"student_link","data_id":self._row_id})
+                                                                      ^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 84, in _row_id
+    if len(self.__entries)==0:
+           ^^^^^^^^^^^^^^
+AttributeError: 'ShowTutorVitalResultsView' object has no attribute '_BaseShowvitalResults__entries'
+Internal Server Error: /minerva/test_view/
+Traceback (most recent call last):
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\util\views.py", line 114, in dispatch
+    return view.as_view()(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\contrib\auth\mixins.py", line 135, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\edit.py", line 153, in post
+    return self.form_valid(form)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\minerva\views.py", line 352, in form_valid
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\minerva\views.py", line 365, in get_context_data
+    context = super().get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 161, in get_context_data
+    table = self.get_table(**self.get_table_kwargs())
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 121, in get_table
+    table_class = self.get_table_class()
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\minerva\views.py", line 360, in get_table_class
+    setattr(klass._meta, "row_attrs", {"class": "student_link", "id": self._row_id})
+                                                                      ^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\minerva\views.py", line 343, in _row_id
+    self._ix = (self._ix + 1) % len(self.entries)
+                ^^^^^^^^
+AttributeError: 'ShowTutorTestResultsViiew' object has no attribute '_ix'
+Internal Server Error: /vitals/vitals_view/
+Traceback (most recent call last):
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\util\views.py", line 114, in dispatch
+    return view.as_view()(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\contrib\auth\mixins.py", line 135, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\edit.py", line 144, in get
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 113, in get_context_data
+    context = super().get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 161, in get_context_data
+    table = self.get_table(**self.get_table_kwargs())
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 121, in get_table
+    table_class = self.get_table_class()
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 108, in get_table_class
+    setattr(klass._meta,"row_attrs",{"class":"student_link","id":self._row_id})
+                                                                 ^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 91, in _row_id
+    self._ix=(self._ix+1)%len(self.entries)
+             ~~~~~~~~~~~~^^~~~~~~~~~~~~~~~~
+ZeroDivisionError: integer modulo by zero
+Internal Server Error: /vitals/vitals_view/
+Traceback (most recent call last):
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\util\views.py", line 114, in dispatch
+    return view.as_view()(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\contrib\auth\mixins.py", line 135, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django\views\generic\edit.py", line 144, in get
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 113, in get_context_data
+    context = super().get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 161, in get_context_data
+    table = self.get_table(**self.get_table_kwargs())
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProgramData\anaconda3\envs\django\Lib\site-packages\django_tables2\views.py", line 121, in get_table
+    table_class = self.get_table_class()
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 108, in get_table_class
+    setattr(klass._meta,"row_attrs",{"class":"student_link","id":self._row_id})
+                                                                 ^^^^^^^^^^^^
+  File "C:\Users\gavin\OneDrive - University of Leeds\Documents\Programming\phas_vitals\apps\vitals\views.py", line 91, in _row_id
+    self._ix=(self._ix+1)%len(self.entries)
+             ~~~~~~~~~~~~^^~~~~~~~~~~~~~~~~
+ZeroDivisionError: integer modulo by zero

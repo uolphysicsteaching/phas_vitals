@@ -24,10 +24,27 @@ from util.views import (
 class VITALResultColumn(Column):
     """Handles displaying test result information."""
 
+    status_class_map = {
+        "Started": "table-primary",
+        "Finished": "table-secondary",
+        "Not Started": "",
+    }
+
     def __init__(self, **kargs):
         """Mark the header table to user vertical oriented text."""
         attrs = kargs.pop("attrs", {})
-        attrs.update({"th": {"class": "vertical"}})
+        vital = kargs.pop("vital")
+        if vital is not None:
+            attrs.update(
+                {
+                    "th": {
+                        "class": f"vertical vital_link {self.status_class_map[vital.status]}",
+                        "id": f"vital_{vital.pk}",
+                    },
+                }
+            )
+        else:
+            attrs.update({"th": {"class": f"vertical"}})
         kargs["attrs"] = attrs
         super().__init__(**kargs)
 
@@ -59,7 +76,24 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
         """Setup instance variables."""
         self.module = None
         self.vitals = []
+        self._ix = -1
+        self._entries = []
         super().__init__(*args, **kargs)
+
+    @property
+    def entries(self):
+        """Cache entries between metrhods."""
+        if len(self._entries) == 0:
+            self._entries = self.get_entries()
+        return self._entries
+
+    @property
+    def _row_id(self):
+        """Generate a unique ID from each row based onth e student number."""
+        if not len(self.entries):
+            return ""
+        self._ix = (self._ix + 1) % len(self.entries)
+        return f"student_{self.entries[self._ix].student.number}"
 
     def form_valid(self, form):
         """Update self.module with the module selected in the form."""
@@ -72,9 +106,10 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
         """Construct the django-tables2 table class for this view."""
         attrs = {}
         for vital in self.vitals:
-            attrs[vital.name] = VITALResultColumn(orderable=False)
-            attrs["Overall"] = VITALResultColumn(orderable=False)
+            attrs[vital.name] = VITALResultColumn(orderable=False, vital=vital)
+            attrs["Overall"] = VITALResultColumn(orderable=False, vital=None)
         klass = type("DynamicTable", (self.table_class,), attrs)
+        setattr(klass._meta, "row_attrs", {"class": "student_link", "id": self._row_id})
         return klass
 
     def get_context_data(self, **kwargs):
@@ -90,9 +125,8 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
     def get_table_data(self):
         """Fill out the table with data, creating the entries for the MarkType columns to interpret."""
         table = []
-        entries = self.get_entries()
 
-        for entry in entries:
+        for entry in self.entries:
             record = {  # Standard student information entries
                 "student": entry.student.display_name,
                 "number": entry.student.number,

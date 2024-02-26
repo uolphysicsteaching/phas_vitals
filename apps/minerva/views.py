@@ -263,10 +263,22 @@ class StreamingImportTestsHistoryView(ImportTestHistoryView):
 class TestResultColumn(Column):
     """Handles displaying test result information."""
 
+    status_class_map = {
+        "Overdue": "table-warning",
+        "Released": "table-primary",
+        "Finished": "table-secondary",
+        "Not Started": "",
+    }
+
     def __init__(self, **kargs):
         """Mark the header table to user vertical oriented text."""
         attrs = kargs.pop("attrs", {})
-        attrs.update({"th": {"class": "vertical"}})
+        test = kargs.pop("test")
+        attrs.update(
+            {
+                "th": {"class": f"vertical test_link {self.status_class_map[test.status]}", "id": f"vital_{test.pk}"},
+            }
+        )
         kargs["attrs"] = attrs
         self.mode = kargs.pop("mode", "score")
         super().__init__(**kargs)
@@ -317,7 +329,24 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
         self.module = None
         self.mode = "scor3e"
         self.tests = []
+        self._entries = []
+        self._ix = -1
         super().__init__(*args, **kargs)
+
+    @property
+    def entries(self):
+        """Cache entries between metrhods."""
+        if len(self._entries) == 0:
+            self._entries = self.get_entries()
+        return self._entries
+
+    @property
+    def _row_id(self):
+        """Generate a unique ID from each row based onth e student number."""
+        if not len(self.entries):
+            return ""
+        self._ix = (self._ix + 1) % len(self.entries)
+        return f"student_{self.entries[self._ix].student.number}"
 
     def form_valid(self, form):
         """Update self.module with the module selected in the form."""
@@ -331,8 +360,9 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
         """Construct the django-tables2 table class for this view."""
         attrs = {}
         for test in self.tests:
-            attrs[shorten(test.name, width=30)] = TestResultColumn(orderable=False, mode=self.mode)
+            attrs[shorten(test.name, width=30)] = TestResultColumn(orderable=False, mode=self.mode, test=test)
         klass = type("DynamicTable", (self.table_class,), attrs)
+        setattr(klass._meta, "row_attrs", {"class": "student_link", "id": self._row_id})
         return klass
 
     def get_context_data(self, **kwargs):
@@ -348,9 +378,8 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
     def get_table_data(self):
         """Fill out the table with data, creating the entries for the MarkType columns to interpret."""
         table = []
-        entries = self.get_entries()
 
-        for entry in entries:
+        for entry in self.entries:
             record = {  # Standard student information entries
                 "student": entry.student.display_name,
                 "number": entry.student.number,

@@ -13,7 +13,7 @@ class BaseTable(Table):
         orderable = False
         template_name = "django_tables2/bootstrap5-responsive.html"
 
-    student = Column(orderable=False)
-    number = Column(orderable=False)
-    programme = Column(orderable=False)
-    status = Column(attrs={"th": {"class": "vertical"}}, orderable=False)
+    student = Column(orderable=False, attrs={"td": {"class": "student"}})
+    number = Column(orderable=False, attrs={"td": {"class": "SID"}})
+    programme = Column(orderable=False, attrs={"td": {"class": "Prgoramme"}})
+    status = Column(attrs={"th": {"class": "vertical"}, "td": {"class": "status"}}, orderable=False)

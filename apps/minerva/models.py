@@ -1,5 +1,6 @@
 # Python imports
 import re
+from datetime import timedelta
 from os import path
 
 # Django imports
@@ -7,6 +8,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.forms import ValidationError
+from django.utils import timezone as tz
 
 # external imports
 from constance import config
@@ -155,6 +157,24 @@ class Test_Manager(models.Manager):
 
     key_pattern = re.compile(r"(?P<name>.*)\s\((?P<module__code>[^\)]*)\)")
 
+    def get_queryset(self):
+        """Annotate the query set with additional information based on the time."""
+        zerotime = timedelta(0)
+        qs = super().get_queryset()
+        qs = qs.annotate(
+            from_release=tz.now() - models.F("release_date"),
+            from_recommended=tz.now() - models.F("recommended_date"),
+            from_due=tz.now() - models.F("grading_due"),
+        ).annotate(
+            status=models.Case(
+                models.When(from_due__gte=zerotime, then=models.Value("Finished")),
+                models.When(from_recommended__gte=zerotime, then=models.Value("Overdue")),
+                models.When(from_release__gte=zerotime, then=models.Value("Released")),
+                default=models.Value("Not Started"),
+            )
+        )
+        return qs
+
     def get_by_natural_key(self, name):
         """Use ythe string representation as a natural key."""
         if match := self.key_pattern.match(name):
@@ -208,11 +228,33 @@ class Test(models.Model):
 class TestScoreManager(models.Manager):
     """Annotate with number of attempts."""
 
-    def get_queryset(
-        self,
-    ):
+    def get_queryset(self):
         """Annoteate query set with number of attempts at test."""
-        return super().get_queryset().annotate(attempt_count=models.Count("attempts"))
+        zerotime = timedelta(0)
+        qs = super().get_queryset()
+        qs = (
+            qs.annotate(attempt_count=models.Count("attempts"))
+            .annotate(
+                from_release=tz.now() - models.F("test__release_date"),
+                from_recommended=tz.now() - models.F("test__recommended_date"),
+                from_due=tz.now() - models.F("test__grading_due"),
+            )
+            .annotate(
+                test_status=models.Case(
+                    models.When(from_due__gte=zerotime, then=models.Value("Finished")),
+                    models.When(from_recommended__gte=zerotime, then=models.Value("Overdue")),
+                    models.When(from_release__gte=zerotime, then=models.Value("Released")),
+                    default=models.Value("Not Started"),
+                )
+            )
+            .annotate(
+                standing=models.Case(
+                    models.When(passed=False, then=models.F("test_status")), default=models.Value("Ok")
+                )
+            )
+        )
+
+        return qs
 
 
 class Test_Score(models.Model):

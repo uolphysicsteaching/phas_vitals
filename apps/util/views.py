@@ -12,9 +12,16 @@ class IsStudentViewixin(UserPassesTestMixin):
     login_url = "/login"
 
     def test_func(self):
-        """Test if you a member of the correct group or have the staff/superuser flag set."""
+        """Test if you a member of the correct group or have the staff/superuser flag set.
+
+        If username is in self.kwargs, then the logged in username needs to match the username kwargs.
+        """
         if not hasattr(self, "request") or self.request.user.is_anonymous:
             return False
+        if username := self.kwargs.get("username", None):
+            return self.request.user.is_staff or (
+                self.request.user.is_member("Student") and self.request.user.username == username
+            )
         return self.request.user.is_staff or self.request.user.is_member("Student")
 
 

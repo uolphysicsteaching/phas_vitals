@@ -9,11 +9,38 @@
         writing-mode: vertical-rl;
         text-orientation: mixed;
     }
+    .test_link {
+        cursor: pointer;
+    }
+    .test_link:hover {
+        box-shadow: inset 0px 0px 4px 4px #48abe0;
+    }
+    .student_link td:first-child {
+            cursor: pointer;
+        }
+    .student_link:hover {
+            box-shadow: inset 0px 0px 4px 4px #48abe0;
+    }
 </style>
 {% endblock css%}
 {% block javascript %}
 {{ block.super }}
 {{ form.media }}
+<script>
+$(document).ready(function () {
+    $(".test_link").click(function () {
+        var id=$(this).attr("id").split("_")[1];
+        window.location.href = "/minerva/detail/"+id+"/";
+
+    });
+    $(".student").click(function () {
+        var id=$(this).parent().attr("id").split("_")[1];
+        window.location.href = "/accounts/detail/"+id+"/";
+
+    });
+
+});
+</script>
 {% endblock %}
 
 {% block content %}

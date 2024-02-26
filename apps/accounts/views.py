@@ -2,14 +2,15 @@
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.template import loader
-from django.views.generic import FormView
+from django.views.generic import FormView, TemplateView
 
 # external imports
 from util.spreadsheet import TutorReportSheet, save_virtual_workbook
-from util.views import IsSuperuserViewMixin
+from util.views import IsStudentViewixin, IsSuperuserViewMixin
 
 # app imports
 from .forms import TutorSelectForm
+from .models import Account
 
 TEMPLATE_PATH = settings.PROJECT_ROOT_PATH / "run" / "templates" / "Tutor_Report.xlsx"
 
@@ -37,3 +38,14 @@ class TutorGroupEmailsView(IsSuperuserViewMixin, FormView):
             email.attach(f"{tutor.initials}.xlsx", contents, "application/vnd.ms-excel")
             email.send()
         return super().form_valid(form)
+
+
+class StudentSummaryView(IsStudentViewixin, TemplateView):
+    template_name = "accounts/summary.html"
+
+    def get_context_data(self, **kwargs):
+        """Get data for the student view."""
+        user = Account.objects.get(username=self.kwargs["username"])
+        mods = user.modules.all()
+        VITALS = user.VITALS.model.filter(module__in=mods).order_by("module", "start_date")
+        Tests = user.tests.model.filter(module__in=mods).order_by("released_date")

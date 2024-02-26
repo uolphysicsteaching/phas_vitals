@@ -1,5 +1,6 @@
 # Python imports
 import re
+from datetime import timedelta
 
 # Django imports
 from django.core.exceptions import ObjectDoesNotExist
@@ -29,6 +30,13 @@ class VITAL_Result(models.Model):
     class Meta:
         constraints = [models.UniqueConstraint(fields=["vital", "user"], name="Singleton mapping student and vital")]
 
+    @property
+    def status(self):
+        """Calculate the status of this result object."""
+        if self.passed:
+            return "Ok"
+        return VITAL.objects.get(pk=self.vital.pk).status
+
 
 class VITAL_Manager(models.Manager):
     """Model Manager for VITALs to support natural keys."""
@@ -44,11 +52,22 @@ class VITAL_Manager(models.Manager):
     def get_queryset(self):
         """Annoteate the queryset with date information."""
         qs = super().get_queryset()
-        qs = qs.annotate(
-            release=models.Min("tests__release_date"),
-            start_date=models.Min("tests__recommended_date"),
-            end_date=models.Max("tests__recommended_date"),
-        )
+        zerotime = timedelta(0)
+        qs = (
+            qs.annotate(
+                release=models.Min("tests__release_date"),
+                start_date=models.Min("tests__recommended_date"),
+                end_date=models.Max("tests__recommended_date"),
+            )
+            .annotate(from_start=tz.now() - models.F("start_date"), from_end=tz.now() - models.F("end_date"))
+            .annotate(
+                status=models.Case(
+                    models.When(from_end__gte=zerotime, then=models.Value("Finished")),
+                    models.When(from_start__gte=zerotime, then=models.Value("Started")),
+                    default=models.Value("Not Started"),
+                )
+            )
+        ).order_by("module", "start_date")
         return qs
 
 
