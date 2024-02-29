@@ -1,5 +1,6 @@
 # Django imports
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMessage
 from django.template import loader
 from django.views.generic import FormView, TemplateView
@@ -45,7 +46,35 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         """Get data for the student view."""
-        user = Account.objects.get(username=self.kwargs["username"])
-        mods = user.modules.all()
-        VITALS = user.VITALS.model.filter(module__in=mods).order_by("module", "start_date")
-        Tests = user.tests.model.filter(module__in=mods).order_by("released_date")
+        if "username" in self.kwargs:
+            user = Account.objects.get(username=self.kwargs["username"])
+        else:
+            user = Account.objects.get(number=self.kwargs["number"])
+        modules = user.modules.all()
+        VITALS = user.VITALS.model.objects.filter(module__in=modules).order_by("module", "start_date")
+        Tests = user.tests.model.objects.filter(module__in=modules).order_by("release_date")
+        test_scores = {}
+        for test in Tests:
+            try:
+                test_scores[test] = user.test_results.get(test=test)
+            except ObjectDoesNotExist:
+                new_tr = user.test_results.model(user=user, test=test, passed=False, score=None)
+                new_tr.test_status = new_tr.manual_test_satus
+                test_scores[test] = new_tr
+        vitals_results = {}
+        for vital in VITALS:
+            try:
+                vitals_results[vital] = user.vital_results.get(vital=vital)
+            except ObjectDoesNotExist:
+                new_vr = user.vitals_result.model(user=user, vital=vital, passed=False)
+                vitals_results[vital] = new_vr
+        context = super().get_context_data(**kwargs)
+        context |= {
+            "user": user,
+            "modules": modules,
+            "VITALS": VITALS,
+            "Tests": Tests,
+            "scores": test_scores,
+            "vitals_results": vitals_results,
+        }
+        return context

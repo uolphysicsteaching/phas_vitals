@@ -164,4 +164,4 @@ class Account(AbstractUser):
         if len(initials) > 1:
             return initials
         else:
-            return self.usernameí
+            return self.username

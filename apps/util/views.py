@@ -7,7 +7,11 @@ from django.views.generic import TemplateView, View
 
 # Create your views here.
 class IsStudentViewixin(UserPassesTestMixin):
-    """Provides a class that allows superusers,staff and students to login."""
+    """Provides a class that allows superusers,staff and students to login.
+
+    IF the view.kwargs containst a username or a number then restrict the view to matching the username or
+    number of the currently logged in user account.
+    """
 
     login_url = "/login"
 
@@ -18,9 +22,13 @@ class IsStudentViewixin(UserPassesTestMixin):
         """
         if not hasattr(self, "request") or self.request.user.is_anonymous:
             return False
-        if username := self.kwargs.get("username", None):
+        if (username := self.kwargs.get("username", None)) is not None:
             return self.request.user.is_staff or (
                 self.request.user.is_member("Student") and self.request.user.username == username
+            )
+        if (number := self.kwargs.get("number", None)) is not None:
+            return self.request.user.is_staff or (
+                self.request.user.is_member("Student") and self.request.user.number == number
             )
         return self.request.user.is_staff or self.request.user.is_member("Student")
 

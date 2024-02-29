@@ -19,9 +19,38 @@ class VITAL_Test_Map(models.Model):
     sufficient = models.BooleanField(default=True)
 
 
+class VITAL_ResultManager(models.Manager):
+    """Annotate results with vitals status fields."""
+
+    def get_queryset(self):
+        """Annoteate the queryset with date information."""
+        qs = super().get_queryset()
+        zerotime = timedelta(0)
+        qs = (
+            qs.annotate(
+                vital_release=models.Min("vital__tests__release_date"),
+                vital_start_date=models.Min("vital__tests__recommended_date"),
+                vital_end_date=models.Max("vital__tests__recommended_date"),
+            )
+            .annotate(
+                from_start=tz.now() - models.F("vital_start_date"), from_end=tz.now() - models.F("vital_end_date")
+            )
+            .annotate(
+                vital_status=models.Case(
+                    models.When(from_end__gte=zerotime, then=models.Value("Finished")),
+                    models.When(from_start__gte=zerotime, then=models.Value("Started")),
+                    default=models.Value("Not Started"),
+                )
+            )
+        ).order_by("vital__module", "vital_start_date")
+        return qs
+
+
 class VITAL_Result(models.Model):
     """Provide a model for connecting a VITAL to a student."""
 
+    objects = VITAL_ResultManager()
+    # Field definitions
     vital = models.ForeignKey("VITAL", on_delete=models.CASCADE, related_name="student_results")
     user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="vital_results")
     passed = models.BooleanField(default=False)
@@ -36,6 +65,17 @@ class VITAL_Result(models.Model):
         if self.passed:
             return "Ok"
         return VITAL.objects.get(pk=self.vital.pk).status
+
+    @property
+    def bootstrap5_class(self):
+        """Get a Bootstrap 5 status class."""
+        mapping = {
+            "Ok": "bg-success text-light",  # PAssed
+            "Finished": "bg-danger text-light",  # Overdue passing
+            "Started": "bg-warning text-dark",  # Underway, not passed yet
+            "Not Started": "text-dark",  # In the future, no worries yet
+        }
+        return mapping.get(self.status, "")
 
 
 class VITAL_Manager(models.Manager):

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+}
+{% block content %}
+<div class="md-12">
+    <div class="row justify-content-lg-center">
+        <h2 class="display-6">{{ user.first_name }} {{ user.last_name }} ({{ user.number }})</h2>
+    </div>
+    <div class="row">
+        <div class="col-md-4"><h3>Tutor:</div>
+        <div class="col-md-8"><h3><a href="mailto:{{ user.apt.email }}">{{ user.apt.formal_name }}</a></hj3></div>
+    <div>
+    <div class="row">
+        <div class="col-md-4"><h3>Degree Programme:</div>
+        <div class="col-md-8"><h3>{{ user.programme.name }} ({{ user.programme.code }})</hj3></div>
+    <div>
+    <ul class="nav nav-tabs" id="results_tab" role="tablist">
+        <li class="nav-item">
+            <a href="#tests" class="nav-link active" data-bs-toggle="tab">Homework Results</a>
+        </li>
+        <li class="nav-item">
+            <a href="#VITALS" class="nav-link" data-bs-toggle="tab">VITALS status</a>
+        </li>
+
+    </ul>
+    <div class="tab-content" id="results-tab-content">
+      <div class="tab-pane fade show active" id="tests" role="tabpanel" aria-labelledby="tests-tab">
+          <h3>Homework Results</h3>
+          {% for test_score in scores.values %}
+          <div class="row {% if test_score.test_status == 'Overdue' %}bg-secondary text-light{% elif test_score.test_status == 'Released' %}bg-primary text-light{% else %}text-dark{% endif %}">
+              <div class="col-md-4"><strong>{{ test_score.test.name }} ({{ test_score.test.score_possible }} marks)</strong><br/>
+              Released: {{ test_score.test.release_date }}<br/>
+              Recommended: {{ test_score.test.recommended_date }}</div>
+              <div class="col-md-2  d-flex justify-content-md-center align-items-md-center
+              {% if test_score.passed %}
+                   bg-success text-light">Passed {{ test_score.attempts.count }}attempt{% if test_score.attempts.count > 1%}s{% endif %}
+              {% elif test_score.score is None %}
+                   bg-danger text-light"> Not Attempted
+              {% else %}
+                   bg-warning text-dark">Not Passed
+              {% endif %}</div>
+              <div class="col-md-2 d-flex justify-content-md-center align-items-md-center">{{ test_score.score }} / {{ test_score.test.score_possible }}</div>
+              <div class="col-md-4">Passes: <ul>{% for vm in test_score.test.vitals_mappings.all %}
+                  <li>{{ vm.vital.name  }} ({{ vm.vital.module.code }})</li>
+                  {% endfor %}</ul></div>
+          </div>
+          {% endfor %}
+      </div>
+      <div class="tab-pane fade" id="VITALS" role="tabpanel" aria-labelledby="VITALS-tab">
+          <h3>VITALS passed/not passed</h3>
+          {% for vital_result in vitals_results.values %}
+          <div class="row {% if vital_result.vital_status == 'Finished' %}bg-secondary text-light{% elif vital_result.vital_status == 'Started' %}bg-primary text-light{% else %}text-dark{% endif %}">
+              <div class="col-md-4"><strong>{{ vital_result.vital.name }} ({{ vital_result.vital.module.code }}) {{ vital_result.vital_status }}</strong><br/>
+              Passed: {{ vital_result.date_passed }}</div>
+              <div class="col-md-2  d-flex justify-content-md-center align-items-md-center {{ vital_result.bootstrap5_class }}">
+              {% if vital_result.passed %}
+                Passed
+              {% elif vital_result.vital_status != "Not Started" %}
+                Not Passed
+              {% else %}
+                &nbsp;
+              {% endif %}</div>
+              <div class="col-md-4">Passed by passing: <ul>{% for vm in vital_result.vital.tests_mappings.all %}
+                  <li>{{ vm.test.name  }} ({{ vm.test.module.code }}) {{ vm.test.passing_score }} / {{ vm.test.score_possible }}</li>
+                  {% endfor %}</ul></div>
+          </div>
+          {% endfor %}
+
+      </div>
+    </div>
+
+</div>
+
+{% endblock content %}

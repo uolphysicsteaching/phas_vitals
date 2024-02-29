@@ -274,6 +274,21 @@ class Test_Score(models.Model):
             models.UniqueConstraint(fields=["test", "user"], name="Singleton mapping student and test_score")
         ]
 
+    @property
+    def manual_test_satus(self):
+        """Do the same as the annotation test_status from the model manager, but in Python."""
+        zerotime = timedelta(0)
+        from_release = tz.now() - self.test.release_date
+        from_recommended = tz.now() - self.test.recommended_date
+        from_due = tz.now() - self.test.grading_due
+        if from_due >= zerotime:
+            return "Finished"
+        if from_recommended >= zerotime:
+            return "Overdue"
+        if from_release >= zerotime:
+            return "Released"
+        return "Bit Started"
+
     def check_passed(self, orig=None):
         """Check whether the user has passed the test."""
         best_score = self.attempts.aggregate(models.Max("score", default=0)).get("score__max", 0.0)
