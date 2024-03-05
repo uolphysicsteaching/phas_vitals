@@ -32,7 +32,7 @@
         {%endblock css %}
     </head>
     <body>
-        <header id="masthead" role="banner" class="container-lg">
+        <header id="masthead" class="container-lg">
             {% block header %}
             <div class="float-start menu-button">
                 <button id="btn__nav" class="fas fa-bars fa-lg" type="button" data-bs-toggle="offcanvas" data-bs-target="#sitemenu" aria-controls="sitemenu">
@@ -59,14 +59,14 @@
                 <div class="local-header-title" role="navigation" aria-label="Home page link">
                     <a href="/">Physics VITALs Tracker</a>
                 </div>
-                <div class="local-header-search text-end">
-                    <button id="searchbutton" class="bi bi-search" type="button" data-bs-toggle="collapse" data-bs-target="#sitesearch" role="button" aria-label="Open site search" aria-expanded="false" aria-controls="sitesearch">
+                <div class="local-header-search text-end" role="search">
+                    <button id="searchbutton" class="bi bi-search" type="button" data-bs-toggle="collapse" data-bs-target="#sitesearch" aria-label="Open site search" aria-expanded="false" aria-controls="sitesearch">
                         <span class="icon-font-text">Search</span>
                     </button>
                 </div>
             </div>
         </div>
-        <nav id="mainmenu" class="container-lg mainmenu navbar bg-light navbar-expand" role="navigation">
+        <nav id="mainmenu" class="container-lg mainmenu navbar bg-light navbar-expand" aria-label="Main Menu bar">
             <div class="container-fluid navbar-inner">
                 {% sitetree_menu from "menu" include "trunk" template "sitetree/menu_bootstrap5.html" %}
             </div>

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load bootstrap3 %}
+{% block title %}{{ block.super }}Marksheets Overview{% endblock title %}
+
+{%block javascript  %}
+{{ block.super }}
+{{ formset.media }}
+<script type="text/javascript">
+    $(function() {
+        $('tr.form-row').formset();
+    })
+</script>
+{% endblock %}
+
+{% block page %}
+<h2>Tutorial Assignments</h2>
+{% if errors %}
+<h3>Some students not found</h3>
+<table>
+<tr><th>Student</th><th>Problem</th></tr>
+{% for fail in errors %}
+<tr><td>{{ fail.Student}}</td><td>{{ fail.reason }}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
+<p>Upload a spreadsheet which has at least two columns as follows:</p>
+<ul>
+<li><strong>Student ID</strong><br/> The Banner ID or the IT username of the student to assign to the tutorial group (Student accounts
+should already have been imported from Banner via Faculty Web Services!)</li>
+<li><strong>Tutor ID</strong><br/> The IT username of the tutor or their surname.</li>
+<li><i>Optional</i> <strong>Group ID</strong> Either an integer to indicate which of the tutor's group for that cohort
+ or a string to specify the exact tutor group code. By default the code takes the pattern [tutor initials]_[cohort]
+ or [tutor initials]_[cohort]_[number]</li>
+</ul>
+<br/>
+<form action="/tutorial/admin/assign/" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form }}
+  {% buttons %}
+    <button type="submit" class="btn btn-primary">
+      {% bootstrap_icon "star" %} Submit
+    </button>
+  {% endbuttons %}
+
+</form>
+{% endblock page %}

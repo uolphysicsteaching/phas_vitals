@@ -113,9 +113,6 @@ class Account(AbstractUser):
         choices=LEVEL_OF_STUDY,
     )
     registration_status = models.CharField(max_length=10, blank=True, null=True, default="")
-    apt = models.ForeignKey(
-        "Account", on_delete=models.SET_NULL, blank=True, null=True, limit_choices_to=tutor_Q, related_name="tutees"
-    )
 
     def natural_key(self):
         """Use the username as a natural key."""
@@ -125,6 +122,13 @@ class Account(AbstractUser):
     def display_name(self):
         """Display name is what we commonly use for lists of account objects."""
         return f"{self.last_name},{self.first_name}"
+
+    @cached_property
+    def apt(self):
+        """Property to get to the APT."""
+        if self.tutorial_group:
+            return self.tutorial_group.first().tutor
+        return None
 
     @cached_property
     def formal_name(self):

@@ -77,6 +77,27 @@ class VITAL_Result(models.Model):
         }
         return mapping.get(self.status, "")
 
+    @property
+    def icon(self):
+        """Get a suitable bootstrap5 icon class given our standing."""
+        mapping = {
+            "Ok": "bi bi-check",  # PAssed
+            "Finished": "bi bi-x",  # Overdue passing
+            "Started": "bi bi-x",  # Underway, not passed yet
+        }
+        return mapping.get(self.status, "")
+
+    @property
+    def tests_text(self):
+        """Get text for advise about tests."""
+        mapping = {
+            "Ok": "You passed at least one of:",  # PAssed
+            "Finished": "You need to pass at least one of:",  # Overdue passing
+            "Started": "Pass one of these:",  # Underway, not passed yet
+            "Not Started": "You will need to pass one of:",  # In the future, no worries yet
+        }
+        return mapping.get(self.status, "")
+
 
 class VITAL_Manager(models.Manager):
     """Model Manager for VITALs to support natural keys."""
@@ -128,6 +149,38 @@ class VITAL(models.Model):
     def natural_key(self):
         """Set natural key of a VITAL to be the string representation."""
         return str(self)
+
+    @property
+    def manual_satus(self):
+        """Calculate the same as the annotation, but in python code."""
+        zerotime = timedelta(0)
+        data = self.tests.aggregate(
+            release=models.Min("release_date"),
+            start=models.Min("recommended_date"),
+            end=models.Max("recommended_date"),
+        )
+        from_start = tz.now() - data["start"]
+        from_end = tz.now() - data["end"]
+        if from_end >= zerotime:
+            return "Finished"
+        if from_start >= zerotime:
+            return "Started"
+        return "Not Started"
+
+    @property
+    def bootstrap5_class(self):
+        """Return a suitable background class for the urrent VITAL status."""
+        mapping = {
+            "Started": "bg-primary text-light",
+            "Finished": "bg-secondary text-light",
+            "Not Started": "bg-light test-dark",
+        }
+        return mapping.get(self.manual_satus, "")
+
+    @property
+    def url(self):
+        """Return a url for the detail page for this vital."""
+        return f"/vital/detail/{self.pk}/"
 
     def passed(self, user, passed=True, date_passed=None):
         """Record the user as having passed this vital."""

@@ -76,7 +76,6 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
         """Setup instance variables."""
         self.module = None
         self.vitals = []
-        self._ix = -1
         self._entries = []
         super().__init__(*args, **kargs)
 
@@ -86,14 +85,6 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
         if len(self._entries) == 0:
             self._entries = self.get_entries()
         return self._entries
-
-    @property
-    def _row_id(self):
-        """Generate a unique ID from each row based onth e student number."""
-        if not len(self.entries):
-            return ""
-        self._ix = (self._ix + 1) % len(self.entries)
-        return f"student_{self.entries[self._ix].student.number}"
 
     def form_valid(self, form):
         """Update self.module with the module selected in the form."""
@@ -109,7 +100,7 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
             attrs[vital.name] = VITALResultColumn(orderable=False, vital=vital)
             attrs["Overall"] = VITALResultColumn(orderable=False, vital=None)
         klass = type("DynamicTable", (self.table_class,), attrs)
-        setattr(klass._meta, "row_attrs", {"class": "student_link", "id": self._row_id})
+        setattr(klass._meta, "row_attrs", {"class": "student_link"})
         return klass
 
     def get_context_data(self, **kwargs):
@@ -167,7 +158,7 @@ class ShowTutorVitalResultsView(IsStaffViewMixin, BaseShowvitalResults):
     def get_entries(self):
         """Get all module enrollments for the module."""
         return (
-            ModuleEnrollment.objects.filter(module=self.module, student__apt=self.request.user)
+            ModuleEnrollment.objects.filter(module=self.module, student__tutorial_group__tutor=self.request.user)
             .prefetch_related("student", "student__vital_results", "student__programme", "status")
             .order_by("student__last_name", "student__first_name")
         )

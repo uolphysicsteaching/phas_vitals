@@ -1,0 +1,45 @@
+{% load bootstrap3 %}
+<div id="engagement_grid">
+<form class="ajax" action="{{ url }}" method="post" enctype="multipart/form-data">{% csrf_token %}
+
+        <div class="col-md-12">
+        {% if form.errors %}
+        {% bootstrap_form_errors form %}
+        {% endif %}
+        {% for field in form %}
+            <div class="col-md-6">
+                {% bootstrap_field field layout="inline" %}
+            </div>
+        {% endfor %}
+        </div>
+
+  <div class="col-md-12">
+      <div class="col-md-6">
+          &nbsp;
+     </div>
+     <div class="col-md-6">
+    <input class="btn btn-success btn-lg" type="submit" value="Save" />
+    </dv>
+  </div>
+</form>
+<script>
+$('form.ajax').submit( function(event) {
+    $.ajax({
+        url     : $(this).attr('action'),
+        type    : $(this).attr('method'),
+        dataType: 'json',
+        data    : $(this).serialize(),
+        success : function( data, event ) {
+                    $("#engagement_grid").dialog("close");
+                  },
+        error: function (xhr, ajaxOptions, thrownError) {
+                alert(xhr.status);
+                alert(thrownError);
+              }
+    });
+    event.stopPropagation();
+    event.preventDefault();
+    return false;
+});
+</script>
+</div>

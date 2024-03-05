@@ -1,58 +1,59 @@
 name: django
 channels:
+  - defaults
   - phygbu
   - conda-forge
-  - defaults
 dependencies:
-  - django-tinymce
-  - pygraphviz
-  - django-admin-sortable2
-  - django-extra-views
-  - django-ajax-selects
-  - django=4.2.10
-  - django-cookie-law
-  - django-extensions
-  - psycopg2
-  - cookiecutter
-  - openssl
-  - django-ical
-  - django-grappelli=3.0.6
-  - ipython
-  - pydot
   - python=3.11
-  - django-picklefield
-  - simple_html_table
-  - django-autocomplete-light
-  - pyparsing
-  - ca-certificates
-  - django-floppyforms
-  - django-colorful
-  - django-constance
-  - django-smart-selects
-  - djangorestframework
-  - django-import-export=3.2.0
-  - django-email-obfuscator
-  - django-simple-file-handler
-  - django-bootstrap-datepicker-plus
-  - django-mathfilters
-  - django-bootstrap5
+  - django==4.2.10
   - mamba
-  - django-suit
-  - django-tables2
-  - django-filter
-  - django-sitetree
-  - django-cors-headers
-  - tablib=3.5.0
-  - django-baton
-  - django-photologue
+  - ipython
+  - ca-certificates
+  - openssl
   - certifi
+  - django-mathfilters
+  - django-import-export==3.3.7
+  - django-suit
+  - django-tinymce
+  - tablib=3.5.0
+  - djangorestframework
+  - django-ajax-selects
+  - django-constance
+  - django-grappelli=3.0.6
+  - django-photologue
+  - django-simple-file-handler
+  - psycopg2
+  - django-sitetree
+  - django-bootstrap5
+  - django-extra-views
+  - simple_html_table
+  - django-picklefield
+  - django-ical
+  - django-autocomplete-light
+  - django-bootstrap-datepicker-plus
+  - django-floppyforms
+  - cookiecutter
+  - django-admin-sortable2
+  - django-colorful
+  - django-cookie-law
+  - django-cors-headers
+  - django-tables2=2.7
+  - django-email-obfuscator
+  - django-filter
+  - django-smart-selects
+  - django-baton
+  - pygraphviz
+  - pydot
+  - pyparsing
+  - django-extensions
+  - black
+  - codespell
+  - isort
   - django-oauth-toolkit
-  - filemagic
+  - openpyxl
   - pandas
   - whitenoise
   - pytz
-  - openpyxl
-  - isort
-  - codespell
-  - black
+  - filemagic
+  - matplotlib
 prefix: C:\ProgramData\anaconda3\envs\django

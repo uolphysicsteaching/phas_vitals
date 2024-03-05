@@ -48,9 +48,7 @@ class TutorSelectForm(forms.Form):
         js = ["jquery-multiselect/jquery.multiselect.js", "jquery-multiselect/jquery.multiselect.init.js"]
 
     apt = forms.ModelMultipleChoiceField(
-        queryset=Account.objects.annotate(tutee_count=Count("tutees"))
-        .filter(tutee_count__gt=0)
-        .order_by("last_name", "first_name"),
+        queryset=Account.objects.filter(is_staff=True).order_by("last_name", "first_name"),
     )
 
 

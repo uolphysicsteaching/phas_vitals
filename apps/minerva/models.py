@@ -208,6 +208,37 @@ class Test(models.Model):
         """Nicer name."""
         return f"{self.name} ({self.module.code})"
 
+    @property
+    def bootstrap5_class(self):
+        """Return suitable bootstrap5 classes based on the test status."""
+        mapping = {
+            "Not Started": "bg-light text-dark",
+            "Released": "bg-primary text-light",
+            "Overdue": "bg-secondary text-light",
+            "Finished": "bg-dark text-light",
+        }
+        return mapping.get(self.manual_satus, "")
+
+    @property
+    def manual_satus(self):
+        """Do the same as the annotation test_status from the model manager, but in Python."""
+        zerotime = timedelta(0)
+        from_release = tz.now() - self.release_date
+        from_recommended = tz.now() - self.recommended_date
+        from_due = tz.now() - self.grading_due
+        if from_due >= zerotime:
+            return "Finished"
+        if from_recommended >= zerotime:
+            return "Overdue"
+        if from_release >= zerotime:
+            return "Released"
+        return "Not Started"
+
+    @property
+    def url(self):
+        """Return a url for the detail page for this vital."""
+        return f"/minerva/detail/{self.pk}/"
+
     def natural_key(self):
         """Return string representation a natural key."""
         return str(self)
@@ -277,17 +308,55 @@ class Test_Score(models.Model):
     @property
     def manual_test_satus(self):
         """Do the same as the annotation test_status from the model manager, but in Python."""
-        zerotime = timedelta(0)
-        from_release = tz.now() - self.test.release_date
-        from_recommended = tz.now() - self.test.recommended_date
-        from_due = tz.now() - self.test.grading_due
-        if from_due >= zerotime:
-            return "Finished"
-        if from_recommended >= zerotime:
-            return "Overdue"
-        if from_release >= zerotime:
-            return "Released"
-        return "Bit Started"
+        return self.test.manual_satus
+
+    @property
+    def manual_standing(self):
+        """Do the same thing as the annotation, but in python code."""
+        status = self.manual_test_satus
+        if self.passed:
+            status = "Ok"  # A pass is always ok
+        elif status in ["Finished", "Overdue"] and (not self.pk or self.attempts.count() == 0):
+            status = "Missing"
+        return status
+
+    @property
+    def bootstrap5_class(self):
+        """Get a Bootstrap 5 status class."""
+        mapping = {
+            "Ok": "bg-success text-light",  # PAssed
+            "Overdue": "bg-danger text-light",  # Past the recomemneded time
+            "Missing": "bg-dark text-light",  # No attempt at overdue test
+            "Finished": "bg-dark text-ligh",  # Overdue passing
+            "Released": "bg-warning text-dark",  # Underway, not passed yet
+            "Not Started": "text-dark",  # In the future, no worries yet
+        }
+        return mapping.get(self.manual_standing, "")
+
+    @property
+    def icon(self):
+        """Get a suitable bootstrap5 icon class given our standing."""
+        mapping = {
+            "Ok": "bi bi-check",  # PAssed
+            "Overdue": "bi bi-x",  # Past the recomemneded time
+            "Missing": "bi bi-dash-square-dotted",  # No attempt at overdue test
+            "Finished": "bi bi-x",  # Overdue passing
+            "Released": "bi bi-smartwatch",  # Underway, not passed yet
+        }
+        return mapping.get(self.manual_standing, "")
+
+    @property
+    def vitals_text(Self):
+        """Get a Label for whether we pass VITALS or not."""
+        mapping = {
+            "Ok": "You passed:",  # PAssed
+            "Overdue": "You can still pass:",  # Past the recomemneded time
+            "Missing": "You can still pass:",  # No attempt at overdue test
+            "Finished": "You would have passed:",  # Overdue passing
+            "Released": "You will pass:",  # Underway, not passed yet
+            "Not Started": "This will let you pass",
+        }
+        return mapping.get(Self.manual_standing, "")
 
     def check_passed(self, orig=None):
         """Check whether the user has passed the test."""

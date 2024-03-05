@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load tutorial_tags %}
+{% block title %}{{ block.super }}Marking Sheets for {{ user.displayname }}{% endblock title %}
+{% block javascript %}
+{{ block.super }}
+<script>
+$(document).ready(function() {
+    $("#engagement_grid").dialog({"autoOpen":false });
+    $("a.session").click(function(event){
+        var session=$(this).attr('id');
+        var req="/tutorial/engagement/submit/"+session;
+        console.log(req);
+        $.get(req, function(data) {
+            $("#dialog_container").html(data);
+            $("#engagement_grid").dialog({"model":true,
+                                        "autoOpen":true,
+                                        "width": 720,
+                                        "close":  function( event, ui ) {
+                                            location.reload();
+                                        },
+                                        "draggable":true });
+        })
+        event.stopPropagation();
+        event.preventDefault();
+        return false;
+    })
+})
+</script>
+{% endblock javascript %}
+{% block css %}
+{{ block.super }}
+<style>
+.semester {
+    text-align: center;
+}
+.active_semester {
+    background-color:#004a2c;
+    font-weight:bold;
+}
+td.active_semester>a:visited {
+    color: white;
+}
+td.active_semester>a:unvisited {
+    color: white;
+}
+</style>
+
+{% endblock css %}
+
+{% block page %}
+<h2>Record Student Attendance and Engagement with Tutorials</h2>
+<p>This page shows your first uyear tutees for the selected year and semester. Click on the header for a given week to Record
+attendance and engagement by your tutees for that week. The Status score and colour is based ont he average mark, weighted
+exponetially in favour of the most recent marked tutorial sessions.</p>
+
+<form action="" id="cohort_form" method="POST">
+{% csrf_token %}
+{{ form }}
+</form><br/>
+<table width=95% role="presentation" aria-label="Semester Selection">
+<tr>
+<td colspan=6 class='semester{% if semester == 1 %} active_semester {% endif %}'><a href=/tutorial/engagement_view/1/{{ cohort.name }}/>Semester 1</a></td>
+<td colspan=8 class='semester{% if semester == 2 %} active_semester {% endif %}'><a href=/tutorial/engagement_view/2/{{ cohort.name }}/>Semester 2</a></td>
+</tr>
+</table>
+{% for group in groups %}
+    <h2>Engagement Summary for Tutorial group {{ group.code }} {{ group.cohort }}
+    <a href=mailto:?to={{group.tutor.nice_email|urlencode }}&bcc={% for student in group.members %}{{ student.nice_email|urlencode }},{% endfor %}>Email Group</a></h2>
+    <table width=95% role="table" aria-label="Summary of student engagement: {{ group }}">
+    <tr>
+    <th id="students_{{ group.pk }}" colspan=2>Name of Student</th>
+    {% for session in sessions %}
+        <th id="session_{{ group.pk }}_{{ session.pk }}"><a href="/tutorial/engagement_view/" class="session" id="{{ group.pk }}:{{ session.pk }}">{{ session.name }}</a></th>
+    {% endfor %}
+    <th colspan=2 id="status_{{ group.pk }}">Status</th>
+    </tr>
+    {% for student in group.members %}
+        <tr>
+        <td headers="students_{{ group.pk }}">
+            <a href="/accounts/staff_view/{{ student.username }}">{{ student.display_name }}</a>
+        </td>
+        <td>T<br/>L</td>
+        {% engagement student semester cohort %}
+        <td colspan=2 style="background-color: {{ student.engagement_colour }}; color: {{ student.engagement_colour|comp_colour }}" headers="status_{{ group.pk }}">{{ student.engagement_label }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+{% endfor %}
+<div id="dialog_container" role="dialog" aria-label="Popup dialog for entering engagement data">
+<div id="engagement_grid">&nbsp;</div>
+</div>
+
+
+{% endblock page %}

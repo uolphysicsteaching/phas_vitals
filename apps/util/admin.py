@@ -9,6 +9,10 @@ from django.apps import apps
 from django.contrib import admin
 from django.db.models import Model
 
+# external imports
+from accounts.models import Account, Cohort
+from sitetree.admin import TreeItemAdmin as model_admin
+
 # Register your models here.
 
 
@@ -94,9 +98,6 @@ def patch_admin(model, **kargs):
                 setattr(model_admin, attr, value)
 
 
-# external imports
-from sitetree.admin import TreeItemAdmin as model_admin
-
 model_admin.fieldsets[0][1]["classes"] = (
     "baton-tabs-init",
     "baton-tab-fs-basic",
@@ -107,3 +108,97 @@ model_admin.fieldsets[0][1]["classes"] = (
 model_admin.fieldsets[1][1]["classes"] = ("tab-fs-access",)
 model_admin.fieldsets[2][1]["classes"] = ("tab-fs-display",)
 model_admin.fieldsets[3][1]["classes"] = ("tab-fs-extra",)
+
+
+class StudentListFilter(admin.SimpleListFilter):
+    """List Filter for student accou8nts."""
+
+    # Human-readable title which will be displayed in the
+    # right admin sidebar just above the filter options.
+    title = "Student"
+
+    # Parameter for the filter that will be used in the URL query.
+    parameter_name = "student"
+
+    def lookups(self, request, model_admin):
+        """Return a sorted list of student names."""
+        filt = {}
+        filt.update({"groups__name": "Student"})
+        res = Account.objects.filter(**filt).order_by("last_name", "first_name")
+        return tuple([(user.username, user.display_name) for user in res.all()])
+
+    def queryset(self, request, queryset):
+        """Return the object with a student of the right username."""
+        # Compare the requested value (either '80s' or '90s')
+        # to decide how to filter the queryset.
+        fields = [f.name for f in queryset.model._meta.get_fields()]
+        if self.value() is None:
+            return queryset
+        if "user" in fields:
+            return queryset.filter(user__username=self.value())
+        elif "student" in fields:
+            return queryset.filter(student__username=self.value())
+
+
+class StaffListFilter(admin.SimpleListFilter):
+    """Filter for staff accounts."""
+
+    # Human-readable title which will be displayed in the
+    # right admin sidebar just above the filter options.
+    title = "Staff"
+
+    # Parameter for the filter that will be used in the URL query.
+    parameter_name = "staff"
+
+    def lookups(self, request, model_admin):
+        """Return a sorted list of student names."""
+        filt = {}
+        filt.update({"is_staff": True})
+        res = Account.objects.filter(**filt).order_by("last_name", "first_name")
+        return tuple([(user.username, user.display_name) for user in res.all()])
+
+    def queryset(self, request, queryset):
+        """Return the object with a student of the right username."""
+        # Compare the requested value (either '80s' or '90s')
+        # to decide how to filter the queryset.
+        fields = [f.name for f in queryset.model._meta.get_fields()]
+        if self.value() is None:
+            return queryset
+        if "user" in fields:
+            return queryset.filter(user__username=self.value())
+        elif "tutor" in fields:
+            return queryset.filter(tutor__username=self.value())
+
+
+class CohortListFilter(admin.SimpleListFilter):
+    """Filter for students in a cohort."""
+
+    # Human-readable title which will be displayed in the
+    # right admin sidebar just above the filter options.
+    title = "Cohort"
+
+    # Parameter for the filter that will be used in the URL query.
+    parameter_name = "cohort"
+
+    def lookups(self, request, model_admin):
+        """Return a sorted list of student names."""
+        res = Cohort.objects.all()
+        return tuple([(x.name, x) for x in res])
+
+    def queryset(self, request, queryset):
+        """Return the object with a student of the right username."""
+        # Compare the requested value (either '80s' or '90s')
+        # to decide how to filter the queryset.
+        if self.value() is None:
+            return queryset
+        fields = [f.name for f in queryset.model._meta.get_fields()]
+        if "cohort" in fields:
+            return queryset.filter(cohort=self.value())
+        elif "user" in fields:
+            return queryset.filter(user__cohort=self.value())
+        elif "student" in fields:
+            return queryset.filter(student__cohort=self.value())
+        elif "tutorial" in fields:
+            return queryset.filter(tutorial__cohort=self.value())
+        else:
+            assert False

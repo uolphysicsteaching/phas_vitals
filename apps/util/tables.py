@@ -9,9 +9,8 @@ class BaseTable(Table):
     """Provides a table with columns for student name, number, programme and status code as per marksheets."""
 
     class Meta:
-        attrs = {"width": "100%", "class": "table"}
         orderable = False
-        template_name = "django_tables2/bootstrap5-responsive.html"
+        template_name = "util/table.html"
 
     student = Column(orderable=False, attrs={"td": {"class": "student"}})
     number = Column(orderable=False, attrs={"td": {"class": "SID"}})

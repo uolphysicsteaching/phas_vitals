@@ -64,10 +64,12 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
         vitals_results = {}
         for vital in VITALS:
             try:
-                vitals_results[vital] = user.vital_results.get(vital=vital)
+                vitals_results[vital.module] = vitals_results.get(vital.module, []) + [
+                    user.vital_results.get(vital=vital)
+                ]
             except ObjectDoesNotExist:
                 new_vr = user.vitals_result.model(user=user, vital=vital, passed=False)
-                vitals_results[vital] = new_vr
+                vitals_results[vital] = vitals_results.get(vital.module, []) + [new_vr]
         context = super().get_context_data(**kwargs)
         context |= {
             "user": user,

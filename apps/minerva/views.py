@@ -330,7 +330,6 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
         self.mode = "scor3e"
         self.tests = []
         self._entries = []
-        self._ix = -1
         super().__init__(*args, **kargs)
 
     @property
@@ -339,14 +338,6 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
         if len(self._entries) == 0:
             self._entries = self.get_entries()
         return self._entries
-
-    @property
-    def _row_id(self):
-        """Generate a unique ID from each row based onth e student number."""
-        if not len(self.entries):
-            return ""
-        self._ix = (self._ix + 1) % len(self.entries)
-        return f"student_{self.entries[self._ix].student.number}"
 
     def form_valid(self, form):
         """Update self.module with the module selected in the form."""
@@ -362,7 +353,7 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
         for test in self.tests:
             attrs[shorten(test.name, width=30)] = TestResultColumn(orderable=False, mode=self.mode, test=test)
         klass = type("DynamicTable", (self.table_class,), attrs)
-        setattr(klass._meta, "row_attrs", {"class": "student_link", "id": self._row_id})
+        setattr(klass._meta, "row_attrs", {"class": "student_link"})
         return klass
 
     def get_context_data(self, **kwargs):
@@ -421,7 +412,7 @@ class ShowTutorTestResultsViiew(IsStaffViewMixin, BaseShowTestResultsView):
     def get_entries(self):
         """Method to get the students to include in the table."""
         return (
-            ModuleEnrollment.objects.filter(module=self.module, student__apt=self.request.user)
+            ModuleEnrollment.objects.filter(module=self.module, student__tutorial_group__tutor=self.request.user)
             .prefetch_related("student", "student__test_results", "student__programme", "status")
             .order_by("student__last_name", "student__first_name")
         )
