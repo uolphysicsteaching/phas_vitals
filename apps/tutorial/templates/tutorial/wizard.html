@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load floppyforms %}
+{% block javascript %}
+{{ block.super }}
+{{ wizard.form.media }}
+{% endblock %}
+{% block description %}
+        <meta name="Description" content="Physics Advanced Lab: Create Marksheet" />
+{% endblock description %}
+
+{% block page %}
+
+<h2>Complete a Marksheet Online</h2>
+<p>Use these forms to mark a student. You need to click the <b>Submit</b> button on each page to save the information. The marksheet is not
+complete until you click the final <b>Submit</b> button to return you to the student's marking overview page.</p>
+<p>You can also view the <a href=/accounts/dashboard>completed marksheets</a> to mass upload scanned paper sheets (Advanced use only).</p>
+<p>Step {{ wizard.steps.step1 }} of {{ wizard.steps.count }}</p>
+{{ marktype.instructions|safe }}
+{% block instructions %}{% endblock %}
+<form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
+<table>
+{{ wizard.management_form }}
+{% if wizard.form.forms %}
+    {{ wizard.form.management_form }}
+    {% for form in wizard.form.forms %}
+        {{ form }}
+    {{ form.non_field_errors }}
+    {% endfor %}
+{% else %}
+    {{ wizard.form }}
+{% endif %}
+</table>
+{% if wizard.steps.prev %}
+<button name="wizard_goto_step" type="submit" value="{{ wizard.steps.first }}">{% trans "first step" %}</button>
+<button name="wizard_goto_step" type="submit" value="{{ wizard.steps.prev }}">{% trans "prev step" %}</button>
+{% endif %}
+<input type="submit" value="{% trans "submit" %}"/>
+</form>
+{% endblock %}

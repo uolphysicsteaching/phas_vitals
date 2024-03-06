@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% block title %}{{ block.super }}Admin Tools{% endblock title %}
+{%block css %}
+{{ block.super }}
+<style>
+
+table.info {
+    width: 100%
+    margin: 0;
+}
+
+table.info th {
+    padding-left: 15px;
+    width: 320px;
+}
+
+td.info {
+    margin: 0;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left: 15px;
+    font: 12pt Ariel,sans-serif;
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>System Admin Tools</h2>
+
+<table class="info">
+<tr>
+    <th rowspan=4>Module Management</th>
+    <td class="info"><a href="/minerva/import_tests/">Import Tests from Full Gradebook csv</a></td>
+</tr>
+<tr>
+    <td class="info"><a href="/minerva/import_history/">Import Test Attempts from Gradebook History csv</a></td>
+</tr>
+<tr>
+    <td class="info"><a href="/accounts/tutor_email/">Sendf Emails to Tutors</a></td>
+</tr>
+<tr>
+    <td class="info"><a href="/minerva/generate_marksheet/">Generate Physics and Astronomy Marksheet</a></td>
+</tr>
+
+
+<tr><th>Advanced Tools</th><td class="info"><a href=/admin/>Site Admin</a></td></tr>
+</table>
+
+
+{% endblock content %}

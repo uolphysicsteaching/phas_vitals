@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% load render_table from django_tables2 %}
+{% block title %}{{ block.super }} Test Results{% endblock title %}
+{% block css %}
+{{ block.super }}
+<style>
+    .vertical {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+    }
+    .test_link {
+        cursor: pointer;
+    }
+    .test_link:hover {
+        box-shadow: inset 0px 0px 4px 4px #48abe0;
+    }
+    .student_link td:first-child {
+            cursor: pointer;
+        }
+    .student_link:hover {
+            box-shadow: inset 0px 0px 4px 4px #48abe0;
+    }
+</style>
+{% endblock css%}
+{% block javascript %}
+{{ block.super }}
+{{ form.media }}
+<script>
+$(document).ready(function () {
+    $(".test_link").click(function () {
+        var id=$(this).attr("id").split("_")[1];
+        window.location.href = "/minerva/detail/"+id+"/";
+
+    });
+    $(".student").click(function () {
+        var id=$(this).next().html();
+        window.location.href = "/accounts/detail/"+id+"/";
+
+    });
+
+});
+</script>
+{% endblock %}
+
+{% block content %}
+
+<form id="selectform" action="{{ request.url }}" method="post" enctype="multipart/form-data" >
+    {% csrf_token %}
+    {% bootstrap_form form %}
+</form>
+
+{% if module %}
+ {% render_table test_results %}
+{% endif %}
+{% endblock content %}

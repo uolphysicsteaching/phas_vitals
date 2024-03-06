@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load tutorial_tags %}
+{% block title %}{{ block.super }}Marking Sheets for {{ user.displayname }}{% endblock title %}
+{% block javascript %}
+{{ block.super }}
+<script src="/static/tinymce/tinymce.min.js"></script>
+<script src="/static/tinymce/js/tinymce/tinymce.min.js"></script>
+<script src="/static/django_tinymce/init_tinymce.js"></script>
+<script type="text/javascript" src="/tinymce/spellcheck-callback.js"></script>
+<script type="text/javascript" src="/static/js/tutorial/jquery-touch-punch.js"></script>
+<script>
+function toggle_tag() {
+    var id=$(this).attr("id").replace("_","/")
+    var link="/tutorial/marking/toggle/"+id
+    $.ajax(link, {
+        dataType: "json",
+        success: function(data, status, jqXHR){
+            var tag_id="a#"+data["id"];
+            if (data["ok"]) {
+                $(tag_id).attr("class",data["class"]);
+                $("input#id_score").val(data["score"]);
+            } else {
+                alert(data["message"]);
+            }
+        }});
+    return event;
+}
+$(document).ready(function() {
+    $("#marking_grid").dialog({"autoOpen":false });
+    $(".msheet").click(function(){
+        var username=$(this).attr('id');
+        var win_width=$(window).width()-60;
+        var req="/tutorial/marking/submit/"+username+"/Article/";
+        $.get(req, function(data) {
+            $("#dialog_container").html(data);
+            $("#marking_grid").dialog({"model":true,
+                                        "autoOpen":true,
+                                        "width":win_width,
+                                        "height":"auto",
+                                        "close":  function( event, ui ) {
+                                            location.reload();
+                                        },
+                                        "draggable":false });
+            $("a.criteriatag").click(toggle_tag);
+        })
+    })
+})
+</script>
+{% endblock javascript %}
+{% block css %}
+{{ block.super }}
+<style>
+
+    a.criteriatag {
+        font-size: 90%;
+    }
+    a.unsettag {
+        color: black;
+        background: white;
+        text-decoration: none;
+    }
+    a.unsettag:hover {
+        color: black;
+          background: #00cc7e;
+        text-decoration: none;
+    }
+    a.settag {
+        color: white;
+        background: #005335;
+        text-decoration: none;
+     }
+    a.settag:hover {
+        color: white;
+        background: rgb(128,128,128);
+        text-decoration: none;
+    }
+</style>
+{% endblock css %}
+
+{% block page %}
+    <p>The table(s) below show the students in your tutorial group(s). Where they have submitted a Physics 1 article, there will be a download link for you to
+    download a pdf copy for marking. For those students, please complete a marking and feedback proforma, which you will be able to downbload from the link on the
+    right.<p>
+    <p>Please return the marking proforma to the students, but also return the marks by clicking on the <i>create marksheet</i> link on the left. You just need
+    to return the numerical score and any additional comment if a student has scored a particularly low or high mark.</p>
+    <p>Also in the table, for each submitted article, there is the overall similarity score which are coloured depending on the level of the score. If any of
+    your students have scored <span style="background-color: {{ 25|ScoreToColor }};">&nbsp; >25 &nbsp;</span> or higher thenthere work <b>must</b> be checked for possible
+    palagarism via the turnitin assignment on Minerva. Note that you do have to check the originality report itself, you cannot assume that the score automatically
+    means that there is a problem.</p>
+
+{% for group in groups %}
+    <h2>Marking Summary for Tutorial group {{ group.code }} {{ group.cohort }}</h2>
+    <table width=95%>
+    <tr>
+    <th>Name of Student</th>
+    <th>Article</th>
+    <th>Submitted</th>
+    <th>Similarity Score</th>
+    <th>Marking Link</th>
+    <th>Declaration of<br/>Academic Integrity</th>
+    </tr>
+    {% for student in group.members %}
+    <tr>
+    <td>{{ student.display_name }}</td>
+    <td>{{ student.article.url }}</td>
+    <td>{{ student.article.submitted }}</td>
+    <td style="background-color: {{ student.article.similarity|ScoreToColor }};">{{ student.article.similarity }}</td>
+    {% if student.article.mark %}
+        <td>{{ student.article.mark.score }}% - {{ student.article.mark.submitted }}<br/>
+        <a class="msheet" id="{{ student.username }}">Edit Marksheet</a><br/>
+        <a href="/tutorial/marking/pdf/{{ student.username }}/Article">Download PDF</a>
+
+        </td>
+    {% else %}
+        <td><a class="msheet" id="{{ student.username }}">Create Marksheet</a></td>
+    {% endif %}
+    <td>
+    {% if student.integrity_dec %}
+    <img src='/static/admin/img/icon-yes.svg' alt='Yes'/>
+    {% else %}
+    <img src='/static/admin/img/icon-no.svg' alt='No'/>
+    {% endif %}
+    </td>
+    </tr>
+    {% endfor %}
+    </table>
+    {% endfor %}
+    <div id="dialog_container">
+    <div id="marking_grid">&nbsp;</div>
+    </div>
+
+
+{% endblock page %}

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block css %}
+{{ block.super }}
+<style>
+a.vital_link {
+    color: inherit;
+    text-decoration: inherit;
+
+}
+a.vital_link:hover {
+    text-decoration: underline;
+}
+.bg-secondary {
+    background-color: #5c656d!important;
+}
+.bg-success {
+    background-color: #157040!important;
+}
+.bg-primary {
+    background-color: #0b40cd!important;
+}
+.bg-danger {
+    background-color: #cc1525!important;
+}
+</style>
+{% endblock css %}
+{% load django_bootstrap5 %}
+}
+{% block content %}
+<div class="col-sm-12">
+    <div class="row text-sm-center fs-2">
+        <span>{{ user.first_name }} {{ user.last_name }} ({{ user.number }})</span>
+    </div>
+    <div class="row fs-3">
+        <div class="col-sm-4"><span>Tutor:</span></div>
+        <div class="col-sm-8"><span><a href="mailto:{{ user.apt.email }}">{{ user.apt.formal_name }}</a></span></div>
+    </div>
+    <div class="row fs-3">
+        <div class="col-sm-4"><span>Degree Programme:</span></div>
+        <div class="col-sm-8"><span>{{ user.programme.name }} ({{ user.programme.code }})</span></div>
+    </div>
+    <ul class="nav nav-tabs" id="results_tab" role="tablist">
+        <li class="nav-item" role="tab">
+            <a href="#tests" class="nav-link active" data-bs-toggle="tab"><span class="fs-3">Homework Results</span></a>
+        </li>
+        <li class="nav-item" role="tab">
+            <a href="#VITALS" class="nav-link" data-bs-toggle="tab"><span class="fs-3">VITALS status</span></a>
+        </li>
+
+    </ul>
+    <div class="tab-content" id="results-tab-content">
+      <div class="tab-pane fade show active" id="tests" role="tabpanel" aria-label="Tests and Homework Results tab">
+          <h3>Homework Results</h3>
+          {% for test_score in scores.values %}
+              <div class="border-top border-dark border-2 row {{ test_score.test.bootstrap5_class }}">
+                  <div class="col-md-4">
+                      <strong><a class="vital_link" href="{{ test_score.tes.url }}">{{ test_score.test.name }}</a>
+                      ({{ test_score.test.score_possible }} marks)</strong><br/>
+                      Released: {{ test_score.test.release_date }}<br/>
+                      Recommended: {{ test_score.test.recommended_date }}
+                  </div>
+                    <div class="col-md-3  align-middle {{ test_score.bootstrap5_class }}">
+                        <div class="row">
+                            <span class="col-sm-2 fs-1 {{ test_score.icon }}">&nbsp;</span>
+                            <div class="col-sm-10 text-center align-middle fs-4">
+                          {% if test_score.passed %}
+                            Passed in {{ test_score.attempts.count }}attempt{% if test_score.attempts.count > 1%}s{% endif %}
+                          {% elif test_score.score is None %}
+                               {% if test_score.test_status != "Not Started" %}
+                                    Not Attempted
+                               {% endif %}
+                          {% else %}
+                               Not Passed ({{ test_score.attempts.count }}attempt{% if test_score.attempts.count > 1%}s{% endif %})
+                          {% endif %}
+                        </div>
+                    </div>
+                  </div>
+                  <div class="col-md-2 text-center align-middle">
+                      {% if test_score.attempts.count > 0 %}
+                      {{ test_score.score }} / {{ test_score.test.score_possible }} marks
+                      {% else %}
+                      {{ test_score.test.score_possible }} mark{% if test_score.test.score_possible > 1%}s{% endif %} possible
+                      {% endif %}
+                  </div>
+                  <div class="col-md-3">
+                      {{ test_score.vitals_text }}
+                      <ul>
+                      {% for vm in test_score.test.vitals_mappings.all %}
+                          <li><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
+                      {% endfor %}
+                      </ul>
+                  </div>
+              </div>
+              {% endfor %}
+      </div>
+      <div class="tab-pane fade" id="VITALS" role="tabpanel" aria-label="VITALS Listing tab">
+          <h3>VITALS passed/not passed</h3>
+          <div class="accordion" id="accordianVITALs">
+          {% for module,vr in vitals_results.items %}
+              <div class="accordion-item">
+                  <div class="accordion-header" id="heading_{{ module.code }}" role="navigation">
+                        <button class="accordion-button" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#collapse_{{ module.code }}"
+                            aria-expanded={% if forloop.first %}"true"{% else %}"false"{% endif %}
+                            aria-controls="collapse_{{ module.code }}">
+                        <span class="fs-3">{{ module.code }}:{{ module.name }}</span>
+                        </button>
+                  </div>
+                    <div id="collapse_{{ module.code }}"
+                        class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
+                        aria-labelledby="heading_{{ module.cond }}"
+                        data-bs-parent="#accordianVITALs">
+                        <div class="accordion-body">
+                        {% for vital_result in vr %}
+                            <div class="row border-top border-dark border-2 {{ vital_result.vital.bootstrap5_class }}">
+                                <div class="col-md-4">
+                                    <strong><a class="vital_link" href="{{ vital_result.vital.url }}">{{ vital_result.vital.name }}
+                                    ({{ vital_result.vital.module.code }})</a></strong><br/>
+                                    {% if vital_result.passed %}Passed: {{ vital_result.date_passed }}{% endif %}
+                                </div>
+                                <div class="col-md-3  align-middle {{ vital_result.bootstrap5_class }}">
+                                    <div class="row">
+                                        <span class="col-sm-2 fs-1 {{ vital_result.icon }}">&nbsp;</span>
+                                        <div class="col-sm-10 text-center align-middle fs-3">
+
+                                            {% if vital_result.passed %}
+                                              Passed
+                                            {% elif vital_result.vital_status != "Not Started" %}
+                                              Not Passed
+                                            {% else %}
+                                              &nbsp;
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    {{ vital_result.tests_text }}
+                                    <ul>
+                                        {% for vm in vital_result.vital.tests_mappings.all %}
+                                        <li><a class="vital_link" href="{{ vm.test.url }}">
+                                            {{ vm.test.name  }} ({{ vm.test.module.code }})</a>
+                                            {{ vm.test.passing_score }} / {{ vm.test.score_possible }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        {% endfor %}
+                        </div>
+                    </div>
+                </div>
+          {% endfor %}
+          </div>
+      </div>
+    </div>
+
+</div>
+
+{% endblock content %}

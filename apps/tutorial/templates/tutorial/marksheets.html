@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ block.super }}Upload Marksheets{% endblock title %}
+
+{% block page %}
+<h2>Upload Marksheets</h2>
+<ul>
+{% for command in command_list %}
+    <ul>{{ command.command }}</ul>
+{% endfor %}
+</ul>
+<form action="{{ action }}" method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="submit" />
+</form>

@@ -21,3 +21,5 @@ static/*
 media/*
 # except the README
 !media/README
+
+!templates
