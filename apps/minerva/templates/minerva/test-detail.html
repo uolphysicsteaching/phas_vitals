@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}
+{{ block.super }} Current Status fr {{ user.display_name }}
+{% endblock title %}
+{% block content %}
+<h2>{{ test.name }}</h2>
+<div class="row"><div class="col-md-12"><p class="lead">
+{% if test.status == "Overdue" %}
+    This assignment has been released and you should have done it by now.
+{% elif test.status == "Finished" %}
+    This assignment is for a module that has now finished.
+{% elif test.status == "Released" %}
+    You should be working on this assignment now.
+{% elif test.status == "Not Started" %}
+    This assignment hasn't been released yet.
+{% else %}
+    The status {{ test.status }} was unexpected.
+{% endif %}
+</p></div></div>
+<div class="row">
+    <div class="col-md-4">Summary :</div>
+    <div class="col-md-8">{{ test.description }}</div>
+</div>
+<div class="row">
+    <div class="col-md-4">Module :</div>
+    <div class="col-md-8">{{ test.module.name }} ({{ test.module.code }})</div>
+</div>
+<div class="row">
+    <div class="col-md-4">Released on :</div>
+    <div class="col-md-8"> {{ test.release_date }}</div>
+</dvi>
+<div class="row">
+    <div class="col-md-4">Recommend completion date :</div>
+    <div class="col-md-8"> {{ test.recomemnded_date }}</div>
+</dvi>
+<div class="row">
+    <div class="col-md-4">Total number of marks possible :</div>
+    <div class="col-md-2"> {{ test.score_possible }}</div>
+    <div class="col-md-4">Mark needed to complete :</div>
+    <div class="col-md-2"> {{ test.passing_score }}</div>
+</dvi>
+<div class="row">
+    <div class="col-md-4">Completing this assignment will pass these VITALs</div>
+    <div class="col-md-8">{% for vital in test.VITALS.all %}
+        {% if forloop.first %}<ul>{% endif %}
+        <li><a href="{{ vital.url }}">{{ vital.name }}</a></li>
+        {% if forloop.last %}</ul>{% endif %}
+    {% endfor %}</div>
+</div>
+
+
+{% endblock content %}

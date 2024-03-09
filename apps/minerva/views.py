@@ -441,3 +441,14 @@ class GenerateModuleMarksheetView(IsSuperuserViewMixin, FormView):
         """Respond with a marksheet for the selected module."""
         module = form.cleaned_data["module"]
         return module.generate_marksheet()
+
+
+class TestDetailView(IsStudentViewixin, DetailView):
+
+    """Provide a detail view for a single test."""
+
+    template_name = "minerva/test-detail.html"
+    slug_field = "pk"
+    slug_url_kwarg = "pk"
+    model = Test
+    context_object_name = "test"

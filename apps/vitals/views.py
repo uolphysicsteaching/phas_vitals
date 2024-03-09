@@ -4,7 +4,7 @@
 # Create your views here.
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.html import format_html
-from django.views.generic import DetailView, FormView
+from django.views.generic import DetailView, FormView, RedirectView
 from django.views.generic.edit import FormMixin
 
 # external imports
@@ -19,6 +19,9 @@ from util.views import (
     IsSuperuserViewMixin,
     RedirectView,
 )
+
+# app imports
+from .models import VITAL
 
 
 class VITALResultColumn(Column):
@@ -164,8 +167,12 @@ class ShowTutorVitalResultsView(IsStaffViewMixin, BaseShowvitalResults):
         )
 
 
-class ShowMyVitalResultsView(IsStudentViewixin, FormMixin, DetailView):
+class ShowMyVitalResultsView(IsStudentViewixin, RedirectView):
     """TODO write the individual student VITALs view."""
+
+    def get_redirect_url(self, *args, **kwargs):
+        """Redirect to the user page."""
+        return f"/accounts/detail/{self.request.user.number}/#VITALS"
 
 
 class ShowVitralResultsView(RedirectView):
@@ -174,3 +181,14 @@ class ShowVitralResultsView(RedirectView):
     superuser_view = ShowAllVitalResultsView
     staff_view = ShowTutorVitalResultsView
     logged_in_view = ShowMyVitalResultsView
+
+
+class VitalDetailView(IsStudentViewixin, DetailView):
+
+    """Provide a detail view for a single test."""
+
+    template_name = "vitals/vital-detail.html"
+    slug_field = "pk"
+    slug_url_kwarg = "pk"
+    model = VITAL
+    context_object_name = "vital"

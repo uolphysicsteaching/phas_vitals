@@ -180,7 +180,7 @@ class VITAL(models.Model):
     @property
     def url(self):
         """Return a url for the detail page for this vital."""
-        return f"/vital/detail/{self.pk}/"
+        return f"/vitals/detail/{self.pk}/"
 
     def passed(self, user, passed=True, date_passed=None):
         """Record the user as having passed this vital."""

@@ -8,4 +8,5 @@ from . import views
 
 urlpatterns = [
     path("vitals_view/", views.ShowVitralResultsView.as_view()),
+    path("detail/<pk>/", views.VitalDetailView.as_view()),
 ]
