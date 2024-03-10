@@ -13,7 +13,6 @@ from django.http import HttpResponseNotFound, HttpResponseRedirect
 from django.views.generic import DetailView, FormView
 
 # external imports
-import numpy as np
 import pandas as pd
 from accounts.models import Account, Cohort
 from util.forms import FileSelectForm

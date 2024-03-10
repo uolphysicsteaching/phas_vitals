@@ -1,4 +1,6 @@
 # Python imports
+"""Models for tutorial app."""
+# Python imports
 from typing import Optional, Tuple, Union
 
 # Django imports
@@ -538,7 +540,7 @@ def engagement_session(self, cohort=None, semester=None) -> dict:
         elif attendance.score == 0:
             base[session.pk] = format_html('<img src="/static/admin/img/icon-no.svg" Alt="Unauthorised Absence"/>')
         else:
-            base[session.pk] = format_html(f"{int(attendance.score)}")
+            base[session.pk] = format_html("{val}", cal=int(attendance.score))
     return base
 
 

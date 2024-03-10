@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 # Python imports
+"""Import Export resources for tutorial app."""
+# Python imports
 import re
 
 # external imports
@@ -68,7 +70,7 @@ class SessionFKWidget(widgets.ForeignKeyWidget):
 
 
 class UsernameFKWidget(widgets.ForeignKeyWidget):
-    "Hacked to allow a pre-process callback in clean." ""
+    "Allow a pre-process callback in clean." ""
 
     name_pat = re.compile(r"\((.*)\)")
 
@@ -83,7 +85,7 @@ class UsernameFKWidget(widgets.ForeignKeyWidget):
         return super().clean(value, row, *args, **kwargs)
 
     def name2username(self, name):
-        """Tries various ways to get a valid username.
+        """Try various ways to get a valid username.
 
         1) Look for some () and assume that contains a username
         2) Look for a comma and assume that that divides first name from last name

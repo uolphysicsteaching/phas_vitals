@@ -15,11 +15,7 @@ from accounts.forms import CohortSelectForm
 from accounts.models import Account, Cohort
 from extra_views import ModelFormSetView
 from util.forms import FileSelectForm
-from util.views import (
-    IsStaffViewMixin,
-    IsStudentViewixin,
-    IsSuperuserViewMixin,
-)
+from util.views import IsStaffViewMixin, IsSuperuserViewMixin
 
 # app imports
 from ..forms import EngagementEntryForm
@@ -143,9 +139,9 @@ class AdminSubmitStudentEngagementView(IsSuperuserViewMixin, UpdateView):
     def get_context_data(self, **kwargs):
         """The context data here needs to include a list of marktypes and also the current cohort."""
         context = super().get_context_data(**kwargs)
-        context[
-            "url"
-        ] = f"/tutorial/engagement/admin_submit/session_{self.kwargs.get('student')}_{self.kwargs.get('session')}"
+        context["url"] = (
+            f"/tutorial/engagement/admin_submit/session_{self.kwargs.get('student')}_{self.kwargs.get('session')}"
+        )
         return context
 
     def form_valid(self, form):

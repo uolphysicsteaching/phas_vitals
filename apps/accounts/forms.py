@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Django imports
 from django import forms
-from django.db.models import Count, Q
+from django.db.models import Q
 from django.forms.widgets import Select
 
 # app imports

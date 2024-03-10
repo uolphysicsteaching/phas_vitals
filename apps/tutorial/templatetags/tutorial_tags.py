@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Custom tags for tutorial pages"""
+"""Custom tags for tutorial pages."""
 
 # Django imports
 from django import template
@@ -18,9 +18,10 @@ register = template.Library()
 
 @register.filter
 def ScoreToColor(score):
+    """Return a css colour code for a numerical score."""
     try:
         score = (float(score) / 100.0) ** 0.25
-    except:
+    except (ValueError, TypeError):
         return "#FFFFFF"
     rgb = ColorConverter.to_rgb(jet(score))
     rgb = [int(255 * x) for x in rgb]
@@ -30,6 +31,7 @@ def ScoreToColor(score):
 
 @register.filter
 def colour(value):
+    """Convert a value to a css colour."""
     if not isinstance(value, (float, int)) or np.isnan(value):
         return "#ffffff"
     value = (1 - (value / 100.0)) ** 2
@@ -41,6 +43,7 @@ def colour(value):
 
 @register.filter
 def rev_colour(value):
+    """Convert a value to colour, but on an inverse scale."""
     if not isinstance(value, (float, int)) or np.isnan(value):
         return "#ffffff"
     value = max((value - 40) / 60, 0) ** 0.25
@@ -52,6 +55,7 @@ def rev_colour(value):
 
 @register.filter
 def comp_colour(value, formula="linear"):
+    """Find a complementary colour."""
     if isinstance(value, str):
         return contrast(value)
     if not isinstance(value, (float, int)) or np.isnan(value):
@@ -73,21 +77,25 @@ def comp_colour(value, formula="linear"):
 
 @register.simple_tag
 def engagement(student, semester, cohort):
+    """Build an engagement entry for a givent student and semester."""
     if hasattr(student, "engagement_session"):
         data = student.engagement_session(cohort, semester)
-        lab_data = student.lab_engagement_session(cohort, semester)
     else:
         data = {}
     out = ""
     for k, v in data.items():
-        out += f"""<td class='session_score' id='session_{student.pk}_{k}' headers='session_{student.tutorial_group.first().pk}_{k}'>
+        out += (
+            f"<td class='session_score' id='session_{student.pk}_{k}'"
+            + """ headers='session_{student.tutorial_group.first().pk}_{k}'>
             {v}<br/>{lab_data[k]}
         </td>"""
+        )
     return format_html(out)
 
 
 @register.simple_tag
 def absence(student, semester, cohort, type):
+    """Build an absence entry for a student for a semester."""
     if hasattr(student, "absence"):
         if type == "Tutorial":
             score = student.absence(cohort, semester)
@@ -103,6 +111,7 @@ def absence(student, semester, cohort, type):
 
 @register.filter
 def score_display(score):
+    """Build an entry for a score."""
     if score is None or score == "":
         ret = " - "
     elif int(score) < 0:
@@ -110,6 +119,6 @@ def score_display(score):
     elif int(score) == 0:
         ret = '<img src="/static/admin/img/icon-no.svg" Alt="Unauthorised Absence"/>'
     else:
-        ret = format_html(f"{int(score)}")
+        ret = f"{int(score)}"
 
     return format_html(ret)

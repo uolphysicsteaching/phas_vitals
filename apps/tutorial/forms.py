@@ -33,7 +33,10 @@ class ReadOnlySelect(Select):
             if str(option_value) == str(value):
                 display = option_label
         output = format_html(
-            f'<h3 style="margin-top: 10px;">{display}</h3><input type="hidden" value="{value}"  {flatatt(final_attrs)}> '
+            '<h3 style="margin-top: 10px;">{display}</h3><input type="hidden" value="{value}"  {attrs}> ',
+            display=display,
+            value=value,
+            attrs=flatatt(final_attrs),
         )
 
         return output
@@ -44,6 +47,7 @@ class AttendanceFormSet(forms.models.BaseModelFormSet):
 
     @property
     def sorted_forms(self):
+        """Sort the forms by student name."""
         if len(getattr(self.forms[0], "initial", {})) == 0:
             return self.forms
         forms = {}

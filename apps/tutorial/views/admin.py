@@ -12,7 +12,7 @@ from django.core.exceptions import (
 )
 from django.db import transaction
 from django.utils import timezone as tz
-from django.utils.safestring import mark_safe
+from django.utils.html import format_html
 from django.views.generic import ListView, TemplateView
 from django.views.generic.edit import FormMixin, FormView
 
@@ -26,7 +26,7 @@ from util.views import IsStaffViewMixin, IsSuperuserViewMixin
 
 # app imports
 from ..models import Meeting, Tutorial, TutorialAssignment, students_Q
-from ..tables import BaseMarkTable, BaseTable, MarkColumn
+from ..tables import BaseTable, MarkColumn
 
 
 class AdminDashboardView(IsSuperuserViewMixin, FormMixin, TemplateView):
@@ -36,10 +36,11 @@ class AdminDashboardView(IsSuperuserViewMixin, FormMixin, TemplateView):
     form_class = CohortSelectForm
 
     def get_initial(self) -> dict:
+        """Set the initial cohort value to be the current cohort."""
         return {"cohort": self.kwargs.setdefault("cohort", Cohort.current)}
 
     def get_context_data(self, **kwargs):
-        """The context data here needs to include a list of marktypes and also the current cohort."""
+        """Ensire the context data includes a list of marktypes and also the current cohort."""
         context = super(AdminDashboardView, self).get_context_data(**kwargs)
         context["semester"] = int(self.kwargs.get("semester", 1 if tz.now().month >= 8 else 2))
         try:
@@ -117,7 +118,9 @@ class MeetingsSummary(IsSuperuserViewMixin, FormMixin, SingleTableView):
             )
             for meeting in meetings:
                 record[meeting.slug] = None if meeting.due_date > tz.now().date() else False
-            record["student"] = mark_safe('<a href="/accounts/staff_view/{}">{}</a>'.format(student.username, student))
+            record["student"] = format_html(
+                '<a href="/accounts/staff_view/{}">{}</a>'.format(student.username, student)
+            )
             if hasattr(student, "tutorial_group") and student.tutorial_group.first():
                 record["tutor"] = student.tutorial_group.first().tutor.initials
             for meeting in meetings:
@@ -132,16 +135,19 @@ class MeetingsSummary(IsSuperuserViewMixin, FormMixin, SingleTableView):
 
 
 class StudentMarkingSummary(IsStaffViewMixin, FormMixin, ListView):
+    """Get a summary of tutor groups for the current tutor."""
+
     context_object_name = "groups"
     model = Tutorial
     template_name = "tutorial/marking_summary.html"
     form_class = CohortSelectForm
 
     def get_queryset(self):
+        """Refine the queryset to just the logged in user's groups."""
         return Tutorial.objects.filter(tutor=self.request.user)
 
     def get_context_data(self, **kwargs):
-        """The context data here needs to include a list of marktypes and also the current cohort."""
+        """Ensure the context data includes a list of marktypes and also the current cohort."""
         context = super(StudentMarkingSummary, self).get_context_data(**kwargs)
         return context
 
@@ -155,11 +161,13 @@ class AcademicIntegrityUpload(IsSuperuserViewMixin, FormView):
     report = None
 
     def get_context_data(self, **kwargs):
+        """Set the failed entries into the context data."""
         context = super().get_context_data(**kwargs)
         context["failed"] = getattr(self, "failed", [])
         return context
 
     def post(self, request, *args, **kwargs):
+        """Handle the form submission."""
         form_class = self.get_form_class()
         form = self.get_form(form_class)
         files = request.FILES.getlist("spreadsheet")

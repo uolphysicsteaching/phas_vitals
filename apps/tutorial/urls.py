@@ -1,3 +1,5 @@
+"""URL patterns for tutorial app."""
+
 # Python imports
 from os.path import basename, dirname
 

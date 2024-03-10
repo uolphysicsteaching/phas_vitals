@@ -1,3 +1,5 @@
+"""Views for the VITALS and similar models from the vitals app."""
+
 # Python imports
 
 # Django imports
@@ -44,19 +46,20 @@ class VITALResultColumn(Column):
                 }
             )
         else:
-            attrs.update({"th": {"class": f"vertical"}})
+            attrs.update({"th": {"class": "vertical"}})
         kargs["attrs"] = attrs
         super().__init__(**kargs)
 
     def render(self, value):
+        """Render the individual VITAL value."""
         match value:
             case None:
                 ret = ""
             case {"passed": passed}:
                 if passed:
-                    ret = f'<span class="badge bg-success">P</span>'
+                    ret = '<span class="badge bg-success">P</span>'
                 else:
-                    ret = f'<span class="badge bg-danger">F</span>'
+                    ret = '<span class="badge bg-danger">F</span>'
             case _:
                 ret = value
 
@@ -73,7 +76,7 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
     table_pagination = False
 
     def __init__(self, *args, **kargs):
-        """Setup instance variables."""
+        """Construct instance variables."""
         self.module = None
         self.vitals = []
         self._entries = []

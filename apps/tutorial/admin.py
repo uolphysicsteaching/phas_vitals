@@ -54,7 +54,7 @@ class TutorialListFilter(SimpleListFilter):
         elif "student" in fields:
             return queryset.filter(student__tutorial_group__code=self.value())
         else:
-            assert False
+            raise ValueError(f"Can't work out field for {fields}")
 
 
 @register(TutorialAssignment)

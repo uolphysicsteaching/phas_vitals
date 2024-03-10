@@ -7,7 +7,7 @@ Created on Tue Jan  9 20:02:15 2018
 @author: phygbu
 """
 # Django imports
-from django.utils.safestring import mark_safe
+from django.utils.html import format_html
 
 # external imports
 from django_tables2.columns import Column
@@ -38,15 +38,15 @@ class MarkColumn(Column):
 
     def render(self, value):
         if isinstance(value, bool) and value:
-            ret = mark_safe("<img src='/static/admin/img/icon-yes.svg' alt='Yes'/>")
+            ret = format_html("<img src='/static/admin/img/icon-yes.svg' alt='Yes'/>")
         elif isinstance(value, bool) and not value:
-            ret = mark_safe("<img src='/static/admin/img/icon-no.svg' alt='No'/>")
+            ret = format_html("<img src='/static/admin/img/icon-no.svg' alt='No'/>")
         elif isinstance(value, (float, int)):
             ret = "{}%".format(value)
         elif isinstance(value, str):
-            ret = mark_safe(value)
+            ret = format_html(value)
         elif value is None:
-            ret = mark_safe("&nbsp;")
+            ret = format_html("&nbsp;")
         else:
             ret = str(type(value))
         return ret
