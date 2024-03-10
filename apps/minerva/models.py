@@ -369,7 +369,7 @@ class Test_Score(models.Model):
         return best_score, numerically_passed, pass_changed
 
     def save(self, **kargs):
-        """Correct the passed flag if score is equal to or greate than test.passing_score."""
+        """Correct the passed flag if score is equal to or greater than test.passing_score."""
         if self.pk is not None:
             orig = Test_Score.objects.get(pk=self.pk)
         else:

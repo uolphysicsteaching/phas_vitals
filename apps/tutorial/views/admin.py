@@ -171,15 +171,15 @@ class AcademicIntegrityUpload(IsSuperuserViewMixin, FormView):
         files = request.FILES.getlist("spreadsheet")
         if form.is_valid():
             if len(files) != 1:
-                raise ValidationError("Execting a single csv file.")
+                raise ValidationError("Expecting a single csv file.")
             for f in files:
                 f = f.file.name
                 try:
                     self.report = pd.read_csv(f)
                 except Exception as e:
-                    raise ValidationError("Execting a single csv file.") from e
+                    raise ValidationError("Expecting a single csv file.") from e
             if self.report is None:
-                raise ValidationError("Execting a single csv file.")
+                raise ValidationError("Expecting a single csv file.")
             return self.form_valid(form)
         else:
             return self.form_invalid(form)

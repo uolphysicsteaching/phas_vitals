@@ -52,7 +52,7 @@ class TutorialAssignmentManager(models.Manager):
     """Manager class for Tutorial Assignments."""
 
     def get_by_natural_key(self, tutorial, student):
-        """Use a tiple of tutorial group code, student username as natural key."""
+        """Use a tuple of tutorial group code, student username as natural key."""
         return self.get(tutorial__code=tutorial, student__username=student)
 
 

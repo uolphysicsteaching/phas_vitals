@@ -72,7 +72,7 @@ class StreamingImportTestsView(ImportTestsView):
     test_name = re.compile(r"(?P<name>.*)\s\[Total\ Pts\:\s(?P<total>[0-9\.]+)\sScore\]\s\|(?P<test_id>.*)")
 
     def post(self, request, *args, **kwargs):
-        """Handle form posting with cutsom work around exceoptions."""
+        """Handle form posting with cutsom work around exceptions."""
         form_class = self.get_form_class()
         form = self.get_form(form_class)
         files = request.FILES.getlist("upload_file")
@@ -173,7 +173,7 @@ class StreamingImportTestsHistoryView(ImportTestHistoryView):
     data = []
 
     def post(self, request, *args, **kwargs):
-        """Handle form posting with cutsom work around exceoptions."""
+        """Handle form posting with cutsom work around exceptions."""
         form_class = self.get_form_class()
         form = self.get_form(form_class)
         files = request.FILES.getlist("upload_file")

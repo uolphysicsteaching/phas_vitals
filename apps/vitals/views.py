@@ -115,7 +115,7 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
         return context
 
     def get_entries(Self):
-        """Override this mewothd in actuall classes."""
+        """Override this mewothd in actual classes."""
         raise NotImplementedError("You must supply a get_entries method.")
 
     def get_table_data(self):

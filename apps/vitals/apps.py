@@ -9,7 +9,7 @@ class VitalsConfig(AppConfig):
     name = "vitals"
 
     def ready(self):
-        """Import the singal handler when we're good to start."""
+        """Import the signal handler when we're good to start."""
         # app imports
         try:
             # app imports

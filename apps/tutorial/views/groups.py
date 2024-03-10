@@ -32,28 +32,27 @@ class AssignTutorGroupsView(IsSuperuserViewMixin, FormView):
     failed = []
 
     def get_context_data(self, **kwargs):
-        """The context data here needs to include a list of marktypes and also the current cohort."""
+        """Ensure the context data includes a list of marktypes and also the current cohort."""
         context = super(AssignTutorGroupsView, self).get_context_data(**kwargs)
         context["failed"] = self.failed
         return context
 
     def post(self, request, *args, **kwargs):
+        """Handle posted form data."""
         form_class = self.get_form_class()
         form = self.get_form(form_class)
         files = request.FILES.getlist("spreadsheet")
         if form.is_valid():
             if len(files) != 1:
-                raise ValidationError("Execting a single xlsx file.")
+                raise ValidationError("Expecting a single xlsx file.")
             for f in files:
                 f = f.file.name
                 try:
                     self.report = pd.read_excel(f)
                 except Exception as e:
-                    raise ValidationError("Execting a single xlsx file.") from e
+                    raise ValidationError("Expecting a single xlsx file.") from e
             if self.report is None:
-                report = self.report
-                archive = self.archive
-                raise ValidationError("Execting a single xlsx file.")
+                raise ValidationError("Expecting a single xlsx file.")
             return self.form_valid(form)
         else:
             return self.form_invalid(form)
@@ -178,6 +177,5 @@ class ToggleMeeting(IsStaffViewMixin, DetailView):
         else:
             new = MeetingAttendance(student=student, tutor=self.request.user, meeting=meeting)
             new.save()
-            x = new.pk
         meeting.save()
         return HttpResponseRedirect(f"/accounts/staff_view/{student.username}")

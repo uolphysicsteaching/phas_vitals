@@ -26,7 +26,7 @@ class ReadOnlySelect(Select):
     """
 
     def render(self, name, value, attrs=None, choices=(), renderer=None):
-        """Redner the widget."""
+        """Render the widget."""
         final_attrs = self.build_attrs(attrs, {"name": name})
         display = "None"
         for option_value, option_label in chain(self.choices, choices):
@@ -105,10 +105,10 @@ class TutorialAssignmentForm(forms.ModelForm):
     def apply_filter(self, filters):
         """Apply filters to a query set for a field."""
         field = None
-        for field, filter in filters:
-            if not isinstance(filter, list):
-                filter = [filter]
-            for i, f in enumerate(filter):
+        for field, filt in filters:
+            if not isinstance(filt, list):
+                filt = [filt]
+            for i, f in enumerate(filt):
                 if i == 0:
                     QS = Q(**f)
                 else:

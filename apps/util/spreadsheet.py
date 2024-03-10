@@ -109,7 +109,7 @@ def save_virtual_workbook(wb):
 
 
 def sub_value(cell, module):
-    """Use a cell value of te form self.attr.attr|format to replace it with a number."""
+    """Use a cell value of the form self.attr.attr|format to replace it with a number."""
     parts = str(cell.value).split("|")
     if len(parts) == 1:
         parts.append("0")

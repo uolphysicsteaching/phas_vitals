@@ -199,7 +199,7 @@ class LabAttendanceUpload(IsSuperuserViewMixin, FormView):
         files = request.FILES.getlist("spreadsheet")
         if form.is_valid():
             if len(files) != 1:
-                raise ValidationError("Execting a single xlsx file.")
+                raise ValidationError("Expecting a single xlsx file.")
             for f in files:
                 f = f.file.name
                 try:
@@ -211,7 +211,7 @@ class LabAttendanceUpload(IsSuperuserViewMixin, FormView):
                 except Exception as e:
                     raise ValidationError(f"Error reading excel file {e}") from e
             if self.report is None:
-                raise ValidationError("Execting a single xlsx file.")
+                raise ValidationError("Expecting a single xlsx file.")
             return self.form_valid(form)
         else:
             return self.form_invalid(form)

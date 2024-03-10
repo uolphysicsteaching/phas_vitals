@@ -77,7 +77,7 @@ class SuperuserTemplateView(IsSuperuserViewMixin, TemplateView):
 
 
 class RedirectView(View):
-    """This just redirects the view to another class depending on the request user's attributes.
+    """Redirects the view to another class depending on the request user's attributes.
 
     is_superuser: self.get_superuser_view()->self.superuser_view
     is_staff: self.get_staff_view()->self.staff_view
@@ -106,7 +106,7 @@ class RedirectView(View):
         return getattr(self, "anonymous_view", None)
 
     def get_group_view(self, request):
-        """Get the mapping group_map and try to find a match to a group that the loged in user has."""
+        """Get the mapping group_map and try to find a match to a group that the logged in user has."""
         if not self.request.user.is_authenticated:  # Not logged in, so no groups -> None
             return None
         groups = self.request.user.groups.all()

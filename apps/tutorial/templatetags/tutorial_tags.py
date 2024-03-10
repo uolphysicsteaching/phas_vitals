@@ -94,10 +94,10 @@ def engagement(student, semester, cohort):
 
 
 @register.simple_tag
-def absence(student, semester, cohort, type):
+def absence(student, semester, cohort, typ):
     """Build an absence entry for a student for a semester."""
     if hasattr(student, "absence"):
-        if type == "Tutorial":
+        if typ == "Tutorial":
             score = student.absence(cohort, semester)
         else:
             score = student.lab_absence(cohort, semester)

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Forms for the minerva interacing application."""
+"""Forms for the minerva interacting application."""
 # Django imports
 from django import forms
 from django.db.models import Count
@@ -49,7 +49,7 @@ class TestImportForm(forms.Form):
 
 
 class TestHistoryImportForm(forms.Form):
-    """Fomr that is for uploading the Gradebook History Log."""
+    """Form that is for uploading the Gradebook History Log."""
 
     module = forms.ModelChoiceField(
         queryset=Module.objects.annotate(tests_count=Count("tests")).filter(tests_count__gt=0)
