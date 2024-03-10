@@ -186,7 +186,6 @@ class ShowVitralResultsView(RedirectView):
 
 
 class VitalDetailView(IsStudentViewixin, DetailView):
-
     """Provide a detail view for a single test."""
 
     template_name = "vitals/vital-detail.html"

@@ -118,9 +118,7 @@ class MeetingsSummary(IsSuperuserViewMixin, FormMixin, SingleTableView):
             )
             for meeting in meetings:
                 record[meeting.slug] = None if meeting.due_date > tz.now().date() else False
-            record["student"] = format_html(
-                '<a href="/accounts/staff_view/{}">{}</a>'.format(student.username, student)
-            )
+            record["student"] = format_html('<a href="/accounts/staff_view/{}">{}</a>', student.username, student)
             if hasattr(student, "tutorial_group") and student.tutorial_group.first():
                 record["tutor"] = student.tutorial_group.first().tutor.initials
             for meeting in meetings:

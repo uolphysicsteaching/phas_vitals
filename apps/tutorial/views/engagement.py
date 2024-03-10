@@ -31,6 +31,7 @@ class StudentEngagementSummary(IsStaffViewMixin, FormMixin, ListView):
     form_class = CohortSelectForm
 
     def get_initial(self):
+        """Get initial values for the form."""
         if isinstance(self.kwargs.get("cohort", None), str):
             try:
                 self.kwargs["cohort"] = Cohort.objects.get(name=self.kwargs["cohort"])
@@ -39,6 +40,7 @@ class StudentEngagementSummary(IsStaffViewMixin, FormMixin, ListView):
         return {"cohort": self.kwargs.setdefault("cohort", Cohort.current)}
 
     def get_queryset(self):
+        """Get the Tutorial queryset, filtered as needed."""
         cohort = self.get_initial()["cohort"]
         ret = Tutorial.objects.filter(cohort=cohort).order_by("tutor__last_name")
         if self.kwargs.get("code", "") != "":
@@ -48,7 +50,7 @@ class StudentEngagementSummary(IsStaffViewMixin, FormMixin, ListView):
         return ret
 
     def get_context_data(self, **kwargs):
-        """The context data here needs to include a list of marktypes and also the current cohort."""
+        """Ensure the context data includes a list of marktypes and also the current cohort."""
         context = super().get_context_data(**kwargs)
         cohort = self.kwargs["cohort"]
         semester = int(self.kwargs.get("semester", 1 if tz.now().month >= 8 else 2))
@@ -74,20 +76,23 @@ class SubmitStudentEngagementView(IsStaffViewMixin, ModelFormSetView):
     model = Attendance
 
     def get_initial(self):
+        """Get the form initial values."""
         return {"cohort": self.kwargs.setdefault("cohort", Cohort.current)}
 
     def get_context_data(self, **kwargs):
-        """The context data here needs to include a list of marktypes and also the current cohort."""
+        """Ensure the context data includes a list of marktypes and also the current cohort."""
         context = super().get_context_data(**kwargs)
         context["url"] = "/tutorial/engagement/submit/" + self.kwargs["session"]
         return context
 
     def get_success_url(self):
+        """Return the success URL back to the current tutroial view."""
         group, session = self.kwargs["session"].split(":")
         session = Session.objects.get(pk=int(session))
         return f"/tutorial/engagement_view/{session.semester}/{session.cohort.name}"
 
     def get_queryset(self):
+        """Get a query set, ensuring the Attendance objects exist."""
         group, session = self.kwargs["session"].split(":")
         session = Session.objects.get(pk=int(session))
         group = Tutorial.objects.get(pk=int(group))
@@ -98,6 +103,7 @@ class SubmitStudentEngagementView(IsStaffViewMixin, ModelFormSetView):
         return ret
 
     def get_factory_kwargs(self):
+        """Get the Keyword arguments for creating the formsets."""
         ret = {
             "extra": 0,
             "max_num": None,
@@ -109,7 +115,7 @@ class SubmitStudentEngagementView(IsStaffViewMixin, ModelFormSetView):
         session = Session.objects.get(pk=int(session))
         group = Tutorial.objects.get(pk=int(group))
         qs = Attendance.objects.filter(session=session, student__tutorial_group=group, type=SessionType.TUTORIAL)
-        ret["extra"] = max(0, len(group.students.all()) - len(qs.all()))
+        ret["extra"] = max(0, group.students.all().count() - qs.all().count())
         return ret
 
 
@@ -119,6 +125,7 @@ class AdminEngagementSummaryView(StudentEngagementSummary):
     template_name = "tutorial/admin/engagement_summary.html"
 
     def get_queryset(self):
+        """Get a qyeryset fir the tutorial objects."""
         cohort = self.get_initial()["cohort"]  # force sorting out our cohort
         ret = (
             Tutorial.objects.filter(cohort=cohort)
@@ -137,7 +144,7 @@ class AdminSubmitStudentEngagementView(IsSuperuserViewMixin, UpdateView):
     success_url = "/"
 
     def get_context_data(self, **kwargs):
-        """The context data here needs to include a list of marktypes and also the current cohort."""
+        """Ensure the context data includes a list of marktypes and also the current cohort."""
         context = super().get_context_data(**kwargs)
         context["url"] = (
             f"/tutorial/engagement/admin_submit/session_{self.kwargs.get('student')}_{self.kwargs.get('session')}"
@@ -145,10 +152,12 @@ class AdminSubmitStudentEngagementView(IsSuperuserViewMixin, UpdateView):
         return context
 
     def form_valid(self, form):
+        """Handle the form_valid by returning JSON data."""
         super().form_valid(form)
         return JsonResponse({"status": True, "data": self.object.score})
 
     def get_object(self, queryset=None):
+        """Get the required attendance object from the kwargs."""
         if queryset is None:
             queryset = self.get_queryset()
         obj = queryset.filter(
@@ -165,6 +174,7 @@ class AdminResultStudentEngagementView(IsSuperuserViewMixin, DetailView):
     context_object_name = "result"
 
     def get_object(self, queryset=None):
+        """Get the required attendance object from the kwargs."""
         if queryset is None:
             queryset = self.get_queryset()
         obj = queryset.filter(
@@ -183,6 +193,7 @@ class LabAttendanceUpload(IsSuperuserViewMixin, FormView):
     failed = []
 
     def post(self, request, *args, **kwargs):
+        """Handle the form post."""
         form_class = self.get_form_class()
         form = self.get_form(form_class)
         files = request.FILES.getlist("spreadsheet")

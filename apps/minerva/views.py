@@ -444,7 +444,6 @@ class GenerateModuleMarksheetView(IsSuperuserViewMixin, FormView):
 
 
 class TestDetailView(IsStudentViewixin, DetailView):
-
     """Provide a detail view for a single test."""
 
     template_name = "minerva/test-detail.html"

@@ -562,7 +562,7 @@ def lab_engagement_session(self, cohort=None, semester=None) -> dict:
         elif attendance.score == 0:
             base[session.pk] = format_html('<img src="/static/admin/img/icon-no.svg" Alt="Unauthorised Absence"/>')
         else:
-            base[session.pk] = format_html(f"{int(attendance.score)}")
+            base[session.pk] = format_html("{}", int(attendance.score))
     return base
 
 

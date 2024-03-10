@@ -201,4 +201,4 @@ class CohortListFilter(admin.SimpleListFilter):
         elif "tutorial" in fields:
             return queryset.filter(tutorial__cohort=self.value())
         else:
-            assert False
+            raise ValueError(f"Unknown field in {fields}")

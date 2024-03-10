@@ -200,7 +200,7 @@ AUTH_LDAP_USER_FLAGS_BY_GROUP = {
     # Above will NOT match "CN=WebAdmin,OU=People,OU=Users" (missing DC=mydomain).
     "is_staff": [
         "CN=PHY_Academic_Staff,OU=Groups,OU=Physics and Astronomy,OU=MAPS,OU=Resources,DC=ds,DC=leeds,DC=ac,DC=uk"
-    ]
+    ],
     # True if one of the conditions is true.
 }
 
