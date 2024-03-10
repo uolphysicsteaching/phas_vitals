@@ -175,7 +175,37 @@ MANAGERS = ADMINS
 
 ####### User model and Authentication #####################
 
+##########################################################################
 AUTH_USER_MODEL = "accounts.Account"
+
+# Only allow manual creation of new users
+AUTH_LDAP_CREATE_USER_ON_FLY = False
+
+AUTHENTICATION_BACKENDS = ["django_auth_ldap_ad.backend.LDAPBackend", "django.contrib.auth.backends.ModelBackend"]
+
+AUTH_LDAP_USE_SASL = False
+
+AUTH_LDAP_BIND_TRANSFORM = "{}@ds.leeds.ac.uk"
+
+AUTH_LDAP_SERVER_URI = ["ldaps://ds.leeds.ac.uk:636", "ldaps://admin.ds.leeds.ac.uk:636"]
+AUTH_LDAP_SEARCH_DN = "DC=ds,DC=leeds,DC=ac,DC=uk"
+AUTH_LDAP_USER_ATTR_MAP = {"first_name": "givenName", "last_name": "sn", "email": "mail", "number": "employeeID"}
+
+AUTH_LDAP_TRACE_LEVEL = 0
+AUTH_LDAP_USER_FLAGS_BY_GROUP = {
+    # Groups on left side are memberOf key values. If all the groups are found in single entry, then the flag is set to
+    # True. If no entry contains all required groups then the flag is set False.
+    "is_superuser": [],
+    # Above example will match on entry "CN=WebAdmin,DC=mydomain,OU=People,OU=Users"
+    # Above will NOT match "CN=WebAdmin,OU=People,OU=Users" (missing DC=mydomain).
+    "is_staff": [
+        "CN=PHY_Academic_Staff,OU=Groups,OU=Physics and Astronomy,OU=MAPS,OU=Resources,DC=ds,DC=leeds,DC=ac,DC=uk"
+    ]
+    # True if one of the conditions is true.
+}
+
+# All people that are to be staff are also to belong to this group
+AUTH_LDAP_USER_GROUPS_BY_GROUP = {"Instructor": AUTH_LDAP_USER_FLAGS_BY_GROUP["is_staff"]}
 
 # ##### DJANGO RUNNING CONFIGURATION ######################
 
@@ -202,7 +232,8 @@ except socket.gaierror:
     DNS_NAME = "localhost"
     IP_ADDR = "127.0.0.1"
 
-ALLOWED_HOSTS = [DNS_NAME, IP_ADDR, "localhost", "127.0.0.1"]
+TEST_SERVERS = ["localhost:8443", "127.0.0.1:8443", "test-server"]
+ALLOWED_HOSTS = [DNS_NAME, IP_ADDR, "localhost", "127.0.0.1"] + TEST_SERVERS
 CSRF_TRUSTED_ORIGINS = [f"https://{x}" for x in ALLOWED_HOSTS]
 
 # #### Session Settings

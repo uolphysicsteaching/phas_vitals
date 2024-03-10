@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}
+{{ block.super }} Current Status fr {{ user.display_name }}
+{% endblock title %}
+{% block content %}
+<h2>{{ vital.name }}</h2>
+<div class="row"><div class="col-md-12"><p class="lead">
+{% if vital.status == "Finished" %}
+    You should have already completed the assignments you need for this VITAL by now.
+{% elif vital.status == "Started" %}
+    You should be working on the assignments that pass this VITAL now.
+{% elif vital.status == "Not Started" %}
+    The assignments for this VITAL haven't been released yet.
+{% else %}
+    The status {{ vital.status }} was unexpected.
+{% endif %}
+</p></div></div>
+<div class="row">
+    <div class="col-md-4">Summary :</div>
+    <div class="col-md-8">{{ vital.description }}</div>
+</div>
+<div class="row">
+    <div class="col-md-4">This VITAL is part of this module :</div>
+    <div class="col-md-8">{{ vital.module.name }} ({{ vital.module.code }})</div>
+</div>
+<div class="row">
+    <div class="col-md-4">You can start this vital from :</div>
+    <div class="col-md-8"> {{ vital.release }}</div>
+</dvi>
+<div class="row">
+    <div class="col-md-4">You should have completed this VITAL by :</div>
+    <div class="col-md-8"> {{ vital.end_date }}</div>
+</dvi>
+<div class="row">
+    <div class="col-md-4">This VITAL can be passed by completing one of these assignments :</div>
+    <div class="col-md-8">{% for test in vital.tests.all %}
+        {% if forloop.first %}<ul>{% endif %}
+        <li><a href="{{ test.url }}">{{ test.name }}</a></li>
+        {% if forloop.last %}</ul>{% endif %}
+    {% endfor %}</div>
+</div>
+
+
+{% endblock content %}
