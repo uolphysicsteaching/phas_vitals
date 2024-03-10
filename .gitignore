@@ -23,3 +23,6 @@ coverage_html
 
 *secrets.*
 *SECRET*
+
+# Spyder project files
+.spyproject
