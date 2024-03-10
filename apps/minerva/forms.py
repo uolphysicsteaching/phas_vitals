@@ -43,13 +43,13 @@ class TestImportForm(forms.Form):
     def get_mime(cls, content):
         """Get the mime type of the current file as a string.
 
-        if content is None, use self.content as the file."""
-
+        if content is None, use self.content as the file.
+        """
         return get_mime(content)
 
 
 class TestHistoryImportForm(forms.Form):
-    """This version of the fomr is for uploading the Gradebook History Log."""
+    """Fomr that is for uploading the Gradebook History Log."""
 
     module = forms.ModelChoiceField(
         queryset=Module.objects.annotate(tests_count=Count("tests")).filter(tests_count__gt=0)
@@ -81,8 +81,8 @@ class TestHistoryImportForm(forms.Form):
     def get_mime(cls, content):
         """Get the mime type of the current file as a string.
 
-        if content is None, use self.content as the file."""
-
+        if content is None, use self.content as the file.
+        """
         return get_mime(content)
 
 

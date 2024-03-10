@@ -54,13 +54,13 @@ class IsSuperuserViewMixin(UserPassesTestMixin):
 
 
 class IsMemberViewMixin(UserPassesTestMixin):
-    """Mixin class to ensure logged in user is a member of a particular group"""
+    """Mixin class to ensure logged in user is a member of a particular group."""
 
     login_url = "/login"
     groups = []
 
     def get_groups(self):
-        """Returns a list of group names that the user should be a member of at least one."""
+        """Return a list of group names that the user should be a member of at least one."""
         if not isinstance(self.groups, (list, tuple)):
             groups = [self.groups]
         else:
@@ -77,7 +77,7 @@ class SuperuserTemplateView(IsSuperuserViewMixin, TemplateView):
 
 
 class RedirectView(View):
-    """This just redirects the view to another class depending on the request user's attributes
+    """This just redirects the view to another class depending on the request user's attributes.
 
     is_superuser: self.get_superuser_view()->self.superuser_view
     is_staff: self.get_staff_view()->self.staff_view
