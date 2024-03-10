@@ -1,59 +1,60 @@
 name: django
 channels:
   - defaults
-  - phygbu
-  - conda-forge
 dependencies:
-  - python=3.11
-  - django==4.2.10
-  - mamba
-  - ipython
   - ca-certificates
-  - openssl
   - certifi
-  - django-mathfilters
-  - django-import-export==3.3.7
-  - django-suit
-  - django-tinymce
-  - tablib=3.5.0
-  - djangorestframework
   - django-ajax-selects
-  - django-constance
-  - django-grappelli=3.0.6
-  - django-photologue
-  - django-simple-file-handler
-  - psycopg2
-  - django-sitetree
-  - django-bootstrap5
-  - django-extra-views
-  - simple_html_table
-  - django-picklefield
-  - django-ical
   - django-autocomplete-light
-  - django-bootstrap-datepicker-plus
-  - django-floppyforms
+  - django-bootstrap5
+  - django-constance
+  - django-extra-views
+  - django-ical
+  - django-import-export==3.3.7
+  - django-mathfilters
+  - django-photologue
+  - django-picklefield
+  - django-simple-file-handler
+  - django-sitetree
+  - django-tinymce
+  - django>=4.2.11
+  - djangorestframework
+  - ipython
+  - mamba
+  - openssl
+  - psycopg2
+  - python=3.11
+  - simple_html_table
+  - tablib
+  - gunicorn
   - cookiecutter
+  - multiprocess
+  - black
+  - codespell
   - django-admin-sortable2
+  - django-baton
+  - django-bootstrap-datepicker-plus
   - django-colorful
   - django-cookie-law
   - django-cors-headers
-  - django-tables2=2.7
   - django-email-obfuscator
-  - django-filter
-  - django-smart-selects
-  - django-baton
-  - pygraphviz
-  - pydot
-  - pyparsing
   - django-extensions
-  - black
-  - codespell
-  - isort
+  - django-filter
+  - django-floppyforms
   - django-oauth-toolkit
+  - django-smart-selects
+  - django-tables2
+  - filemagic
+  - isort
+  - matplotlib
   - openpyxl
   - pandas
-  - whitenoise
+  - pydot
+  - pygraphviz
+  - pyparsing
   - pytz
-  - filemagic
-  - matplotlib
-prefix: C:\ProgramData\anaconda3\envs\django
+  - whitenoise
+  - ldap3
+  - openldap
+  - python-ldap
+prefix: /usr/lib/miniconda3/envs/django
