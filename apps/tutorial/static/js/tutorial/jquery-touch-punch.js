@@ -26,7 +26,7 @@
 
   // Ignore browsers without touch support
   if (!$.support.touch) {
-    return;
+    return null;
   }
 
   var mouseProto = $.ui.mouse.prototype,
@@ -46,7 +46,7 @@
 
     // Ignore multi-touch events
     if (event.originalEvent.touches.length > 1) {
-      return;
+      return null;
     }
 
     var touch = event.originalEvent.changedTouches[0],
@@ -97,7 +97,7 @@
 
     // Ignore the event if another widget is already being handled
     if (touchHandled || !this._mouseCapture(touch)) {
-      return;
+      return null;
     }
 
     // Set the flag to prevent other widgets from inheriting the touch event
@@ -129,7 +129,7 @@
 
     // Ignore event if not handled
     if (!touchHandled) {
-      return;
+      return null;
     }
 
     // Check if interaction was a click or a drag
@@ -153,7 +153,7 @@
 
     // Ignore event if not handled
     if (!touchHandled) {
-      return;
+      return null;
     }
 
     // Simulate the mouseup event
