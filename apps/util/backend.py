@@ -5,20 +5,12 @@ import logging
 
 # Django imports
 from django.contrib.auth import get_user_model
-from django.contrib.auth.backends import ModelBackend
-from django.contrib.auth.models import Group
-from django.core.exceptions import (
-    ImproperlyConfigured,
-    ObjectDoesNotExist,
-    PermissionDenied,
-)
+from django.core.exceptions import PermissionDenied
 
 # external imports
-import jwt
 from django_auth_adfs import signals
 from django_auth_adfs.backend import AdfsAuthCodeBackend
 from django_auth_adfs.config import provider_config, settings
-from django_auth_adfs.exceptions import MFARequired
 
 logger = logging.getLogger("django_auth_adfs")
 
@@ -27,7 +19,7 @@ class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
     """Subclass of AdfsAuthCodeBackend to customise user creation."""
 
     def process_access_token(self, access_token, adfs_response=None):
-        """Does the legwork of checking the user is ok."""
+        """Check the user is ok by getting the Account object."""
         if not access_token:
             raise PermissionDenied
 
@@ -55,9 +47,7 @@ class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
         return user
 
     def process_user_groups(self, claims, access_token):
-        """
-        Checks the user groups are in the claim or pulls them from MS Graph if
-        applicable
+        """Check the user groups are in the claim or pulls them from MS Graph if applicable.
 
         Args:
             claims (dict): claims from the access token
@@ -72,8 +62,7 @@ class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
         return groups
 
     def create_user(self, claims):
-        """
-        Create the user if it doesn't exist yet
+        """Create the user if it doesn't exist yet.
 
         Args:
             claims (dict): claims from the access token
@@ -127,8 +116,7 @@ class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
         logger.debug(f"Response to me {payload}")
 
     def update_user_groups(self, user, claim_groups):
-        """Stub method that eventually should do ldap lookup.""" """
-        """
+        """Stub method that eventually should do ldap lookup."""
         logger.debug(f"Groups update requested for {user} with {claim_groups}")
 
     def update_user_flags(self, user, claims, claim_groups):
@@ -136,8 +124,7 @@ class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
         logger.debug(f"User flags update requested for {user} with {claim_groups}")
 
     def get_group_memberships_from_ms_graph(self, obo_access_token):
-        """
-        Looks up a users group membership from the MS Graph API
+        """Look up a users group membership from the MS Graph API.
 
         Args:
             obo_access_token (str): Access token obtained from the OBO authorization endpoint

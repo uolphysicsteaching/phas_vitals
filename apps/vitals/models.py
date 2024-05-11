@@ -1,3 +1,4 @@
+"""Model objects for the VITALs app."""
 # Python imports
 import re
 from datetime import timedelta
@@ -13,7 +14,7 @@ from accounts.models import Account
 from constance import config
 
 # Create your models here.
-from util.models import colour, contrast, patch_model
+from util.models import colour, patch_model
 
 
 class VITAL_Test_Map(models.Model):

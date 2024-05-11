@@ -24,7 +24,7 @@ def pie_chart(data, colours):
     """Make a Pie chart for the student dashboard."""
     fig, ax = plt.subplots()
     fig.set_figwidth(4.5)
-    wedges, texts = ax.pie(list(data.values()), labels=list(data.keys()), colors=colours, labeldistance=0.3)
+    _, texts = ax.pie(list(data.values()), labels=list(data.keys()), colors=colours, labeldistance=0.3)
     for text in texts:
         text.set_bbox({"facecolor": (1, 1, 1, 0.75), "edgecolor": (1, 1, 1, 0.25)})
     data = svg_data(fig, base64=True)
@@ -58,6 +58,8 @@ class TutorGroupEmailsView(IsSuperuserViewMixin, FormView):
 
 
 class StudentSummaryView(IsStudentViewixin, TemplateView):
+    """View class to provide students with summary."""
+
     template_name = "accounts/summary.html"
 
     def get_context_data(self, **kwargs):
@@ -127,7 +129,7 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
             except ValueError:  # New test_score
                 attempted = 0
             for label, (attempts, colour) in settings.TESTS_ATTEMPTS_PROFILE[test_score.standing].items():
-                if attempts <= attempts:
+                if attempts <= attempted:
                     if label not in data:
                         colours.append(colour)
                     data[label] = data.get(label, 0) + 1
@@ -135,7 +137,7 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
         return pie_chart(data, colours)
 
     def vitals_plot(self, vitals_results):
-        """Make a pier chart for passing vitals/"""
+        """Make a pier chart for passing vitals."""
         data = {}
         colours = []
         status = []

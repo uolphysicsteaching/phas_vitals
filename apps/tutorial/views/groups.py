@@ -145,7 +145,7 @@ class ToggleTutorialAssignmentField(IsStaffViewMixin, DetailView):
         val = not getattr(obj, mapping[component], False)
         setattr(obj, mapping[component], val)
         obj.save()
-        student = obj.student
+        # student = obj.student
         # mtype = MarkType.objects.get(code=component)
         # score = getattr(student, f"{component}_mark")
         # tutorial = student.tutorial_group_assignment.tutorial

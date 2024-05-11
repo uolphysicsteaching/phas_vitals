@@ -70,7 +70,7 @@ class SessionFKWidget(widgets.ForeignKeyWidget):
 
 
 class UsernameFKWidget(widgets.ForeignKeyWidget):
-    "Allow a pre-process callback in clean." ""
+    """ "Foreign Key widget that allows a callback inside clean() method."""
 
     name_pat = re.compile(r"\((.*)\)")
 

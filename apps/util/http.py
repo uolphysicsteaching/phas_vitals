@@ -45,7 +45,6 @@ def svg_data(plot=None, base64=False):
 
 
 class SVGResponse(HttpResponse):
-
     """Represent a HTTP response with a Content-Type of 'image/svg+xml'.
 
     This subclass of `django.http.HttpResponse` will remove most of the
@@ -55,6 +54,7 @@ class SVGResponse(HttpResponse):
     """
 
     def __init__(self, plot=None, **kwargs):
+        """Construct the HttpResonse subclass."""
         kwargs["content"] = svg_data(plot)
 
         kwargs.setdefault("content_type", "image/svg+xml")

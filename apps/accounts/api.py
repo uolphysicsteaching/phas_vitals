@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""REST Framework API endpoints for accounts app"""
+"""REST Framework API endpoints for accounts app."""
 
 # Django imports
 from django.contrib.auth.models import Group

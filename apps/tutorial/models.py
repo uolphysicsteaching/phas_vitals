@@ -16,7 +16,6 @@ from django.utils.text import slugify
 import numpy as np
 from accounts.models import Account, Cohort, academic_Q, students_Q
 from constance import config
-from matplotlib.cm import RdYlGn as color
 from tinymce.models import HTMLField
 from util.models import colour, contrast, patch_model
 
@@ -82,7 +81,7 @@ class TutorialManager(models.Manager):
 
 
 class Tutorial(models.Model):
-    """Defines a model tutorial item"""
+    """Defines a model tutorial item."""
 
     class Meta:
         ordering = ["code"]
@@ -161,7 +160,7 @@ class Tutorial(models.Model):
         return contrast(self.recorded_colour)
 
     def natural_key(self) -> str:
-        """The natural key is the group code."""
+        """Set the natural key as the group code."""
         return self.code
 
 
@@ -255,7 +254,7 @@ class Attendance(models.Model):
 
     def __str__(self) -> str:
         """Make the string representation."""
-        return f"{self.student.display_name} ({self.session}) ({getattr(self.type,'name','')} ): {self.score_str}"
+        return f"{self.student.display_name} ({self.session}) ({getattr(self.type, 'name', '')} ): {self.score_str}"
 
     @property
     def score_str(self) -> str:

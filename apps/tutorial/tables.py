@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tables supports various tutorial related views with django-tabvles2 subclasses
-
-Created on Tue Jan  9 20:02:15 2018
-
-@author: phygbu
-"""
+"""Support various tutorial related views with django-tabvles2 subclasses."""
 # Django imports
 from django.utils.html import format_html
 
@@ -15,6 +10,8 @@ from django_tables2.tables import Table
 
 
 class BaseTable(Table):
+    """Base class for tables about students."""
+
     class Meta:
         attrs = {"width": "100%"}
 
@@ -23,6 +20,8 @@ class BaseTable(Table):
 
 
 class BaseMarkTable(BaseTable):
+    """Base class for tables about student marks."""
+
     submitted = Column()
     similarity = Column()
     downloaded = Column()
@@ -30,13 +29,17 @@ class BaseMarkTable(BaseTable):
 
 
 class MarkColumn(Column):
+    """Column type that can display marks or glyphs."""
+
     def __init__(self, **kargs):
+        """Construct the column instance with default attrs."""
         attrs = kargs.pop("attrs", {})
         attrs.update({"th": {"class": "vertical"}})
         kargs["attrs"] = attrs
         super(MarkColumn, self).__init__(**kargs)
 
     def render(self, value):
+        """Produce html for the cell value."""
         if isinstance(value, bool) and value:
             ret = format_html("<img src='/static/admin/img/icon-yes.svg' alt='Yes'/>")
         elif isinstance(value, bool) and not value:

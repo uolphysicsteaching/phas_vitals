@@ -122,7 +122,7 @@ class RedirectView(View):
     def dispatch(self, request, *args, **kwargs):
         """Attempt to find another view to redirect to before calling super()."""
         self.kwargs.update(kwargs)
-        kargs = self.kwargs
+        kwargs = self.kwargs
         for method in [self.get_superuser_view, self.get_staff_view, self.get_logged_in_view, self.get_group_view]:
             if view := method(request):
                 as_view_kwargs = getattr(self, "as_view_kwargs", {})

@@ -16,12 +16,7 @@ from accounts.models import Account, Cohort
 from accounts.views import StudentSummaryView
 from extra_views import ModelFormSetView
 from util.forms import FileSelectForm
-from util.views import (
-    IsStaffViewMixin,
-    IsStudentViewixin,
-    IsSuperuserViewMixin,
-    RedirectView,
-)
+from util.views import IsStaffViewMixin, IsSuperuserViewMixin, RedirectView
 
 # app imports
 from ..forms import EngagementEntryForm
@@ -93,7 +88,7 @@ class SubmitStudentEngagementView(IsStaffViewMixin, ModelFormSetView):
 
     def get_success_url(self):
         """Return the success URL back to the current tutroial view."""
-        group, session = self.kwargs["session"].split(":")
+        _, session = self.kwargs["session"].split(":")
         session = Session.objects.get(pk=int(session))
         return f"/tutorial/engagement_view/{session.semester}/{session.cohort.name}"
 
@@ -103,7 +98,7 @@ class SubmitStudentEngagementView(IsStaffViewMixin, ModelFormSetView):
         session = Session.objects.get(pk=int(session))
         group = Tutorial.objects.get(pk=int(group))
         for student in group.students.all().distinct():
-            inst, _ = Attendance.objects.get_or_create(student=student, session=session, type=SessionType.TUTORIAL)
+            _, _ = Attendance.objects.get_or_create(student=student, session=session, type=SessionType.TUTORIAL)
 
         ret = Attendance.objects.filter(session=session, student__tutorial_group=group, type=SessionType.TUTORIAL)
         return ret
@@ -246,7 +241,7 @@ class LabAttendanceUpload(IsSuperuserViewMixin, FormView):
         self.report.rename(
             columns={x: x.strip().title() for x in self.report.columns if x.strip() != "Student ID"}, inplace=True
         )
-        for ix, row in self.report.iterrows():
+        for _, row in self.report.iterrows():
             try:
                 sid = int(np.round(row["Student ID"]))
             except ValueError:

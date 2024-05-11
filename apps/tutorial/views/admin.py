@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Views to support tutorial administration"""
+"""Views to support tutorial administration."""
 
 # Python imports
 from collections import OrderedDict
@@ -194,8 +194,8 @@ class AcademicIntegrityUpload(IsSuperuserViewMixin, FormView):
                 student.integrity_test = True
                 student.save()
                 # mtype = MarkType.objects.get(code="AIT")
-                score = getattr(student.student, "AIT_mark")
-                tutorial = student.tutorial
+                # score = getattr(student.student, "AIT_mark")
+                # tutorial = student.tutorial
                 # msheet, new = Marksheet.objects.get_or_create(student=student.student, tutorial=tutorial, type=mtype)
                 # msheet.score = score
                 # msheet.submitter = self.request.user

@@ -1,3 +1,4 @@
+"""View classes for the app that handles Minerva integration."""
 # Python imports
 import csv
 import re
@@ -12,7 +13,6 @@ from django.forms import ValidationError
 from django.http import StreamingHttpResponse
 from django.utils.html import format_html
 from django.views.generic import DetailView, FormView
-from django.views.generic.edit import FormMixin
 
 # external imports
 import numpy as np
@@ -285,6 +285,7 @@ class TestResultColumn(Column):
         super().__init__(**kargs)
 
     def render(self, value):
+        """Render the cell values."""
         match value:
             case False:
                 ret = '<div class="badge rounded-pil bg-secondary">&nbsp;</div>'
@@ -326,7 +327,7 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
     table_pagination = False
 
     def __init__(self, *args, **kargs):
-        """Setup instance variables."""
+        """Construct instance variables."""
         self.module = None
         self.mode = "scor3e"
         self.tests = []
@@ -399,7 +400,7 @@ class ShowAllTestResultsViiew(IsSuperuserViewMixin, BaseShowTestResultsView):
     """Show a table of all student test results."""
 
     def get_entries(self):
-        """Method to get the students to include in the table."""
+        """Get the students to include in the table."""
         return (
             ModuleEnrollment.objects.filter(module=self.module)
             .prefetch_related("student", "student__test_results", "student__programme", "status")
@@ -411,7 +412,7 @@ class ShowTutorTestResultsViiew(IsStaffViewMixin, BaseShowTestResultsView):
     """Show a table of student test results for the current user's tutees."""
 
     def get_entries(self):
-        """Method to get the students to include in the table."""
+        """Get the students to include in the table."""
         return (
             ModuleEnrollment.objects.filter(module=self.module, student__tutorial_group__tutor=self.request.user)
             .prefetch_related("student", "student__test_results", "student__programme", "status")
