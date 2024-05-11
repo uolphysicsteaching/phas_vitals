@@ -408,11 +408,11 @@ class Test_Attempt(models.Model):
         """Make simple string representation."""
         return f"{self.attempt_id} - for {self.test_entry}"
 
-    def save(self, **kargs):
+    def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
         """Check whether saving this attempt changes the test passed or not."""
         self.attempt_id = f"{self.test_entry.test.name}:{self.test_entry.user.username}:{self.attempted}"
         trigger_check = self.pk is None or self.test_entry.score != self.score
-        super().save()
+        super().save(force_insert, force_update, using, update_fields)
 
         if trigger_check:  # Every new attempt causes a save to the test_entry
             self.test_entry.save()
