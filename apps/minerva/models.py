@@ -1,4 +1,6 @@
 # Python imports
+"""Models for integration with minerva."""
+# Python imports
 import re
 from datetime import timedelta
 from os import path
@@ -371,17 +373,17 @@ class Test_Score(models.Model):
             pass_changed = None
         return best_score, numerically_passed, pass_changed
 
-    def save(self, **kargs):
+    def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
         """Correct the passed flag if score is equal to or greater than test.passing_score."""
         if self.pk is not None:
             orig = Test_Score.objects.get(pk=self.pk)
         else:
             orig = None
-            super().save()
+            super().save(force_insert, force_update, using, update_fields)
         score, passed, send_signal = self.check_passed(orig)
         self.score = score
         self.passed = passed
-        super().save()
+        super().save(force_insert, force_update, using, update_fields)
         if send_signal:
             test_passed.send(sender=self.__class__, test=self)
 
@@ -403,7 +405,7 @@ class Test_Attempt(models.Model):
     modified = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
-        """Simple string representation."""
+        """Make simple string representation."""
         return f"{self.attempt_id} - for {self.test_entry}"
 
     def save(self, **kargs):
