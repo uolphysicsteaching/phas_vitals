@@ -6,7 +6,7 @@ from os import path
 # Django imports
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import models
+from django.db import DEFAULT_DB_ALIAS, models
 from django.forms import ValidationError
 from django.utils import timezone as tz
 
@@ -246,14 +246,14 @@ class Test(models.Model):
         """Return string representation a natural key."""
         return str(self)
 
-    def save(self, **kargs):
+    def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
         """Check whether we need to update test_score passing fields."""
         if self.results.count() > 0:
             orig = Test.objects.get(pk=self.pk)
             update_results = orig.passing_score != self.passing_score
         else:
             update_results = False
-        super().save(**kargs)
+        super().save(force_insert, force_update, using, update_fields)
         if update_results:  # Propagate change in pass mark to test scores
             for test_score in self.results.all():  # Update all test_scores for both passes and fails
                 test_score.save()

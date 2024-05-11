@@ -6,7 +6,7 @@
 # Create your views here.
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.html import format_html
-from django.views.generic import DetailView, FormView, RedirectView
+from django.views.generic import DetailView, FormView
 
 # external imports
 from accounts.views import StudentSummaryView

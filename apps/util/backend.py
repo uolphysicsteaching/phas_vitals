@@ -23,7 +23,7 @@ class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
         if not access_token:
             raise PermissionDenied
 
-        logger.debug("Received access token: %s", access_token)
+        logger.debug("Received access token.")
         claims = self.validate_access_token(access_token)
         if not claims:
             raise PermissionDenied
@@ -95,25 +95,25 @@ class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
         """Stub method that eventually should do an ldap lookup."""
         logger.debug(f"Update requested for {user} with {claims}")
         return
-        # At the moment I don't have outgoing msgraph.com I think
-        url = "https://graph.microsoft.com/beta/me"
+        # # At the moment I don't have outgoing msgraph.com I think
+        # url = "https://graph.microsoft.com/beta/me"
 
-        obo_access_token = self.get_obo_access_token(self.access_token)
-        logger.debug(f"Got on-behalf-of token {obo_access_token}")
+        # obo_access_token = self.get_obo_access_token(self.access_token)
+        # logger.debug("Got on-behalf-of token")
 
-        headers = {"Authorization": "Bearer {}".format(obo_access_token)}
-        response = provider_config.session.get(url, headers=headers, timeout=30, verify=False)
+        # headers = {"Authorization": "Bearer {}".format(obo_access_token)}
+        # response = provider_config.session.get(url, headers=headers, timeout=30, verify=False)
 
-        if response.status_code in [400, 401]:
-            logger.error("MS Graph server returned an error: %s", response.json()["message"])
-            raise PermissionDenied
+        # if response.status_code in [400, 401]:
+        #     logger.error(f"MS Graph server returned an error: {response.json()['message']}")
+        #     raise PermissionDenied
 
-        if response.status_code != 200:
-            logger.error("Unexpected MS Graph response: %s", response.content.decode())
-            raise PermissionDenied
+        # if response.status_code != 200:
+        #     logger.error("Unexpected MS Graph response: {response.content.decode()}")
+        #     raise PermissionDenied
 
-        payload = response.json()
-        logger.debug(f"Response to me {payload}")
+        # payload = response.json()
+        # logger.debug(f"Response to me {payload}")
 
     def update_user_groups(self, user, claim_groups):
         """Stub method that eventually should do ldap lookup."""

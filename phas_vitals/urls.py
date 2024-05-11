@@ -12,7 +12,6 @@ from django.conf.urls import include
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import path, re_path
-from django.views.generic import TemplateView
 
 # external imports
 from ajax_select import urls as ajax_select_urls

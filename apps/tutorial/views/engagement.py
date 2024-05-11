@@ -218,7 +218,7 @@ class LabAttendanceUpload(IsSuperuserViewMixin, FormView):
                 f = f.file.name
                 try:
                     self.report = pd.read_excel(f, header=None)
-                    row, col = np.where(self.report.values == "Student ID")
+                    row, _ = np.where(self.report.values == "Student ID")
                     if len(row) != 1:
                         raise ValueError("expected one and onely one cell labelled Student ID")
                     self.report = pd.read_excel(f, header=row[0])
@@ -262,7 +262,7 @@ class LabAttendanceUpload(IsSuperuserViewMixin, FormView):
             compact.append(out)
         compact = pd.DataFrame(compact)
         with transaction.atomic():
-            for ix, row in compact.iterrows():
+            for _, row in compact.iterrows():
                 for header, session in headers.items():
                     if not np.isnan(row[header]):
                         new, _ = Attendance.objects.get_or_create(
