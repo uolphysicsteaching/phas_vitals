@@ -1,7 +1,13 @@
 """Models for util app."""
-
 # Django imports
-# from django.db import models
+from django.apps import apps
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ImproperlyConfigured
+from django.db import models
+
+# external imports
+import numpy as np
+from matplotlib.cm import RdYlGn as color
 
 
 def patch_model(model, name=None, prep=None):
@@ -20,6 +26,14 @@ def patch_model(model, name=None, prep=None):
     Returns:
         Actual decorator
     """
+    if isinstance(model, str):
+        if "." in model:
+            app_label, model = model.split(".")
+        else:
+            app_label = ContentType.objects.get(model=model).app_label
+        model = apps.get_model(app_label, model)
+    if not issubclass(model, models.Model):
+        raise ImproperlyConfigured(f"model argument to patch should either be a string or model - not a {type(model)}")
 
     def patch_model_decorator(func):
         if name is None:
@@ -33,6 +47,37 @@ def patch_model(model, name=None, prep=None):
         setattr(model, attr_name, func)
 
     return patch_model_decorator
+
+
+def colour(value: float, contrast: bool = False) -> str:
+    """Turn a float value into a colour scheme."""
+    if not isinstance(value, float) or np.isnan(value):
+        return "#ffffff"
+    value = value / 120
+    rgb = (np.array(color(value)) * 255).astype(int)[:3]
+    if contrast:
+        return "#000000" if rgb.mean() > 96 else "#ffffff"
+    return "#" + "".join([f"{x:02X}" for x in rgb])
+
+
+def contrast(colour: str) -> str:
+    """Take a Hex string and convert to a contrasting colour string."""
+    if len(colour) < 7:
+        return "#000000"
+    if colour[0] == "#":
+        colour = colour[1:]
+    elif colour[:2] == "0x":
+        colour = colour[2:]
+    try:
+        col: int = int(colour, 16)
+        high = col // (256 * 256)
+        col -= high * 256**2
+        med = col // 256
+        low = col - med * 256
+        avg = (high + med + low) / 3
+    except (ValueError, TypeError):
+        avg = 0
+    return "#000000" if avg > 128 else "#ffffff"
 
 
 # Create your models here.

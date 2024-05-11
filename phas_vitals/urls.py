@@ -11,18 +11,23 @@ from pathlib import Path
 from django.conf.urls import include
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
-from django.urls import path
+from django.urls import path, re_path
 from django.views.generic import TemplateView
+
+# external imports
+from ajax_select import urls as ajax_select_urls
 
 # app imports
 from .api import router
 from .settings.production import PROJECT_ROOT
+from .views import HomeView
 
 urlpatterns = [
     # Examples:
     # url(r'^$', 'phas_vitals.views.home', name='home'),
     # url(r'^blog/', include('blog.urls')),
-    path("", TemplateView.as_view(template_name="home.html")),
+    path("", HomeView.as_view()),
+    re_path(r"^ajax_select/", include(ajax_select_urls)),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api-auth/", include("rest_framework.urls")),
@@ -30,6 +35,7 @@ urlpatterns = [
     path(r"login/", auth_views.LoginView.as_view(), name="core_login"),
     path(r"logout/", auth_views.LogoutView.as_view(next_page="/"), name="core_logout"),
     path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
+    path("oauth2/", include("django_auth_adfs.urls")),
 ]
 
 # Add urls path for all the apps

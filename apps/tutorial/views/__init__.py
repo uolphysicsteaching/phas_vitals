@@ -9,11 +9,12 @@ __all__ = [
     "MeetingsSummary",
     "StudentMarkingSummary",
     # Engagement
+    "ShowEngagementView",
     "AdminEngagementSummaryView",
     "AdminResultStudentEngagementView",
     "AdminSubmitStudentEngagementView",
     "LabAttendanceUpload",
-    "StudentEngagementSummary",
+    "TutorStudentEngagementSummary",
     "SubmitStudentEngagementView",
     # Groups
     "AssignTutorGroupsView",
@@ -33,8 +34,9 @@ from .engagement import (
     AdminResultStudentEngagementView,
     AdminSubmitStudentEngagementView,
     LabAttendanceUpload,
-    StudentEngagementSummary,
+    ShowEngagementView,
     SubmitStudentEngagementView,
+    TutorStudentEngagementSummary,
 )
 from .groups import (
     AssignTutorGroupsView,

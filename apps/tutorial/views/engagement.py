@@ -13,16 +13,22 @@ import numpy as np
 import pandas as pd
 from accounts.forms import CohortSelectForm
 from accounts.models import Account, Cohort
+from accounts.views import StudentSummaryView
 from extra_views import ModelFormSetView
 from util.forms import FileSelectForm
-from util.views import IsStaffViewMixin, IsSuperuserViewMixin
+from util.views import (
+    IsStaffViewMixin,
+    IsStudentViewixin,
+    IsSuperuserViewMixin,
+    RedirectView,
+)
 
 # app imports
 from ..forms import EngagementEntryForm
 from ..models import Attendance, Session, SessionType, Tutorial
 
 
-class StudentEngagementSummary(IsStaffViewMixin, FormMixin, ListView):
+class TutorStudentEngagementSummary(IsStaffViewMixin, FormMixin, ListView):
     """Produce a table of students in tutorial groups with attendance data."""
 
     context_object_name = "groups"
@@ -119,7 +125,7 @@ class SubmitStudentEngagementView(IsStaffViewMixin, ModelFormSetView):
         return ret
 
 
-class AdminEngagementSummaryView(StudentEngagementSummary):
+class AdminEngagementSummaryView(TutorStudentEngagementSummary):
     """Produce a view of a cohort of student engagement."""
 
     template_name = "tutorial/admin/engagement_summary.html"
@@ -146,9 +152,9 @@ class AdminSubmitStudentEngagementView(IsSuperuserViewMixin, UpdateView):
     def get_context_data(self, **kwargs):
         """Ensure the context data includes a list of marktypes and also the current cohort."""
         context = super().get_context_data(**kwargs)
-        context["url"] = (
-            f"/tutorial/engagement/admin_submit/session_{self.kwargs.get('student')}_{self.kwargs.get('session')}"
-        )
+        context[
+            "url"
+        ] = f"/tutorial/engagement/admin_submit/session_{self.kwargs.get('student')}_{self.kwargs.get('session')}"
         return context
 
     def form_valid(self, form):
@@ -164,6 +170,19 @@ class AdminSubmitStudentEngagementView(IsSuperuserViewMixin, UpdateView):
             student__pk=self.kwargs.get("student"), session__pk=self.kwargs.get("session"), type=SessionType.TUTORIAL
         ).first()
         return obj
+
+
+class ShowEngagementView(RedirectView):
+    """Endpoint for the VITALS results views."""
+
+    superuser_view = AdminEngagementSummaryView
+    staff_view = TutorStudentEngagementSummary
+
+    def get_logged_in_view(self, request):
+        """Patch in the kwargs with the user number."""
+        self.kwargs["username"] = request.user.username
+        self.kwargs["selected_tab"] = "#tutorials"
+        return StudentSummaryView
 
 
 class AdminResultStudentEngagementView(IsSuperuserViewMixin, DetailView):

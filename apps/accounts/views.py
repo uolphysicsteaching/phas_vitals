@@ -1,3 +1,4 @@
+"""View classes for the accounts app."""
 # Django imports
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -6,6 +7,9 @@ from django.template import loader
 from django.views.generic import FormView, TemplateView
 
 # external imports
+import matplotlib.pyplot as plt
+import numpy as np
+from util.http import svg_data
 from util.spreadsheet import TutorReportSheet, save_virtual_workbook
 from util.views import IsStudentViewixin, IsSuperuserViewMixin
 
@@ -14,6 +18,18 @@ from .forms import TutorSelectForm
 from .models import Account
 
 TEMPLATE_PATH = settings.PROJECT_ROOT_PATH / "run" / "templates" / "Tutor_Report.xlsx"
+
+
+def pie_chart(data, colours):
+    """Make a Pie chart for the student dashboard."""
+    fig, ax = plt.subplots()
+    fig.set_figwidth(4.5)
+    wedges, texts = ax.pie(list(data.values()), labels=list(data.keys()), colors=colours, labeldistance=0.3)
+    for text in texts:
+        text.set_bbox({"facecolor": (1, 1, 1, 0.75), "edgecolor": (1, 1, 1, 0.25)})
+    data = svg_data(fig, base64=True)
+    plt.close()
+    return data
 
 
 class TutorGroupEmailsView(IsSuperuserViewMixin, FormView):
@@ -60,6 +76,7 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
             except ObjectDoesNotExist:
                 new_tr = user.test_results.model(user=user, test=test, passed=False, score=None)
                 new_tr.test_status = new_tr.manual_test_satus
+                new_tr.standing = "Missing"
                 test_scores[test] = new_tr
         vitals_results = {}
         for vital in VITALS:
@@ -68,8 +85,8 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
                     user.vital_results.get(vital=vital)
                 ]
             except ObjectDoesNotExist:
-                new_vr = user.vitals_result.model(user=user, vital=vital, passed=False)
-                vitals_results[vital] = vitals_results.get(vital.module, []) + [new_vr]
+                new_vr = user.vital_results.model(user=user, vital=vital, passed=False)
+                vitals_results[vital.module] = vitals_results.get(vital.module, []) + [new_vr]
         context = super().get_context_data(**kwargs)
         context |= {
             "user": user,
@@ -78,5 +95,56 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
             "Tests": Tests,
             "scores": test_scores,
             "vitals_results": vitals_results,
+            "tab": self.kwargs.get("selected_tab", "#tests"),
+            "tutorial_plot": self.tutorial_plot(user),
+            "homework_plot": self.homework_plot(test_scores),
+            "vitals_plot": self.vitals_plot(vitals_results),
         }
         return context
+
+    def tutorial_plot(self, student):
+        """Make piechart for a student's engagement scores."""
+        data = {}
+        colours = []
+        scores = student.engagement_scores()
+        for (score, label), col in zip(
+            settings.TUTORIAL_MARKS, ["silver", "tomato", "springgreen", "mediumseagreen", "forestgreen"]
+        ):
+            if count := scores[np.isclose(scores, score)].size:
+                data[label] = count
+                colours.append(col)
+        return pie_chart(data, colours)
+
+    def homework_plot(self, test_scores):
+        """Make a pie chart of test statuses."""
+        data = {}
+        colours = []
+        for test, test_score in test_scores.items():
+            if test.status == "Not Started":
+                continue
+            try:
+                attempted = test_score.attempts.count()
+            except ValueError:  # New test_score
+                attempted = 0
+            for label, (attempts, colour) in settings.TESTS_ATTEMPTS_PROFILE[test_score.standing].items():
+                if attempts <= attempts:
+                    if label not in data:
+                        colours.append(colour)
+                    data[label] = data.get(label, 0) + 1
+                    break
+        return pie_chart(data, colours)
+
+    def vitals_plot(self, vitals_results):
+        """Make a pier chart for passing vitals/"""
+        data = {}
+        colours = []
+        status = []
+        for results in vitals_results.values():
+            for result in results:
+                status.append(result.status)
+        status = np.array(status)
+        for stat, (label, colour) in settings.VITALS_RESULTS_MAPPING.items():
+            if count := status[status == stat].size:
+                data[label] = count
+                colours.append(colour)
+        return pie_chart(data, colours)

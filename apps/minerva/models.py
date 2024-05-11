@@ -11,7 +11,10 @@ from django.forms import ValidationError
 from django.utils import timezone as tz
 
 # external imports
+import numpy as np
+from accounts.models import Account
 from constance import config
+from util.models import patch_model
 from util.spreadsheet import Spreadsheet
 
 # app imports
@@ -411,3 +414,34 @@ class Test_Attempt(models.Model):
 
         if trigger_check:  # Every new attempt causes a save to the test_entry
             self.test_entry.save()
+
+
+@patch_model(Account, prep=property)
+def passed_tests(self):
+    """Return the set of vitals passed by the current user."""
+    return Test.objects.filter(results__passed=True, results__user=self).exclude(status="Not Started")
+
+
+@patch_model(Account, prep=property)
+def failed_tests(self):
+    """Return the set of vitals passed by the current user."""
+    return Test.objects.filter(results__passed=False, results__user=self).exclude(status="Not Started")
+
+
+@patch_model(Account, prep=property)
+def untested_tests(self):
+    """Return the set of vitals passed by the current user."""
+    return Test.objects.exclude(results__user=self).exclude(status="Not Started")
+
+
+@patch_model(Account, prep=property)
+def tests_score(self):
+    """Calculate a % completed vitals score."""
+    try:
+        return np.round(
+            100.0
+            * self.passed_tests.count()
+            / (self.passed_tests.count() + self.failed_tests.count() + self.untested_tests.count())
+        )
+    except (ValueError, ZeroDivisionError):
+        return "N/A"

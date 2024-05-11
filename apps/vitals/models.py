@@ -7,7 +7,13 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone as tz
 
+# external imports
+import numpy as np
+from accounts.models import Account
+from constance import config
+
 # Create your models here.
+from util.models import colour, contrast, patch_model
 
 
 class VITAL_Test_Map(models.Model):
@@ -211,3 +217,80 @@ class VITAL(models.Model):
     def __str__(self):
         """Use name and code as a string representation."""
         return f"{self.name} ({self.module.code}"
+
+
+@patch_model(Account, prep=property)
+def passed_vitals(self):
+    """Return the set of vitals passed by the current user."""
+    return VITAL.objects.filter(student_results__passed=True, student_results__user=self).exclude(status="Not Started")
+
+
+@patch_model(Account, prep=property)
+def failed_vitals(self):
+    """Return the set of vitals passed by the current user."""
+    return VITAL.objects.filter(student_results__passed=False, student_results__user=self).exclude(
+        status="Not Started"
+    )
+
+
+@patch_model(Account, prep=property)
+def untested_vitals(self):
+    """Return the set of vitals passed by the current user."""
+    return VITAL.objects.exclude(student_results__user=self).exclude(status="Not Started")
+
+
+@patch_model(Account, prep=property)
+def vitals_score(self):
+    """Calculate a % completed vitals score."""
+    try:
+        return np.round(
+            100.0
+            * self.passed_vitals.count()
+            / (self.passed_vitals.count() + self.failed_vitals.count() + self.untested_vitals.count())
+        )
+    except (ValueError, ZeroDivisionError):
+        return "N/A"
+
+
+@patch_model(Account, prep=property)
+def activity_score(self):
+    """Give an overall activity score for an account."""
+    hw = self.tests_score
+    if not isinstance(hw, float):
+        hw = 100.0
+    vt = self.vitals_score
+    if not isinstance(vt, float):
+        vt = 100.0
+    tt = self.engagement
+    if not isinstance(tt, float):
+        tt = 100.0
+    return np.round(
+        (config.TESTS_WEIGHT * hw + config.VITALS_WEIGHT * vt + config.TUTORIALS_WEIGHT * tt)
+        / (config.TESTS_WEIGHT + config.VITALS_WEIGHT + config.TUTORIALS_WEIGHT)
+    )
+
+
+@patch_model(Account, prep=property)
+def activity_label(self) -> str:
+    """Monkey patched property for attendance ranking to a string."""
+    translation = {
+        "Exclellent": (90.0, 100.0),
+        "Good": (60.0, 90.0),
+        "Could be better": (40.0, 60.0),
+        "Must Improve": (20.0, 40.0),
+        "Unsatisfactory": (0, 20.0),
+    }
+
+    score = self.activity_score
+    if not isinstance(score, (float, int)):
+        return "No Data"
+    for name, (low, high) in translation.items():
+        if low <= score <= high:
+            return name
+    return "Unknown"
+
+
+@patch_model(Account, prep=property)
+def activity_colour(self) -> str:
+    """Monkeypatch a routine to convert engagement scaore into a hex colour."""
+    return colour(self.activity_score)

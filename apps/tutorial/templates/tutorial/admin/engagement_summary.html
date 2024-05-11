@@ -37,20 +37,23 @@ $(document).ready(function() {
     text-align: center;
 }
 .active_semester {
-    background-color:#004a2c;
+    background-color:#b31b1b;
     font-weight:bold;
 }
-td.active_semester>a:visited {
+td.semester.active_semester > a {
     color: white;
 }
-td.active_semester>a:unvisited {
+td.semester.inactive_semester > a {
+    color: black;
+}
+th > span > a {
     color: white;
 }
 </style>
 
 {% endblock css %}
 
-{% block page %}
+{% block content %}
 <h2>Monitor Student Attendance and Engagement with Tutorials</h2>
 
 <form action="" id="cohort_form" method="POST">
@@ -63,8 +66,8 @@ pattern has been. Clicking on the tutorial group header will open an email to th
 with fulling in attendance data.</p>
 <table width=100% role="presentation" aria-label="Semester Selection">
 <tr>
-<td colspan=6 class='semester{% if semester == 1 %} active_semester {% endif %}'><a href=/tutorial/admin/engagement/1/{{ cohort.name }}/>Semester 1</a></td>
-<td colspan=8 class='semester{% if semester == 2 %} active_semester {% endif %}'><a href=/tutorial/admin/engagement/2/{{ cohort.name }}/>Semester 2</a></td>
+<td colspan=6 class='semester{% if semester == 1 %} active_semester{% else %} inactive_semester {% endif %}'><a href=/tutorial/admin/engagement/1/{{ cohort.name }}/>Semester 1</a></td>
+<td colspan=8 class='semester{% if semester == 2 %} active_semester{% else %} inactive_semester {% endif %}'><a href=/tutorial/admin/engagement/2/{{ cohort.name }}/>Semester 2</a></td>
 </tr>
 </table>
 
@@ -86,14 +89,14 @@ with fulling in attendance data.</p>
     {% for student in group.members %}
         <tr>
         <td headers="students_{{ group.pk }}">
-            <a href="/accounts/staff_view/{{ student.username }}">{{ student.display_name }}</a>
+            <a href="/accounts/detail/{{ student.number }}/#dashboard">{{ student.display_name }}</a>
         </td>
         <td width=5% >T<br/>L</td>
         {% engagement student semester cohort %}
         <td headers="status_{{ group.pk }}">
-        <span style="background-color: {{ student.engagement_colour }}; display: block; width:100%; color: {{ student.engagement_colour|comp_colour }};" >
+        <span style="background-color: {{ student.activity_colour }}; display: block; width:100%; color: {{ student.activity_colour|comp_colour }};" >
             <a href=mailto:?to={{ student.nice_email|urlencode }}&cc={{ group.tutor.nice_email|urlencode }} >
-                {{ student.engagement_label }}
+                {{ student.activity_score }}%
             <a/>
         </span>
         <span style="background-color: {{ student.lab_engagement_colour }};  display: block; width:100%; color: {{ student.lab_engagement_colour|comp_colour }};">
@@ -114,4 +117,4 @@ with fulling in attendance data.</p>
 </div>
 
 
-{% endblock page %}
+{% endblock content %}

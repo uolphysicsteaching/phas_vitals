@@ -9,6 +9,7 @@ from django.utils.html import format_html
 from django.views.generic import DetailView, FormView, RedirectView
 
 # external imports
+from accounts.views import StudentSummaryView
 from django_tables2 import SingleTableMixin
 from django_tables2.columns import Column
 from minerva.forms import ModuleSelectForm
@@ -169,20 +170,17 @@ class ShowTutorVitalResultsView(IsStaffViewMixin, BaseShowvitalResults):
         )
 
 
-class ShowMyVitalResultsView(IsStudentViewixin, RedirectView):
-    """TODO write the individual student VITALs view."""
-
-    def get_redirect_url(self, *args, **kwargs):
-        """Redirect to the user page."""
-        return f"/accounts/detail/{self.request.user.number}/#VITALS"
-
-
 class ShowVitralResultsView(RedirectView):
     """Endpoint for the VITALS results views."""
 
     superuser_view = ShowAllVitalResultsView
     staff_view = ShowTutorVitalResultsView
-    logged_in_view = ShowMyVitalResultsView
+
+    def get_logged_in_view(self, request):
+        """Patch in the kwargs with the user number."""
+        self.kwargs["username"] = request.user.username
+        self.kwargs["selected_tab"] = "#VITALS"
+        return StudentSummaryView
 
 
 class VitalDetailView(IsStudentViewixin, DetailView):

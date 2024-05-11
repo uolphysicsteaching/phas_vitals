@@ -4,6 +4,7 @@
 from typing import Optional, Tuple, Union
 
 # Django imports
+from django.conf import settings
 from django.db import models
 from django.db.models import QuerySet
 from django.utils import timezone as tz
@@ -17,17 +18,7 @@ from accounts.models import Account, Cohort, academic_Q, students_Q
 from constance import config
 from matplotlib.cm import RdYlGn as color
 from tinymce.models import HTMLField
-from util.models import patch_model
-
-SEMESTERS = [(0, "Out of Semester"), (1, "Semester 1"), (2, "Semester 2"), (3, "Semesters 1+2")]
-
-TUTOPRIAL_MARKS = [
-    (-1.0, "Allowed Absence"),
-    (0.0, "Unexplained Absence"),
-    (1.0, "Present limited engagement"),
-    (2.0, "Present, good engagement"),
-    (3.0, "Present, outstanding engagement"),
-]
+from util.models import colour, contrast, patch_model
 
 
 def list_join(items, oxford=False):
@@ -178,7 +169,7 @@ class Session(models.Model):
     """Represents a teaching session."""
 
     name: "models.CharField" = models.CharField(max_length=30)
-    semester: "models.IntegerField" = models.IntegerField(default=0, choices=SEMESTERS)
+    semester: "models.IntegerField" = models.IntegerField(default=0, choices=settings.SEMESTERS)
     cohort: "models.ForeignKey[Session,Cohort]" = models.ForeignKey(
         Cohort, on_delete=models.CASCADE, related_name="sessions"
     )
@@ -192,7 +183,7 @@ class Session(models.Model):
 
     def __str__(self) -> str:
         """Create a string representation."""
-        return f"{self.name}-{SEMESTERS[self.semester][1]} ({self.cohort})"
+        return f"{self.name}-{settings.SEMESTERS[self.semester][1]} ({self.cohort})"
 
     @classmethod
     def past(cls, cohort=None):
@@ -256,7 +247,7 @@ class Attendance(models.Model):
         SessionType, on_delete=models.CASCADE, related_name="attended_by", null=True
     )
 
-    score: "models.FloatField" = models.FloatField(choices=TUTOPRIAL_MARKS, null=True, blank=True)
+    score: "models.FloatField" = models.FloatField(choices=settings.TUTORIAL_MARKS, null=True, blank=True)
 
     class Meta:
         unique_together: Tuple = ("student", "session", "type")
@@ -272,8 +263,8 @@ class Attendance(models.Model):
         if self.score is None:
             return " - "
         if self.score < 0:  # needs special handling
-            return TUTOPRIAL_MARKS[0][1]
-        for score, string in TUTOPRIAL_MARKS[1:]:
+            return settings.TUTORIAL_MARKS[0][1]
+        for score, string in settings.TUTORIAL_MARKS[1:]:
             if np.isclose(self.score, score):  # fp equality checks!
                 return string
         return "Unknown !"
@@ -357,37 +348,6 @@ class Meeting(models.Model):
     def slug(self) -> str:
         """Create a slug for meething."""
         return slugify(self.name)
-
-
-def colour(value: float, contrast: bool = False) -> str:
-    """Turn a float value into a colour scheme."""
-    if not isinstance(value, float) or np.isnan(value):
-        return "#ffffff"
-    value = value / 120
-    rgb = (np.array(color(value)) * 255).astype(int)[:3]
-    if contrast:
-        return "#000000" if rgb.mean() > 96 else "#ffffff"
-    return "#" + "".join([f"{x:02X}" for x in rgb])
-
-
-def contrast(colour: str) -> str:
-    """Take a Hex string and convert to a contrasting colour string."""
-    if len(colour) < 7:
-        return "#000000"
-    if colour[0] == "#":
-        colour = colour[1:]
-    elif colour[:2] == "0x":
-        colour = colour[2:]
-    try:
-        col: int = int(colour, 16)
-        high = col // (256 * 256)
-        col -= high * 256**2
-        med = col // 256
-        low = col - med * 256
-        avg = (high + med + low) / 3
-    except (ValueError, TypeError):
-        avg = 0
-    return "#000000" if avg > 128 else "#ffffff"
 
 
 @patch_model(Account, prep=property)
@@ -540,7 +500,7 @@ def engagement_session(self, cohort=None, semester=None) -> dict:
         elif attendance.score == 0:
             base[session.pk] = format_html('<img src="/static/admin/img/icon-no.svg" Alt="Unauthorised Absence"/>')
         else:
-            base[session.pk] = format_html("{val}", cal=int(attendance.score))
+            base[session.pk] = format_html("{val}", val=int(attendance.score))
     return base
 
 

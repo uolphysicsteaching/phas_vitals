@@ -103,6 +103,10 @@ class RedirectView(View):
         """If the request user is a super user return superuser_view attribute or None."""
         if self.request.user.is_authenticated:
             return getattr(self, "logged_in_view", None)
+        return self.get_anonymouys_view(request)
+
+    def get_anonymouys_view(self, request):
+        """Return the cntents of the anonymous_view."""
         return getattr(self, "anonymous_view", None)
 
     def get_group_view(self, request):
@@ -117,7 +121,10 @@ class RedirectView(View):
 
     def dispatch(self, request, *args, **kwargs):
         """Attempt to find another view to redirect to before calling super()."""
+        self.kwargs.update(kwargs)
+        kargs = self.kwargs
         for method in [self.get_superuser_view, self.get_staff_view, self.get_logged_in_view, self.get_group_view]:
             if view := method(request):
-                return view.as_view()(request, *args, **kwargs)
-        return super().dispatch(request, *args, **kwargs)
+                as_view_kwargs = getattr(self, "as_view_kwargs", {})
+                return view.as_view(**as_view_kwargs)(request, *self.args, **self.kwargs)
+        return super().dispatch(request, *self.args, **self.kwargs)

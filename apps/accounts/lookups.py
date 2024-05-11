@@ -8,7 +8,7 @@ from django.db.models import Q
 from ajax_select import LookupChannel, register
 
 # app imports
-from .models import Account, academic_Q, tutor_Q
+from .models import Account, academic_Q, students_Q, tutor_Q
 
 
 @register("groups")
@@ -75,3 +75,17 @@ class TutorAccountLookup(AcademicAccountLookup):
         name = Q(first_name__istartswith=q) | Q(last_name__istartswith=q)
         email = Q(email__istartswith=q)
         return self.model.objects.filter(tutor_Q).filter(username | name | email)
+
+
+@register("user")
+class StudentAccountLookup(AcademicAccountLookup):
+    """Lookip tutor accounts - based on academic account lookup."""
+
+    model = Account
+
+    def get_query(self, q, request):
+        """Search on name,  username and email and limit to tutor accounts."""
+        username = Q(username__istartswith=q)
+        name = Q(first_name__istartswith=q) | Q(last_name__istartswith=q)
+        email = Q(email__istartswith=q)
+        return self.model.objects.filter(students_Q).filter(username | name | email)

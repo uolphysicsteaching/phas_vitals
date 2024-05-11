@@ -86,6 +86,7 @@ DEFAULT_APPS = (
         "django.contrib.auth",
         "django.contrib.contenttypes",
         "django.contrib.flatpages",
+        "django.contrib.humanize",
         "django.contrib.sessions",
         "django.contrib.sites",
         "django.contrib.messages",
@@ -103,6 +104,7 @@ DEFAULT_APPS = (
         "django_extensions",
         "django_filters",
         "django_tables2",
+        "django_auth_adfs",
         "email_obfuscator",
         "floppyforms",
         "import_export",
@@ -112,6 +114,8 @@ DEFAULT_APPS = (
         "sitetree",  # django-sitetree package
         "smart_selects",
         "tinymce",  # django-tinymce package
+        "django_celery_results",
+        "django_celery_beat",
     ]
     + CUSTOM_APPS
     + [
@@ -178,10 +182,17 @@ MANAGERS = ADMINS
 ##########################################################################
 AUTH_USER_MODEL = "accounts.Account"
 
+LOGIN_URL = "django_auth_adfs:login"
+LOGIN_REDIRECT_URL = "/"
+
 # Only allow manual creation of new users
 AUTH_LDAP_CREATE_USER_ON_FLY = False
 
-AUTHENTICATION_BACKENDS = ["django_auth_ldap_ad.backend.LDAPBackend", "django.contrib.auth.backends.ModelBackend"]
+AUTHENTICATION_BACKENDS = [
+    "util.backend.LeedsAdfsBaseBackend",
+    # "django_auth_ldap_ad.backend.LDAPBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
 
 AUTH_LDAP_USE_SASL = False
 
@@ -206,6 +217,12 @@ AUTH_LDAP_USER_FLAGS_BY_GROUP = {
 
 # All people that are to be staff are also to belong to this group
 AUTH_LDAP_USER_GROUPS_BY_GROUP = {"Instructor": AUTH_LDAP_USER_FLAGS_BY_GROUP["is_staff"]}
+
+AUTH_ADFS = {
+    # "RELYING_PARTY_ID": "your-adfs-RPT-name",
+    # "CA_BUNDLE": "/path/to/ca-bundle.pem",
+    "CLAIM_MAPPING": {"first_name": "given_name", "last_name": "family_name", "email": "email"},
+}
 
 # ##### DJANGO RUNNING CONFIGURATION ######################
 
@@ -300,12 +317,18 @@ LOGGING = {
             "class": "logging.FileHandler",
             "filename": str(PROJECT_ROOT_PATH / "logs" / "form_data.log"),
         },
+        "file_debug": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": str(PROJECT_ROOT_PATH / "logs" / "debug.log"),
+        },
         "mail_admins": {"level": "ERROR", "class": "django.utils.log.AdminEmailHandler"},
     },
     "formatters": {"verbose": {"format": "%(asctime)s %(levelname)-8s [%(name)s:%(lineno)s] %(message)s"}},
     "loggers": {
         "": {"handlers": ["file"], "level": "DEBUG", "propagate": True},
         "auth": {"handlers": ["file"], "level": "INFO", "propagate": True},
+        "django_auth_adfs": {"handlers": ["file_debug"], "level": "DEBUG", "propagate": True},
         "django.request": {"handlers": ["mail_admins"], "level": "ERROR", "propagate": True},
         "django.security": {"handlers": ["mail_admins"], "level": "ERROR", "propagate": True},
         "phys_utils.middleware": {
@@ -456,6 +479,12 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {"anon": "100/hour", "user": "1000/hour"},
 }
 
+##### Celery Config settings ##############################
+
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_RESULT_BACKEND = "django-db"
+
 ###### Import config from apps ############################
 
 _setting_pattern = re.compile("[A-Z][A-Z0-9_]+")
@@ -476,7 +505,9 @@ for app in CUSTOM_APPS:
                 if isinstance(set_val, dict) and setting in locals():  # Merge app.settings if dictionary
                     # nosemgrep
                     locals()[match.group(0)].update(set_val)  # nosemgrep
-                elif isinstance(set_val, (list, tuple)):  # append app.settings if list or tuple
+                elif (
+                    isinstance(set_val, (list, tuple)) and setting in locals()
+                ):  # append app.settings if list or tuple
                     locals()[match.group(0)] = locals()[setting] + set_val
                 else:  # replace with app.settings
                     locals()[setting] = set_val

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load tutorial_tags %}
 {% block title %}
 {{ block.super }} Current Status fr {{ user.display_name }}
 {% endblock title %}
@@ -25,6 +26,14 @@ a.vital_link:hover {
 .bg-danger {
     background-color: #cc1525!important;
 }
+
+li.vital_passed {
+    list-style-type: "\2713";
+}
+li.vital_failed {
+    list-style-type: "\2A2F";
+}
+
 </style>
 {% endblock css %}
 {% block javascript %}
@@ -41,7 +50,7 @@ $(document).ready( function() {
 }
 {% block content %}
 <div class="col-sm-12">
-    <div class="row text-sm-center fs-2">
+    <div class="row text-sm-center fs-2" style="background-color: {{ user.activity_colour }}; display: block; width:100%; color: {{ user.activity_colour|comp_colour }};">
         <span>{{ user.first_name }} {{ user.last_name }} ({{ user.number }})</span>
     </div>
     <div class="row fs-3">
@@ -53,16 +62,19 @@ $(document).ready( function() {
         <div class="col-sm-8"><span>{{ user.programme.name }} ({{ user.programme.code }})</span></div>
     </div>
     <ul class="nav nav-tabs" id="results_tab" role="tablist">
+        <li class="nav-item" role="tab" id="dashboard-tab">
+            <a href="#dashboard" class="nav-link{% if tab == '#dashboard' %} active{% endif %}" data-bs-toggle="tab"><span class="fs-3">Dashboard</span></a>
+        </li>
         <li class="nav-item" role="tab" id="test-tab">
-            <a href="#tests" class="nav-link active" data-bs-toggle="tab"><span class="fs-3">Homework Results</span></a>
+            <a href="#tests" class="nav-link{% if tab == '#tests' %} active{% endif %}" data-bs-toggle="tab"><span class="fs-3">Homework</span></a>
         </li>
         <li class="nav-item" role="tab" id="vitals-tab">
-            <a href="#VITALS" class="nav-link" data-bs-toggle="tab"><span class="fs-3">VITALS status</span></a>
+            <a href="#VITALS" class="nav-link{% if tab == '#VITALS' %} active{% endif %}" data-bs-toggle="tab"><span class="fs-3">VITALS status</span></a>
         </li>
 
     </ul>
     <div class="tab-content" id="results-tab-content">
-      <div class="tab-pane fade show active" id="tests" role="tabpanel" aria-label="Tests and Homework Results tab">
+      <div class="tab-pane fade{% if tab == '#tests' %} show active{% endif %}" id="tests" role="tabpanel" aria-label="Tests and Homework Results tab">
           <h3>Homework Results</h3>
           {% for test_score in scores.values %}
               <div class="border-top border-dark border-2 row {{ test_score.test.bootstrap5_class }}">
@@ -99,14 +111,20 @@ $(document).ready( function() {
                       {{ test_score.vitals_text }}
                       <ul>
                       {% for vm in test_score.test.vitals_mappings.all %}
-                          <li><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
+                            {% if vm.vital in  user.passed_vitals %}
+                          <li class="vital_passed"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
+                            {% elif vm.vital in user.failed_vitals %}
+                          <li class="vital_failed"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
+                            {% else %}
+                          <li class="vital_unknown"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
+                            {% endif %}
                       {% endfor %}
                       </ul>
                   </div>
               </div>
               {% endfor %}
       </div>
-      <div class="tab-pane fade" id="VITALS" role="tabpanel" aria-label="VITALS Listing tab">
+      <div class="tab-pane fade{% if tab == '#VITALS' %} show active{% endif %}" id="VITALS" role="tabpanel" aria-label="VITALS Listing tab">
           <h3>VITALS passed/not passed</h3>
           <div class="accordion" id="accordianVITALs">
           {% for module,vr in vitals_results.items %}
@@ -164,6 +182,23 @@ $(document).ready( function() {
           {% endfor %}
           </div>
       </div>
+      <div class="tab-pane fade{% if tab == '#dashboard' %} show active{% endif %}" id="dashboard" role="tabpanel" aria-label="Dashboard Tab">
+          <div class="row">
+            <div class="col-lg-4">
+                <h3 class="text-center">Homework {{ user.tests_score }}%</h3>
+                <img class="col-md-12"  src='{{ homework_plot }}' alt="Pie chart of homework scores" />
+            </div>
+            <div class="col-lg-4">
+                <h3 class="text-center">VITALs {{ user.vitals_score }}%</h3>
+                <img class="col-md-12" src='{{ vitals_plot }}' alt="Pie chart of VITALS" />
+            </div>
+            <div class="col-lg-4">
+                <h3 class="text-center">Tutorials {{ user.engagement }}%</h3>
+                <img class="col-md-12"  src='{{ tutorial_plot }}' alt="Pie chart of tutorial Attendance" />
+            </div>
+          </div>
+      </div>
+
     </div>
 
 </div>

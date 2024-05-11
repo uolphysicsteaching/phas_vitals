@@ -2,8 +2,7 @@
 
 # app imports
 # project imports
-from .common import *
-from .secrets import DATABASES  # NOQA  pylint: disable=unused-import
+from .secrets import *  # NOQA  pylint: disable=unused-import
 
 # uncomment the following line to include i18n
 # from .i18n import *

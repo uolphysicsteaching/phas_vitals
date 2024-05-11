@@ -18,6 +18,7 @@ from django.views.generic.edit import FormMixin
 import numpy as np
 import pandas as pd
 from accounts.models import Account, Cohort
+from accounts.views import StudentSummaryView
 from django_tables2 import SingleTableMixin
 from django_tables2.columns import Column
 from pytz import timezone
@@ -418,16 +419,17 @@ class ShowTutorTestResultsViiew(IsStaffViewMixin, BaseShowTestResultsView):
         )
 
 
-class ShowMyTestResultsViiew(IsStudentViewixin, FormMixin, DetailView):
-    """TODO: write this view."""
-
-
 class ShowTestResults(RedirectView):
     """Redirect to a more specialised view for handling the test results for different cases."""
 
     superuser_view = ShowAllTestResultsViiew
     staff_view = ShowTutorTestResultsViiew
-    logged_in_view = ShowMyTestResultsViiew
+
+    def get_logged_in_view(self, request):
+        """Patch in the kwargs with the user number."""
+        self.kwargs["username"] = request.user.username
+        self.kwargs["selected_tab"] = "#tests"
+        return StudentSummaryView
 
 
 class GenerateModuleMarksheetView(IsSuperuserViewMixin, FormView):

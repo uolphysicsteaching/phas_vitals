@@ -84,11 +84,15 @@ def engagement(student, semester, cohort):
         data = {}
     out = ""
     for k, v in data.items():
-        out += (
-            f"<td class='session_score' id='session_{student.pk}_{k}'"
-            + """ headers='session_{student.tutorial_group.first().pk}_{k}'>
-            {v}<br/>{lab_data[k]}
-        </td>"""
+        out += format_html(
+            "<td class='session_score' id='session_{student}_{k}'"
+            + """ headers='session_{pk}_{k}'>
+            {v}<br/>
+        </td>""",
+            student=student.pk,
+            k=k,
+            v=v,
+            pk=student.tutorial_group.first().pk,
         )
     return format_html(out)
 
