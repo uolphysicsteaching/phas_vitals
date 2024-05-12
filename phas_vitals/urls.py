@@ -19,7 +19,12 @@ from ajax_select import urls as ajax_select_urls
 # app imports
 from .api import router
 from .settings.production import PROJECT_ROOT
-from .views import HomeView
+from .views import E403View, E404View, E500View, HomeView
+
+# Set Error handlers
+handler404 = E404View.as_view()
+handler403 = E403View.as_view()
+handler600 = E500View.as_view()
 
 urlpatterns = [
     # Examples:
