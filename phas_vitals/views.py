@@ -11,11 +11,10 @@ from util.views import RedirectView
 
 
 class HomeView(RedirectView):
-
     """Decide what to do with the home url."""
 
     def get_anonymouys_view(self, request):
-        """Set the template kwag"""
+        """Set the template kwag."""
         if not hasattr(self, "as_view_kwargs"):
             self.as_view_kwargs = {}
         self.as_view_kwargs["template_name"] = "home.html"
