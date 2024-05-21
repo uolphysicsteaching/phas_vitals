@@ -10,6 +10,7 @@ from django.utils.functional import cached_property, classproperty
 
 # external imports
 from six import string_types
+from util.validators import RangeValueValidator
 
 # Some useful query objects
 
@@ -113,6 +114,9 @@ class Account(AbstractUser):
         choices=LEVEL_OF_STUDY,
     )
     registration_status = models.CharField(max_length=10, blank=True, null=True, default="")
+    # Fields updated by celery tasks
+    tests_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
+    vitals_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
 
     def natural_key(self):
         """Use the username as a natural key."""
@@ -169,3 +173,11 @@ class Account(AbstractUser):
             return initials
         else:
             return self.username
+
+
+class AccountGroup(Group):
+
+    """A Proxy model to allow group admin in the correct app."""
+
+    class Meta:
+        proxy = True

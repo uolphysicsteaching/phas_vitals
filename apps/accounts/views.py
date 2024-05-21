@@ -1,4 +1,7 @@
 """View classes for the accounts app."""
+# Python imports
+from collections import namedtuple
+
 # Django imports
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -18,6 +21,8 @@ from .forms import TutorSelectForm
 from .models import Account
 
 TEMPLATE_PATH = settings.PROJECT_ROOT_PATH / "run" / "templates" / "Tutor_Report.xlsx"
+
+ImageData = namedtuple("ImageData", ["data", "alt"], defaults=["", ""])
 
 
 def pie_chart(data, colours):
@@ -115,7 +120,8 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
             if count := scores[np.isclose(scores, score)].size:
                 data[label] = count
                 colours.append(col)
-        return pie_chart(data, colours)
+        alt = "Tutproal attendance" + " ".join([f"{label}:{count}" for label, count in data.items()])
+        return ImageData(pie_chart(data, colours), alt)
 
     def homework_plot(self, test_scores):
         """Make a pie chart of test statuses."""
@@ -134,7 +140,8 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
                         colours.append(colour)
                     data[label] = data.get(label, 0) + 1
                     break
-        return pie_chart(data, colours)
+        alt = "Homework results" + " ".join([f"{label}:{count}" for label, count in data.items()])
+        return ImageData(pie_chart(data, colours), alt)
 
     def vitals_plot(self, vitals_results):
         """Make a pier chart for passing vitals."""
@@ -149,4 +156,5 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
             if count := status[status == stat].size:
                 data[label] = count
                 colours.append(colour)
-        return pie_chart(data, colours)
+        alt = "VITALs results" + " ".join([f"{label}:{count}" for label, count in data.items()])
+        return ImageData(pie_chart(data, colours), alt)

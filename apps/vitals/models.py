@@ -241,19 +241,6 @@ def untested_vitals(self):
 
 
 @patch_model(Account, prep=property)
-def vitals_score(self):
-    """Calculate a % completed vitals score."""
-    try:
-        return np.round(
-            100.0
-            * self.passed_vitals.count()
-            / (self.passed_vitals.count() + self.failed_vitals.count() + self.untested_vitals.count())
-        )
-    except (ValueError, ZeroDivisionError):
-        return "N/A"
-
-
-@patch_model(Account, prep=property)
 def activity_score(self):
     """Give an overall activity score for an account."""
     hw = self.tests_score

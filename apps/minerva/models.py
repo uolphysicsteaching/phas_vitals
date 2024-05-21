@@ -20,7 +20,9 @@ from util.models import patch_model
 from util.spreadsheet import Spreadsheet
 
 # app imports
-from .signals import test_passed
+from phas_vitals import celery_app
+
+update_vitals = celery_app.signature("minerva.update_vitals")
 
 # Create your models here.
 
@@ -162,10 +164,17 @@ class Test_Manager(models.Manager):
 
     key_pattern = re.compile(r"(?P<name>.*)\s\((?P<module__code>[^\)]*)\)")
 
+    def __init__(self, *args, **kargs):
+        """Setup the type filter."""
+        self.type = kargs.pop("type", None)
+        super().__init__(*args, **kargs)
+
     def get_queryset(self):
         """Annotate the query set with additional information based on the time."""
         zerotime = timedelta(0)
         qs = super().get_queryset()
+        if self.type:
+            qs = qs.filter(type=self.type)
         qs = qs.annotate(
             from_release=tz.now() - models.F("release_date"),
             from_recommended=tz.now() - models.F("recommended_date"),
@@ -190,13 +199,19 @@ class Test_Manager(models.Manager):
 class Test(models.Model):
     """Represents a single Gradebook column."""
 
+    TEST_TYPES = [("homework", "Homework"), ("lab_exp", "Lab Experiment")]
+
     objects = Test_Manager()
+    homework = Test_Manager(type="homework")
+    labs = Test_Manager(type="lab_exp")
+
     # test_id is actually a composite of course_id and column_id
     test_id = models.CharField(max_length=255, primary_key=True)
     module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name="tests")
     # Mandatory fields
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
+    type = models.CharField(max_length=10, choices=TEST_TYPES, default=TEST_TYPES[0][0])
     externalGrade = models.BooleanField(default=True, verbose_name="Grade from LTI")
     score_possible = models.FloatField(default=100, verbose_name="Maximum possible score")
     passing_score = models.FloatField(default=80, verbose_name="Maximum possible score")
@@ -385,7 +400,7 @@ class Test_Score(models.Model):
         self.passed = passed
         super().save(force_insert, force_update, using, update_fields)
         if send_signal:
-            test_passed.send(sender=self.__class__, test=self)
+            update_vitals.delay_on_commit(self.pk)
 
     def __str__(self):
         """Give us a more friendly string version."""
@@ -434,16 +449,3 @@ def failed_tests(self):
 def untested_tests(self):
     """Return the set of vitals passed by the current user."""
     return Test.objects.exclude(results__user=self).exclude(status="Not Started")
-
-
-@patch_model(Account, prep=property)
-def tests_score(self):
-    """Calculate a % completed vitals score."""
-    try:
-        return np.round(
-            100.0
-            * self.passed_tests.count()
-            / (self.passed_tests.count() + self.failed_tests.count() + self.untested_tests.count())
-        )
-    except (ValueError, ZeroDivisionError):
-        return "N/A"

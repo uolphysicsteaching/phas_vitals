@@ -9,7 +9,8 @@ from django.utils.translation import gettext_lazy as _
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
 # app imports
-from .models import Account, Cohort, Programme
+from .forms import UserAdminForm
+from .models import Account, AccountGroup, Cohort, Programme
 from .resource import (
     CohortResource,
     GroupResource,
@@ -49,18 +50,6 @@ class StudentListFilter(SimpleListFilter):
 site.unregister(Group)
 
 # Register your models here.
-
-
-class UserAdminForm(forms.ModelForm):
-    """Tweaks to the User Admin account form."""
-
-    class Meta:
-        model = Account
-        widgets = {
-            "first_name": forms.TextInput(attrs={"size": 10}),
-            "last_name": forms.TextInput(attrs={"size": 10}),
-        }
-        exclude = ()
 
 
 @register(Programme)
@@ -160,7 +149,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
         return UserResource
 
 
-@register(Group)
+@register(AccountGroup)
 class ImportExportGroupAdmin(ImportExportMixin, GroupAdmin):
     """Rather Minimal Group Admin interface."""
 

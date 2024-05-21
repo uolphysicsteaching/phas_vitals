@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
 """Custom settings for app."""
 
+# Python imports
+from datetime import datetime
+
+# external imports
+from pytz import UTC
+
 CONSTANCE_CONFIG = {
     "SUBJECT_PREFIX": ("PHAS", "Module Subject code prefix"),
     "TESTS_WEIGHT": (1.0, "Test Scores weighting", float),
+    "LAST_MINERVA_UPDATE": (datetime.now(tz=UTC), "Last update from Minerva", "custdatetime"),
 }
 
 TESTS_ATTEMPTS_PROFILE = {

@@ -56,3 +56,15 @@ class CohortSelectForm(forms.Form):
     cohort = forms.ModelChoiceField(
         required=False, queryset=Cohort.objects.all(), widget=Select(attrs={"onChange": "this.form.submit();"})
     )
+
+
+class UserAdminForm(forms.ModelForm):
+    """Tweaks to the User Admin account form."""
+
+    class Meta:
+        model = Account
+        widgets = {
+            "first_name": forms.TextInput(attrs={"size": 10}),
+            "last_name": forms.TextInput(attrs={"size": 10}),
+        }
+        exclude = ()

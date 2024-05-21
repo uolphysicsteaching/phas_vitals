@@ -346,12 +346,6 @@ EMAIL_PORT = 25
 EMAIL_USE_TLS = False
 DEFAULT_FROM_EMAIL = f"no-reply@{SITE_NAME}.leeds.ac.uk"
 
-
-####### GRAPPELI Settings ##################################
-
-GRAPPELLI_ADMIN_TITLE = "Physics VITALS management"
-GRAPPELLI_SWITCH_USER = True
-
 ###### Constance Settings ##################################
 
 CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
@@ -380,7 +374,7 @@ BATON = {
     "SITE_TITLE": "Physics VITALS",
     "INDEX_TITLE": "Site administration",
     #'SUPPORT_HREF': 'https://github.com/otto-torino/django-baton/issues',
-    "COPYRIGHT": "copyright © 2023 University of Leeds",
+    "COPYRIGHT": "copyright © 2023-24 University of Leeds",
     #'POWERED_BY': '<a href="https://www.otto.to.it">Otto srl</a>',
     "CONFIRM_UNSAVED_CHANGES": True,
     "SHOW_MULTIPART_UPLOADING": True,
@@ -407,12 +401,12 @@ BATON = {
             "name": "accounts",
             "label": "AUsers and Accounts",
             "icon": "fa fa-users",
-            "default_open": True,
+            "default_open": False,
             "models": (
                 {"name": "account", "label": "Users"},
                 {"name": "cohort", "label": "Student Cohorts"},
                 {"name": "programme", "label": "Programmes"},
-                {"name": "group", "label": "Groups"},
+                {"name": "accountgroup", "label": "Groups"},
             ),
         },
         {
@@ -439,6 +433,18 @@ BATON = {
                 {"name": "vital", "label": "VITALs"},
                 {"name": "vital_result", "label": "VITAL Awards"},
                 {"name": "vital_test_map", "label": "VITAL Test Maps"},
+            ),
+        },
+        {
+            "type": "free",
+            "label": "Configuration",
+            "icon": "fa fa-solid fa-screwdriver-wrench",
+            "default_open": False,
+            "children": (
+                {"type": "model", "label": "Sites", "name": "site", "app": "sites"},
+                {"type": "model", "label": "Menus", "name": "tree", "app": "sitetree"},
+                {"type": "model", "label": "Pages", "name": "flatpage", "app": "flatpages"},
+                {"type": "model", "label": "Config Settings", "name": "config", "app": "constance"},
             ),
         },
         # ] },

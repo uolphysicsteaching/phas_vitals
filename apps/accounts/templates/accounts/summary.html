@@ -186,15 +186,15 @@ $(document).ready( function() {
           <div class="row">
             <div class="col-lg-4">
                 <h3 class="text-center">Homework {{ user.tests_score }}%</h3>
-                <img class="col-md-12"  src='{{ homework_plot }}' alt="Pie chart of homework scores" />
+                <img class="col-md-12"  src='{{ homework_plot.data }}' alt="{{ homework_plot.alt }}" />
             </div>
             <div class="col-lg-4">
                 <h3 class="text-center">VITALs {{ user.vitals_score }}%</h3>
-                <img class="col-md-12" src='{{ vitals_plot }}' alt="Pie chart of VITALS" />
+                <img class="col-md-12" src='{{ vitals_plot.data }}' alt="{{ vitals_plot.alt }}" />
             </div>
             <div class="col-lg-4">
                 <h3 class="text-center">Tutorials {{ user.engagement }}%</h3>
-                <img class="col-md-12"  src='{{ tutorial_plot }}' alt="Pie chart of tutorial Attendance" />
+                <img class="col-md-12"  src='{{ tutorial_plot.data }}' alt="{{ tutorial_plot.alt }}" />
             </div>
           </div>
       </div>
