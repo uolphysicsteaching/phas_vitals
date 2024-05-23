@@ -1,3 +1,4 @@
+"""Accounts app model classes."""
 from __future__ import unicode_literals
 
 # Django imports
@@ -178,7 +179,6 @@ class Account(AbstractUser):
 
 
 class AccountGroup(Group):
-
     """A Proxy model to allow group admin in the correct app."""
 
     class Meta:
