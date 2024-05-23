@@ -24,8 +24,8 @@ TESTS_ATTEMPTS_PROFILE = {
         "Not passed\nless than 3 attempts": (3, "tomato"),
         "Not passed\nmore than 3 attempts": (999, "red"),
     },
-    "Missing": {"Not attempted": (999, "black")},
-    "Finished": {"Failed": (999, "purple")},
+    "Missing": {"Not attempted": (-1, "black")},
+    "Finished": {"Failed": (-1, "darkred")},
     "Released": {
         "In progress\n1 attempt": (1, "lightsteelblue"),
         "In progress\nless than 3 attempts": (3, "steelblue"),

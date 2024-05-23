@@ -1,3 +1,4 @@
+"""Production mode settings."""
 # for now fetch the development settings only
 # app imports
 from .development import *
@@ -11,4 +12,4 @@ CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-DEBUG = True
+DEBUG = False

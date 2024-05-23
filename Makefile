@@ -20,11 +20,9 @@ _commit: spell isort black check
 	git commit -a
 	git push origin
 
-permissions:
-	setfacl --set-file=/home/phygbu/acls.txt -R apps/
-	setfacl --set-file=/home/phygbu/acls.txt -R phy_srv4125/
-
-restart: permissions
-	django-restart .
+restart:
+	sudo systemctl restart gunicorn
+	sudo systemctl restart celery
+	sudo systemctl restart celery_beat
 
 FORCE:

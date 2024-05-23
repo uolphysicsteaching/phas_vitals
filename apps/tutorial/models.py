@@ -5,7 +5,7 @@ from typing import Optional, Tuple, Union
 
 # Django imports
 from django.conf import settings
-from django.db import models
+from django.db import DEFAULT_DB_ALIAS, models
 from django.db.models import QuerySet
 from django.utils import timezone as tz
 from django.utils.functional import cached_property, classproperty
@@ -18,6 +18,11 @@ from accounts.models import Account, Cohort, academic_Q, students_Q
 from constance import config
 from tinymce.models import HTMLField
 from util.models import colour, contrast, patch_model
+
+# app imports
+from phas_vitals import celery_app
+
+update_engagement = celery_app.signature("accounts.update_engagement")
 
 
 def list_join(items, oxford=False):
@@ -280,6 +285,11 @@ class Attendance(models.Model):
         else:
             return self.score
 
+    def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
+        """Save the model and then signal to update the student's attendance reocrd."""
+        super().save(force_insert, force_update, using, update_fields)
+        update_engagement.delay_on_commit(self.student.pk)
+
 
 class MeetingAttendanceManager(models.Manager):
     """Manager for MeetingAttendanceManager."""
@@ -394,23 +404,6 @@ def PF_mark(self) -> float:
         return 100.0
     else:
         return 0.0
-
-
-@patch_model(Account, prep=property)
-def engagement(self) -> Union[str, np.ndarray, float]:
-    """Monkeypatched property for attendance ranking."""
-    record = np.array(
-        self.tutorial_sessions.filter(session__cohort=self.cohort).order_by("-session__start").values_list("score")
-    )
-    if record.size > 0:
-        record = record[:, 0].astype(float)
-    else:
-        return format_html('<img src="/static/admin/img/icon-alert.svg" Alt="No data"/>')
-    record = np.where(record < 0, np.nan, record)
-    weight = np.exp(-np.arange(len(record)) / config.ENGAGEMENT_TC)
-    perfect = (3 * np.ones_like(record) * weight)[~np.isnan(record)].sum()
-    actual = (record * weight)[~np.isnan(record)].sum()
-    return np.round(100 * actual / perfect, 1)
 
 
 @patch_model(Account, prep=property)

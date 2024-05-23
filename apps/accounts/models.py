@@ -116,7 +116,9 @@ class Account(AbstractUser):
     registration_status = models.CharField(max_length=10, blank=True, null=True, default="")
     # Fields updated by celery tasks
     tests_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
+    labs_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
     vitals_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
+    engagement = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
 
     def natural_key(self):
         """Use the username as a natural key."""

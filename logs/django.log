@@ -18437,3 +18437,287 @@ Traceback (most recent call last):
 django.db.utils.OperationalError: could not extend file "base/16576/17385": No space left on device
 HINT:  Check free disk space.
 
+Internal Server Error: /oauth2/callback
+Traceback (most recent call last):
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django_auth_adfs/views.py", line 40, in get
+    user = authenticate(request=request, authorization_code=code)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/decorators/debug.py", line 42, in sensitive_variables_wrapper
+    return func(*func_args, **func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/contrib/auth/__init__.py", line 77, in authenticate
+    user = backend.authenticate(request, **credentials)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django_auth_adfs/backend.py", line 402, in authenticate
+    user = self.process_access_token(access_token, adfs_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/util/backend.py", line 45, in process_access_token
+    user.full_clean()
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/db/models/base.py", line 1502, in full_clean
+    raise ValidationError(errors)
+django.core.exceptions.ValidationError: {'tests_score': ['Ensure value is between 0.0 and 100.0'], 'vitals_score': ['Ensure value is between 0.0 and 100.0']}
+Internal Server Error: /oauth2/callback
+Traceback (most recent call last):
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django_auth_adfs/views.py", line 40, in get
+    user = authenticate(request=request, authorization_code=code)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/decorators/debug.py", line 42, in sensitive_variables_wrapper
+    return func(*func_args, **func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/contrib/auth/__init__.py", line 77, in authenticate
+    user = backend.authenticate(request, **credentials)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django_auth_adfs/backend.py", line 402, in authenticate
+    user = self.process_access_token(access_token, adfs_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/util/backend.py", line 45, in process_access_token
+    user.full_clean()
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/db/models/base.py", line 1470, in full_clean
+    self.clean_fields(exclude=exclude)
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/db/models/base.py", line 1522, in clean_fields
+    setattr(self, f.attname, f.clean(raw_value, self))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/db/models/fields/__init__.py", line 778, in clean
+    self.run_validators(value)
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/db/models/fields/__init__.py", line 730, in run_validators
+    v(value)
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/validators.py", line 371, in __call__
+    if self.compare(cleaned, limit_value):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/util/validators.py", line 25, in compare
+    assert False
+AssertionError
+Internal Server Error: /oauth2/callback
+Traceback (most recent call last):
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django_auth_adfs/views.py", line 40, in get
+    user = authenticate(request=request, authorization_code=code)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/decorators/debug.py", line 42, in sensitive_variables_wrapper
+    return func(*func_args, **func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/contrib/auth/__init__.py", line 77, in authenticate
+    user = backend.authenticate(request, **credentials)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django_auth_adfs/backend.py", line 402, in authenticate
+    user = self.process_access_token(access_token, adfs_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/util/backend.py", line 45, in process_access_token
+    user.full_clean()
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/db/models/base.py", line 1470, in full_clean
+    self.clean_fields(exclude=exclude)
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/db/models/base.py", line 1522, in clean_fields
+    setattr(self, f.attname, f.clean(raw_value, self))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/db/models/fields/__init__.py", line 778, in clean
+    self.run_validators(value)
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/db/models/fields/__init__.py", line 730, in run_validators
+    v(value)
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/validators.py", line 371, in __call__
+    if self.compare(cleaned, limit_value):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/util/validators.py", line 26, in compare
+    assert False
+AssertionError
+Internal Server Error: /oauth2/callback
+Traceback (most recent call last):
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django_auth_adfs/views.py", line 40, in get
+    user = authenticate(request=request, authorization_code=code)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/decorators/debug.py", line 42, in sensitive_variables_wrapper
+    return func(*func_args, **func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/contrib/auth/__init__.py", line 77, in authenticate
+    user = backend.authenticate(request, **credentials)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django_auth_adfs/backend.py", line 402, in authenticate
+    user = self.process_access_token(access_token, adfs_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/util/backend.py", line 45, in process_access_token
+    user.full_clean()
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/db/models/base.py", line 1502, in full_clean
+    raise ValidationError(errors)
+django.core.exceptions.ValidationError: {'tests_score': ['Ensure value is between 0.0 and 100.0'], 'vitals_score': ['Ensure value is between 0.0 and 100.0']}
+Internal Server Error: /oauth2/callback
+Traceback (most recent call last):
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django_auth_adfs/views.py", line 40, in get
+    user = authenticate(request=request, authorization_code=code)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/decorators/debug.py", line 42, in sensitive_variables_wrapper
+    return func(*func_args, **func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/contrib/auth/__init__.py", line 77, in authenticate
+    user = backend.authenticate(request, **credentials)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django_auth_adfs/backend.py", line 402, in authenticate
+    user = self.process_access_token(access_token, adfs_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/util/backend.py", line 45, in process_access_token
+    user.full_clean()
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/db/models/base.py", line 1502, in full_clean
+    raise ValidationError(errors)
+django.core.exceptions.ValidationError: {'tests_score': ['Ensure 0.0 is between 0.0 and 100.0'], 'vitals_score': ['Ensure 0.0 is between 0.0 and 100.0']}
+Internal Server Error: /accounts/detail/201619729/
+Traceback (most recent call last):
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/contrib/auth/mixins.py", line 135, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 226, in get
+    context = self.get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/accounts/views.py", line 107, in get_context_data
+    "homework_plot": self.homework_plot(test_scores),
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/accounts/views.py", line 130, in homework_plot
+    assert False
+AssertionError
+Internal Server Error: /accounts/detail/201619729/
+Traceback (most recent call last):
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/contrib/auth/mixins.py", line 135, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 226, in get
+    context = self.get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/accounts/views.py", line 107, in get_context_data
+    "homework_plot": self.homework_plot(test_scores),
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/accounts/views.py", line 146, in homework_plot
+    assert False
+AssertionError
+Internal Server Error: /accounts/detail/201619729/
+Traceback (most recent call last):
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/contrib/auth/mixins.py", line 135, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 226, in get
+    context = self.get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/accounts/views.py", line 107, in get_context_data
+    "homework_plot": self.homework_plot(test_scores),
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/accounts/views.py", line 132, in homework_plot
+    tracking.append((test.name,test.standing))
+                               ^^^^^^^^^^^^^
+AttributeError: 'Test' object has no attribute 'standing'
+Internal Server Error: /accounts/detail/201619729/
+Traceback (most recent call last):
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/contrib/auth/mixins.py", line 135, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 143, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/miniconda3/envs/django/lib/python3.11/site-packages/django/views/generic/base.py", line 226, in get
+    context = self.get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/accounts/views.py", line 107, in get_context_data
+    "homework_plot": self.homework_plot(test_scores),
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/phas_vitals/apps/accounts/views.py", line 146, in homework_plot
+    assert False
+AssertionError

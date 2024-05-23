@@ -13,7 +13,6 @@ from django.forms import ValidationError
 from django.utils import timezone as tz
 
 # external imports
-import numpy as np
 from accounts.models import Account
 from constance import config
 from util.models import patch_model
@@ -23,6 +22,9 @@ from util.spreadsheet import Spreadsheet
 from phas_vitals import celery_app
 
 update_vitals = celery_app.signature("minerva.update_vitals")
+update_tests_score = celery_app.signature("accounts.update_tests_score")
+update_labs_score = celery_app.signature("accounts.update_labs_score")
+
 
 # Create your models here.
 
@@ -165,7 +167,7 @@ class Test_Manager(models.Manager):
     key_pattern = re.compile(r"(?P<name>.*)\s\((?P<module__code>[^\)]*)\)")
 
     def __init__(self, *args, **kargs):
-        """Setup the type filter."""
+        """Record the type filter."""
         self.type = kargs.pop("type", None)
         super().__init__(*args, **kargs)
 
@@ -401,6 +403,10 @@ class Test_Score(models.Model):
         super().save(force_insert, force_update, using, update_fields)
         if send_signal:
             update_vitals.delay_on_commit(self.pk)
+            if self.test.type == "homework":
+                update_tests_score.delay_on_commit(self.user.pk)
+            elif self.test.type == "lab_exp":
+                update_labs_score.delay_on_commit(self.user.pk)
 
     def __str__(self):
         """Give us a more friendly string version."""
@@ -436,16 +442,34 @@ class Test_Attempt(models.Model):
 @patch_model(Account, prep=property)
 def passed_tests(self):
     """Return the set of vitals passed by the current user."""
-    return Test.objects.filter(results__passed=True, results__user=self).exclude(status="Not Started")
+    return Test.homework.filter(results__passed=True, results__user=self).exclude(status="Not Started")
 
 
 @patch_model(Account, prep=property)
 def failed_tests(self):
     """Return the set of vitals passed by the current user."""
-    return Test.objects.filter(results__passed=False, results__user=self).exclude(status="Not Started")
+    return Test.homework.filter(results__passed=False, results__user=self).exclude(status="Not Started")
 
 
 @patch_model(Account, prep=property)
 def untested_tests(self):
     """Return the set of vitals passed by the current user."""
-    return Test.objects.exclude(results__user=self).exclude(status="Not Started")
+    return Test.homework.exclude(results__user=self).exclude(status="Not Started")
+
+
+@patch_model(Account, prep=property)
+def passed_labs(self):
+    """Return the set of vitals passed by the current user."""
+    return Test.labs.filter(results__passed=True, results__user=self).exclude(status="Not Started")
+
+
+@patch_model(Account, prep=property)
+def failed_labs(self):
+    """Return the set of vitals passed by the current user."""
+    return Test.labs.filter(results__passed=False, results__user=self).exclude(status="Not Started")
+
+
+@patch_model(Account, prep=property)
+def untested_labs(self):
+    """Return the set of vitals passed by the current user."""
+    return Test.labs.exclude(results__user=self).exclude(status="Not Started")
