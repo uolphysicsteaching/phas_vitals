@@ -75,7 +75,9 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
             user = Account.objects.get(number=self.kwargs["number"])
         modules = user.modules.all()
         VITALS = user.VITALS.model.objects.filter(module__in=modules).order_by("module", "start_date")
-        Tests = user.tests.model.objects.filter(module__in=modules).order_by("release_date")
+        Tests = user.tests.model.homework.filter(module__in=modules).order_by("release_date")
+        Labs = user.tests.model.labs.filter(module__in=modules).order_by("release_date")
+
         test_scores = {}
         for test in Tests:
             try:
@@ -85,6 +87,15 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
                 new_tr.test_status = new_tr.manual_test_satus
                 new_tr.standing = "Missing"
                 test_scores[test] = new_tr
+        lab_scores = {}
+        for lab in Labs:
+            try:
+                lab_scores[lab] = user.test_results.get(test=lab)
+            except ObjectDoesNotExist:
+                new_tr = user.test_results.model(user=user, test=lab, passed=False, score=None)
+                new_tr.test_status = new_tr.manual_test_satus
+                new_tr.standing = "Missing"
+                lab_scores[lab] = new_tr
         vitals_results = {}
         for vital in VITALS:
             try:
@@ -100,11 +111,14 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
             "modules": modules,
             "VITALS": VITALS,
             "Tests": Tests,
+            "Labs": Labs,
             "scores": test_scores,
+            "lab_scores": lab_scores,
             "vitals_results": vitals_results,
             "tab": self.kwargs.get("selected_tab", "#tests"),
             "tutorial_plot": self.tutorial_plot(user),
             "homework_plot": self.homework_plot(test_scores),
+            "lab_plot": self.homework_plot(lab_scores),
             "vitals_plot": self.vitals_plot(vitals_results),
         }
         return context

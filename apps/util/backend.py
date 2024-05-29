@@ -12,6 +12,10 @@ from django_auth_adfs import signals
 from django_auth_adfs.backend import AdfsAuthCodeBackend
 from django_auth_adfs.config import provider_config, settings
 
+# app imports
+from phas_vitals import celery_app
+
+update_account = celery_app.signature("accounts.update_user_from_graph")
 logger = logging.getLogger("django_auth_adfs")
 
 
@@ -23,7 +27,6 @@ class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
         if not access_token:
             raise PermissionDenied
 
-        logger.debug("Received access token.")
         claims = self.validate_access_token(access_token)
         if not claims:
             raise PermissionDenied
@@ -58,7 +61,7 @@ class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
             groups (list): Groups the user is a member of, taken from the access token or MS Graph
         """
         groups = []
-        logger.debug(f"Call to process_user_groups with {claims}")
+        logger.debug("Call to process_user_groups")
         return groups
 
     def create_user(self, claims):
@@ -74,7 +77,7 @@ class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
         username_claim = settings.USERNAME_CLAIM
         usermodel = get_user_model()
         if not claims.get(username_claim):
-            logger.error("User claim's doesn't have the claim '%s' in his claims: %s" % (username_claim, claims))
+            logger.error(f"User claim's doesn't have the claim '{username_claim}' in his claims: {claims}")
             raise PermissionDenied
 
         # The username claim we're getting back is aq full email address, but we just want the userid part
@@ -92,28 +95,21 @@ class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
 
     # https://github.com/snok/django-auth-adfs/issues/241
     def update_user_attributes(self, user, claims, claim_mapping=None):
-        """Stub method that eventually should do an ldap lookup."""
-        logger.debug(f"Update requested for {user} with {claims}")
-        return
-        # # At the moment I don't have outgoing msgraph.com I think
-        # url = "https://graph.microsoft.com/beta/me"
+        """Update the user account with task that calls MS Graph.
 
-        # obo_access_token = self.get_obo_access_token(self.access_token)
-        # logger.debug("Got on-behalf-of token")
+        Parameters:
+            user : Account
+                Account object of user logging in.
+            claims : dict
+                Oauth2 claims about the user account.
+            claim_mapping : dict,None, optional
+                Optional mapping of claim values to user attributes. The default is None.
 
-        # headers = {"Authorization": "Bearer {}".format(obo_access_token)}
-        # response = provider_config.session.get(url, headers=headers, timeout=30, verify=False)
-
-        # if response.status_code in [400, 401]:
-        #     logger.error(f"MS Graph server returned an error: {response.json()['message']}")
-        #     raise PermissionDenied
-
-        # if response.status_code != 200:
-        #     logger.error("Unexpected MS Graph response: {response.content.decode()}")
-        #     raise PermissionDenied
-
-        # payload = response.json()
-        # logger.debug(f"Response to me {payload}")
+        Obtains the correct on-behalf-of token and then hands to Celery taks in the accounts app that
+        actually talks to the MS Graph API to update the user account object.
+        """
+        obo_access_token = self.get_obo_access_token(self.access_token)
+        update_account.delay(user.pk, obo_access_token)
 
     def update_user_groups(self, user, claim_groups):
         """Stub method that eventually should do ldap lookup."""

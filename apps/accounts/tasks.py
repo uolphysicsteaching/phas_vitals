@@ -1,16 +1,27 @@
 # -*- coding: utf-8 -*-
 """Celery tasks for the accounts app."""
+# Python imports
+import logging
+
+# Django imports
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
+
 # external imports
 import numpy as np
 from celery import shared_task
-from celery_batches import Batches
 from constance import config
+from django_auth_adfs.config import provider_config
+
+# app imports
+from phas_vitals.celery import PHASTask
 
 # app imports
 from .models import Account
 
+logger = logging.getLogger(__file__)
 
-@shared_task(base=Batches, flush_every=100, flush_interval=10)
+
+@shared_task(base=PHASTask, flush_every=100, flush_interval=10)
 def update_tests_score(requests):
     """Run the update on the account after a new test score has been set."""
     ids = list(set([request.args[0] for request in requests]))  # Pass through set deduplicates account.pk values
@@ -27,7 +38,7 @@ def update_tests_score(requests):
     Account.objects.bulk_update(accounts, ["tests_score"])
 
 
-@shared_task(base=Batches, flush_every=100, flush_interval=10)
+@shared_task(base=PHASTask, flush_every=100, flush_interval=10)
 def update_labs_score(requests):
     """Run the update on the account after a new test score has been set."""
     ids = list(set([request.args[0] for request in requests]))  # Pass through set deduplicates account.pk values
@@ -44,7 +55,7 @@ def update_labs_score(requests):
     Account.objects.bulk_update(accounts, ["labs_score"])
 
 
-@shared_task(base=Batches, flush_every=100, flush_interval=10)
+@shared_task(base=PHASTask, flush_every=100, flush_interval=10)
 def update_vitals_score(requests):
     """Run the update on the account after a new viotals result has been set."""
     ids = list(set([request.args[0] for request in requests]))  # Pass through set deduplicates account.pk values
@@ -61,7 +72,7 @@ def update_vitals_score(requests):
     Account.objects.bulk_update(accounts, ["vitals_score"])
 
 
-@shared_task(base=Batches, flush_every=100, flush_interval=10)
+@shared_task(base=PHASTask, flush_every=100, flush_interval=10)
 def update_engagement(requests):
     """Run the update on the account after a new attendance has been set."""
     ids = list(set([request.args[0] for request in requests]))  # Pass through set deduplicates account.pk values
@@ -90,14 +101,42 @@ def update_engagement(requests):
     Account.objects.bulk_update(accounts, ["engagement"])
 
 
-@shared_task
-def update_all_users():
+@shared_task(base=PHASTask, flush_every=100, flush_interval=10)
+def update_all_users(requests):
     """Update all user accounts.
 
     This task should be run daily, probably after the minerva import task to update all the users with vurrent tests
-    and vitals."""
+    and vitals.
+
+    Use celery-batches and DjangoTask to allow us to discard multiple requests for greater efficiency.
+    """
     for account in Account.objects.all():
         update_tests_score.delay(account.pk)
         update_vitals_score.delay(account.pk)
         update_engagement.delay(account.pk)
         update_labs_score.delay(account.pk)
+
+
+@shared_task
+def update_user_from_graph(user_pk, obo_access_token):
+    """Use MSGraph API to update a user account."""
+    # At the moment I don't have outgoing msgraph.com I think
+    url = "https://graph.microsoft.com/v1.0/me?$select=employeeId"
+    try:
+        user = Account.objects.get(pk=user_pk)
+    except ObjectDoesNotExist:
+        return
+
+    headers = {"Authorization": "Bearer {}".format(obo_access_token)}
+    response = provider_config.session.get(url, headers=headers, timeout=30, verify=False)
+
+    if response.status_code in [400, 401]:
+        logger.error(f"MS Graph server returned an error: {response.json()['message']}")
+        raise PermissionDenied
+
+    if response.status_code != 200:
+        logger.error("Unexpected MS Graph response: {response.content.decode()}")
+        raise PermissionDenied
+
+    payload = response.json()
+    user.number = int(payload["employeeId"])

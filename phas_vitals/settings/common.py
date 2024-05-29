@@ -325,6 +325,7 @@ LOGGING = {
         "mail_admins": {"level": "ERROR", "class": "django.utils.log.AdminEmailHandler"},
     },
     "formatters": {"verbose": {"format": "%(asctime)s %(levelname)-8s [%(name)s:%(lineno)s] %(message)s"}},
+    "root": {"handlers": ["file"], "level": "DEBUG", "propagate": True},
     "loggers": {
         "": {"handlers": ["file"], "level": "DEBUG", "propagate": True},
         "auth": {"handlers": ["file"], "level": "INFO", "propagate": True},

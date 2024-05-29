@@ -3,14 +3,14 @@
 # Python imports
 from datetime import datetime
 
-# Django imports
-from django.core.exceptions import ObjectDoesNotExist
-
 # external imports
 from celery import shared_task
 from constance import config
 from minerva.models import Test_Score
 from pytz import UTC
+
+# app imports
+from phas_vitals.celery import PHASTask
 
 
 @shared_task
@@ -20,14 +20,13 @@ def import_gradebook():
     config.LAST_MINERVA_UPDATE = datetime.now(tz=UTC)
 
 
-@shared_task
-def update_vitals(test_score_pk):
+@shared_task(base=PHASTask, flush_every=100, flush_interval=10)
+def update_vitals(requests):
     """For each vital that uses this test, check whether a vital is passed and update as necessary."""
-    try:
-        test_score = Test_Score.objects.get(pk=test_score_pk)
-    except ObjectDoesNotExist:
-        return  # don't worry if the test_Scire went before we got there!
-    for vm in test_score.test.vitals_mappings.all().prefetch_related(
-        "vital"
-    ):  # For each vital that this test could pass
-        vm.vital.check_vital(test.user)
+    ids = list(set([request.args[0] for request in requests]))  # Pass through set deduplicates account.pk values
+    test_scores = Test_Score.objects.get(pk__in=ids)
+    for test_score in test_scores:
+        for vm in test_score.test.vitals_mappings.all().prefetch_related(
+            "vital"
+        ):  # For each vital that this test could pass
+            vm.vital.check_vital(test_score.user)

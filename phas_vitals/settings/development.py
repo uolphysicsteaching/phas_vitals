@@ -9,7 +9,7 @@ from .secrets import *  # NOQA  pylint: disable=unused-import
 
 
 # ##### DEBUG CONFIGURATION ###############################
-DEBUG = True
+DEBUG = False
 
 # allow all hosts during development
 ALLOWED_HOSTS = ["*"]

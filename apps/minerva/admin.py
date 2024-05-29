@@ -129,6 +129,7 @@ class TestAdmin(ImportExportModelAdmin):
         "test_id",
         "module",
         "name",
+        "type",
         "externalGrade",
         "score_possible",
         "passing_score",
@@ -147,9 +148,12 @@ class TestAdmin(ImportExportModelAdmin):
             "Basic Details",
             {
                 "fields": (
-                    "test_id",
-                    "module",
-                    "name",
+                    (
+                        "test_id",
+                        "module",
+                        "type",
+                        "name",
+                    ),
                     "description",
                     "score_possible",
                     "passing_score",

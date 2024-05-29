@@ -24,7 +24,7 @@ from .views import E403View, E404View, E500View, HomeView
 # Set Error handlers
 handler404 = E404View.as_view()
 handler403 = E403View.as_view()
-handler600 = E500View.as_view()
+handler500 = E500View.as_view()
 
 urlpatterns = [
     # Examples:

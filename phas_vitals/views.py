@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Main site views."""
 # Python imports
+import logging
 import sys
 
 # Django imports
@@ -14,6 +15,8 @@ from constance import config
 from minerva.views import ShowAllTestResultsViiew
 from tutorial.views import TutorStudentEngagementSummary
 from util.views import RedirectView
+
+logger = logging.getLogger(__file__)
 
 
 class HomeView(RedirectView):
@@ -40,10 +43,16 @@ class HomeView(RedirectView):
 class ErrorView(TemplateView):
     """Ensure we return an error code in our responses."""
 
-    def get_error_code(self):
+    @classmethod
+    def get_error_code(cls):
         """Crazy little hack !."""
-        name = self.__class__.__name__
+        name = cls.__name__
         return int(name[1:4])
+
+    @property
+    def error_code(self):
+        """Get error code as property."""
+        return self.get_error_code()
 
     def get_context_date(self, **kwargs):
         """Get some common context data for the error view."""
@@ -62,6 +71,10 @@ class ErrorView(TemplateView):
         response = super().render_to_response(context, **response_kwargs)
         response.status_code = self.get_error_code()
         return response
+
+    def __init__(self, *args, **kargs):
+        logger.error(f"Entered Error view as {self.__class__.__name__} with {args} and {kargs}")
+        super().__init__(*args, **kargs)
 
 
 class E400View(ErrorView):
