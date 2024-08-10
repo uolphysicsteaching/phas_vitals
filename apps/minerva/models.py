@@ -1,6 +1,7 @@
 # Python imports
 """Models for integration with minerva."""
 # Python imports
+import logging
 import re
 from datetime import timedelta
 from os import path
@@ -21,10 +22,14 @@ from util.spreadsheet import Spreadsheet
 # app imports
 from phas_vitals import celery_app
 
+# app imports
+from . import json
+
 update_vitals = celery_app.signature("minerva.update_vitals")
 update_tests_score = celery_app.signature("accounts.update_tests_score")
 update_labs_score = celery_app.signature("accounts.update_labs_score")
 
+logger = logging.getLogger(__name__)
 
 # Create your models here.
 
@@ -69,6 +74,7 @@ class Module(models.Model):
     credits = models.IntegerField(default=0)
     name = models.CharField(max_length=80)
     level = models.IntegerField(null=True, blank=True)
+    year = models.ForeignKey("accounts.Cohort", on_delete=models.CASCADE, related_name="modules")
     semester = models.IntegerField(null=True, blank=True)
     exam_code = models.IntegerField(default=1, null=False, blank=False)
     description = models.TextField(blank=True, null=True)
@@ -99,6 +105,26 @@ class Module(models.Model):
         """Include exam code in slug."""
         return f"{self.code}({self.exam_code:02d})"
 
+    @property
+    def key(self):
+        """String that matches the storage account filename."""
+        return f"{self.year.name}_{self.courseId}_{self.code}"
+
+    @property
+    def course_json(self):
+        """Name of JSON file that has the course details."""
+        return f"{self.key}_Course.json"
+
+    @property
+    def columns_json(self):
+        """Name of JSON file that has the column details."""
+        return f"{self.key}_Grade_Columns.json"
+
+    @property
+    def memberships_json(self):
+        """Name of JSON file that has the course details."""
+        return f"{self.key}_Course_Memberships.json"
+
     def generate_spreadsheet(self):
         """Generate a spreadsheet object instance for this module."""
         spreadsheet = Spreadsheet(path.join(TEMPLATE_ROOT, "Module_Template.xlsx"), blank=True)
@@ -119,6 +145,40 @@ class Module(models.Model):
             return spreadsheet.respond()
         else:
             return spreadsheet.as_file(dirname)
+
+    def get_member_id_map(self, only_valid=True):
+        """Create a dictionary that maps Blocakboard Ultra IDs to SIDs."""
+        if (json_data := json.get_blob_by_name(self.memberships_json, False)) is None:
+            raise IOError(f"No JSON file for {self}")
+        data = {int(x["user"]["studentId"]): x["userId"] for x in json_data}
+        if not only_valid:
+            return data
+        member_ids = set([x[0] for x in self.students.all().values_list("number")])
+        common = set(data.keys()) | member_ids
+        if len(common) < len(data):
+            missing = list(set(data.keys()) - member_ids)
+            logger.warn(f"Extra SID entries in Minerva not in module yet:{','.join(missing)}")
+        data = {x: y for x, y in data.items() if x in common}
+        return data
+
+    def get_tests_map(self, only_valid=True):
+        """Create a dictionary of test_id to Test mappings for Tests in the Minerva data set."""
+        if (json_data := json.get_blob_by_name(self.columns_json, False)) is None:
+            raise IOError(f"No JSON file for {self}")
+        data = {x["id"]: x for x in json_data}
+        if not only_valid:
+            return data
+        data_ids = set(data.keys())
+        test_ids = set([x[0] for x in self.tests.all().values_list("test_id")])
+        common = data_ids | test_ids
+        data = {x: self.tests.get(test_id=x) for x in common}
+        return data
+
+    def update_enrollments(self):
+        """Get the mapping between SIDs and Blackboard IDs and update the enrollment table."""
+        data = dict(sorted(self.get_member_id_map().items()))
+        qs = self.module_enrollments.filter(student__number__in=data.keys()).order_by("student__number")
+        qs.update(user_id=list(data.values()))
 
 
 class StatusCode(models.Model):
@@ -149,6 +209,7 @@ class ModuleEnrollment(models.Model):
     module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name="student_enrollments")
     student = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="module_enrollments")
     status = models.ForeignKey(StatusCode, on_delete=models.SET_DEFAULT, default="RE")
+    user_id = models.CharField(max_length=20, blank=True, null=True)  # User_ID appears to be per module
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["module", "student"], name="Singleton EWnrollment on a module")]
@@ -214,7 +275,6 @@ class Test(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     type = models.CharField(max_length=10, choices=TEST_TYPES, default=TEST_TYPES[0][0])
-    externalGrade = models.BooleanField(default=True, verbose_name="Grade from LTI")
     score_possible = models.FloatField(default=100, verbose_name="Maximum possible score")
     passing_score = models.FloatField(default=80, verbose_name="Maximum possible score")
     grading_due = models.DateTimeField(blank=True, null=True, verbose_name="Minerva Due Date")
@@ -261,6 +321,11 @@ class Test(models.Model):
         """Return a url for the detail page for this vital."""
         return f"/minerva/detail/{self.pk}/"
 
+    @property
+    def json_file(self):
+        """MAtch the filename for the test attempts."""
+        return self.module.key + f"_Grade_Columns_Attempt_{self.test_id}.json"
+
     def natural_key(self):
         """Return string representation a natural key."""
         return str(self)
@@ -276,6 +341,21 @@ class Test(models.Model):
         if update_results:  # Propagate change in pass mark to test scores
             for test_score in self.results.all():  # Update all test_scores for both passes and fails
                 test_score.save()
+
+    @classmethod
+    def create_or_update_from_dict(cls, data, module):
+        """Create or update a test using dictionary data from Minerva."""
+        test_id = data["id"]
+        name = data["displayName"]
+        try:
+            test = cls.objects.get(test_id=test_id, module=module)
+            test.name = name
+        except ObjectDoesNotExist:
+            test = cls(test_id=test_id, module=module, name=name)
+        test.grading_attemptsAllowed = data["grading"]["attemptes_Allowed"]
+        test.score_possible = data["score"]["possible"]
+        test.save()
+        return test
 
 
 class TestScoreManager(models.Manager):

@@ -1,4 +1,5 @@
 """Accounts app model classes."""
+
 from __future__ import unicode_literals
 
 # Django imports
@@ -102,6 +103,11 @@ class Account(AbstractUser):
 
     class Meta:
         ordering = ["last_name", "first_name"]
+        permissions = [("has_local", "Also has a local account"), ("is_local", "Is a local account")]
+        indexes = [
+            models.Index(fields=["number"]),
+            models.Index(fields=["username"]),
+        ]
 
     USERNAME_FIELD = "username"
 
@@ -183,3 +189,4 @@ class AccountGroup(Group):
 
     class Meta:
         proxy = True
+        permissions = [("access_backend", "Backend_user_account")]

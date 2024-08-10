@@ -130,7 +130,6 @@ class TestAdmin(ImportExportModelAdmin):
         "module",
         "name",
         "type",
-        "externalGrade",
         "score_possible",
         "passing_score",
         "grading_due",
