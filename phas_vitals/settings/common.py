@@ -492,6 +492,12 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_RESULT_BACKEND = "django-db"
 
+#### SITETREE Customisation ##############################
+
+SITETREE_CLS = "util.tree.CustomSiteTree"
+SITETREE_MODEL_TREE = "util.GroupedTree"
+SITETREE_MODEL_TREE_ITEM = "util.GroupedTreeItem"
+
 ###### Import config from apps ############################
 
 _setting_pattern = re.compile("[A-Z][A-Z0-9_]+")

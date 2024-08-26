@@ -9,3 +9,8 @@ class UtilConfig(AppConfig):
 
     default_auto_field = "django.db.models.BigAutoField"
     name = "util"
+
+    def ready(self):
+        """Hook when application is ready."""
+        # app imports
+        from . import tree

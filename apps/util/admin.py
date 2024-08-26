@@ -8,12 +8,81 @@ from collections.abc import Iterable
 from django.apps import apps
 from django.contrib import admin
 from django.db.models import Model
+from django.utils.translation import gettext_lazy as _
 
 # external imports
 from accounts.models import Account, Cohort
-from sitetree.admin import TreeItemAdmin as model_admin
+
+# Import two helper functions and two admin models to inherit our custom model from.
+from sitetree.admin import (
+    TreeAdmin,
+    TreeItemAdmin,
+    override_item_admin,
+    override_tree_admin,
+)
 
 # Register your models here.
+
+
+# And our custom tree item admin model.
+class CustomTreeItemAdmin(TreeItemAdmin):
+
+    """Custom sitetree item admin to add ability to control display groups."""
+
+    fieldsets = (
+        (
+            _("Basic settings"),
+            {
+                "classes": (
+                    "baton-tabs-init",
+                    "baton-tab-fs-basic",
+                    "baton-tab-fs-access",
+                    "baton-tab-fs-display",
+                    "baton-tab-fs-extra",
+                ),
+                "fields": (
+                    "parent",
+                    "title",
+                    "url",
+                ),
+            },
+        ),
+        (
+            _("Access settings"),
+            {
+                "classes": ("tab-fs-access",),
+                "fields": (
+                    "access_loggedin",
+                    "access_guest",
+                    "access_restricted",
+                    ("access_staff", "access_superuser"),
+                    "access_permissions",
+                    "access_perm_type",
+                    "groups",
+                    "not_groups",
+                ),
+            },
+        ),
+        (
+            _("Display settings"),
+            {"classes": ("tab-fs-display",), "fields": ("hidden", "inmenu", "inbreadcrumbs", "insitetree")},
+        ),
+        (
+            _("Additional settings"),
+            {"classes": ("tab-fs-extra",), "fields": ("hint", "description", "alias", "urlaspattern")},
+        ),
+    )
+
+    filter_horizontal = ("access_permissions", "groups", "not_groups")
+
+
+class CustomTreeAdmin(TreeAdmin):
+
+    """Simple duplicate."""
+
+
+override_tree_admin(CustomTreeAdmin)
+override_item_admin(CustomTreeItemAdmin)
 
 
 @contextlib.contextmanager
@@ -96,18 +165,6 @@ def patch_admin(model, **kargs):
                     old_value.append(value)
             else:
                 setattr(model_admin, attr, value)
-
-
-model_admin.fieldsets[0][1]["classes"] = (
-    "baton-tabs-init",
-    "baton-tab-fs-basic",
-    "baton-tab-fs-access",
-    "baton-tab-fs-display",
-    "baton-tab-fs-extra",
-)
-model_admin.fieldsets[1][1]["classes"] = ("tab-fs-access",)
-model_admin.fieldsets[2][1]["classes"] = ("tab-fs-display",)
-model_admin.fieldsets[3][1]["classes"] = ("tab-fs-extra",)
 
 
 class StudentListFilter(admin.SimpleListFilter):

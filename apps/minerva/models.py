@@ -14,6 +14,7 @@ from django.forms import ValidationError
 from django.utils import timezone as tz
 
 # external imports
+import pytz
 from accounts.models import Account
 from constance import config
 from util.models import patch_model
@@ -46,12 +47,11 @@ ATTEMPT_STATUS = {
 }
 
 SCORE_STATUS = {"Graded": "Score Graded", "NeedsGrading": "Not Marked Yet"}
-MOD_PATTERN = re.compile(rf"{config.SUBJECT_PREFIX}[0123589][0-9]{{3}}M?")
 
 
 def module_validator(value):
     """Validate module code patterns."""
-    pattern = MOD_PATTERN
+    pattern = re.compile(rf"{config.SUBJECT_PREFIX}[0123589][0-9]{{3}}M?")
     if not isinstance(value, str) or not pattern.match(value):
         raise ValidationError(f"Module code must be {config.SUBJECT_PREFIX} module code")
 
@@ -150,7 +150,7 @@ class Module(models.Model):
         """Create a dictionary that maps Blocakboard Ultra IDs to SIDs."""
         if (json_data := json.get_blob_by_name(self.memberships_json, False)) is None:
             raise IOError(f"No JSON file for {self}")
-        data = {int(x["user"]["studentId"]): x["userId"] for x in json_data}
+        data = {int(x["user"]["studentId"]): x["userId"] for x in json_data if "studentId" in x["user"]}
         if not only_valid:
             return data
         member_ids = set([x[0] for x in self.students.all().values_list("number")])
@@ -161,24 +161,65 @@ class Module(models.Model):
         data = {x: y for x, y in data.items() if x in common}
         return data
 
-    def get_tests_map(self, only_valid=True):
+    def get_tests_map(self, only_valid=True, match_names=False):
         """Create a dictionary of test_id to Test mappings for Tests in the Minerva data set."""
         if (json_data := json.get_blob_by_name(self.columns_json, False)) is None:
             raise IOError(f"No JSON file for {self}")
         data = {x["id"]: x for x in json_data}
         if not only_valid:
             return data
+        if match_names:
+            data = {y["name"]: y for x, y in data.items()}
         data_ids = set(data.keys())
-        test_ids = set([x[0] for x in self.tests.all().values_list("test_id")])
-        common = data_ids | test_ids
-        data = {x: self.tests.get(test_id=x) for x in common}
+        if match_names:
+            test_ids = set([x[0] for x in self.tests.all().values_list("name")])
+        else:
+            test_ids = set([x[0] for x in self.tests.all().values_list("test_id")])
+        common = list(data_ids | test_ids)
+        if match_names:
+            data = {data[x]["id"]: self.tests.get(name=x) for x in common}
+        else:
+            data = {x: self.tests.get(test_id=x) for x in common}
         return data
 
     def update_enrollments(self):
         """Get the mapping between SIDs and Blackboard IDs and update the enrollment table."""
         data = dict(sorted(self.get_member_id_map().items()))
-        qs = self.module_enrollments.filter(student__number__in=data.keys()).order_by("student__number")
-        qs.update(user_id=list(data.values()))
+        qs = self.student_enrollments.filter(student__number__in=data.keys()).order_by("student__number")
+        # First check whether we need to add some new enrollments
+        add = list(set(data.keys()) - set([x[0] for x in qs.values_list("student__number")]))
+        if add:
+            students = Account.objects.filter(number__in=add, is_staff=False)  # GFet the student Accounbts to add
+            for student in students:
+                self.student_enrollments.model.objects.get_or_create(student=student, module=self)
+            qs = self.student_enrollments.filter(student__number__in=data.keys()).order_by("student__number")
+        if qs.count() < len(data):  # See if there are still accounts in Minerva that we haven't enrolled here
+            # These could be staff users for example.
+            enrolled = [x[0] for x in qs.values_list("student__number")]
+            for number in list(data.keys()):
+                if number not in enrolled:
+                    del data[number]
+        # Do the actual update.
+        updates = []
+        for enrollment in qs.all():
+            enrollment.user_id = data[enrollment.student.number]
+            updates.append(enrollment)
+        qs.bulk_update(updates, ["user_id"])
+
+    def update_from_json(self):
+        """Update the module from json data."""
+        try:
+            self.update_enrollments()
+        except IOError:
+            return
+        try:
+            for id, test in self.get_tests_map(match_names=True).items():
+                test.test_id = id
+                test.save()
+                test.attempts_from_dicts()
+        except IOError:
+            return None
+        return True
 
 
 class StatusCode(models.Model):
@@ -322,7 +363,7 @@ class Test(models.Model):
         return f"/minerva/detail/{self.pk}/"
 
     @property
-    def json_file(self):
+    def attempts_json(self):
         """MAtch the filename for the test attempts."""
         return self.module.key + f"_Grade_Columns_Attempt_{self.test_id}.json"
 
@@ -342,6 +383,28 @@ class Test(models.Model):
             for test_score in self.results.all():  # Update all test_scores for both passes and fails
                 test_score.save()
 
+    def attempts_from_dicts(self, json_data=None):
+        """Create a test attempt from with a single, or list of dictionaries derived from a json file."""
+        if json_data is None:
+            json_data = json.get_blob_by_name(self.attempts_json)
+            if json_data is None:
+                raise IOError(f"No json blob {self.attemps_json}")
+        if not isinstance(json_data, list):
+            json_data = [json_data]
+        json_data = {x["userId"]: x for x in json_data}
+        attempts = Test_Attempt.objects.filter(test_entry__test=self)
+        qs = self.module.student_enrollments.filter(user_id__in=set(json_data.keys())).prefetch_related("student")
+        for enrollment in qs.all():
+            data = json_data[enrollment.user_id]
+            result, _ = Test_Score.objects.get_or_create(user=enrollment.student, test=self)
+            attempt, _ = Test_Attempt.objects.get_or_create(test_entry=result, attempt_id=data["id"])
+            attempt.status = data.get("status", "")
+            attempt.score = data.get("score", None)
+            attempt.created = pytz.utc.localize(data["created"])
+            attempt.attempted = pytz.utc.localize(data["attemptDate"])
+            attempt.modified = pytz.utc.localize(data["modified"])
+            attempt.save()
+
     @classmethod
     def create_or_update_from_dict(cls, data, module):
         """Create or update a test using dictionary data from Minerva."""
@@ -352,7 +415,7 @@ class Test(models.Model):
             test.name = name
         except ObjectDoesNotExist:
             test = cls(test_id=test_id, module=module, name=name)
-        test.grading_attemptsAllowed = data["grading"]["attemptes_Allowed"]
+        test.grading_attemptsAllowed = data["grading"]["attemptsAllowed"]
         test.score_possible = data["score"]["possible"]
         test.save()
         return test
@@ -477,6 +540,7 @@ class Test_Score(models.Model):
         else:
             orig = None
             super().save(force_insert, force_update, using, update_fields)
+            force_insert = False
         score, passed, send_signal = self.check_passed(orig)
         self.score = score
         self.passed = passed
@@ -511,7 +575,8 @@ class Test_Attempt(models.Model):
 
     def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
         """Check whether saving this attempt changes the test passed or not."""
-        self.attempt_id = f"{self.test_entry.test.name}:{self.test_entry.user.username}:{self.attempted}"
+        if not self.attempt_id:
+            self.attempt_id = f"{self.test_entry.test.name}:{self.test_entry.user.username}:{self.attempted}"
         trigger_check = self.pk is None or self.test_entry.score != self.score
         super().save(force_insert, force_update, using, update_fields)
 

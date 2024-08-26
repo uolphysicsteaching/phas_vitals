@@ -1,22 +1,29 @@
 # -*- coding: utf-8 -*-
 """Celery taks for the minerva app."""
 # Python imports
+import logging
 from datetime import datetime
 
 # external imports
 from celery import shared_task
 from constance import config
-from minerva.models import Test_Score
+from minerva.models import Module, Test_Score
 from pytz import UTC
 
 # app imports
 from phas_vitals.celery import PHASTask
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
 def import_gradebook():
     """Import a spreadsheet of the full Minerva gradebook download."""
     # Really do stuff
+    for module in Module.objects.all():
+        if module.update_from_json() is None:
+            logger.info(f"Failed import for {module.name}")
+
     config.LAST_MINERVA_UPDATE = datetime.now(tz=UTC)
 
 

@@ -82,7 +82,7 @@ class ModuleAdmin(ImportExportModelAdmin):
             "Basic Details",
             {
                 "fields": (
-                    ("uuid", "courseId", "parent_module"),
+                    ("uuid", "courseId", "parent_module", "year"),
                     ("code", "alt_code", "exam_code"),
                     "name",
                     ("credits", "level", "semester"),
