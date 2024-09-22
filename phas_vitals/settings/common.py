@@ -391,13 +391,19 @@ BATON = {
     "MESSAGES_TOASTS": False,
     "GRAVATAR_DEFAULT_IMG": "retro",
     "GRAVATAR_ENABLED": True,
-    "FORCE_THEME": None,
+    "FORCE_THEME": "dark",
     #'LOGIN_SPLASH': '/static/core/img/login-splash.png',
     # 'SEARCH_FIELD': {
     #     'label': 'Search contents...',
     #     'url': '/search/',
     # },
     "MENU": (
+        {
+            "type": "free",
+            "label": "Frontend",
+            "url": "https://phas-vitals.leeds.ac.uk",
+            "icon": "fa-solid fa-house-chimney-window",
+        },
         {"type": "title", "label": "main", "apps": ("auth",)},
         {
             "type": "app",
