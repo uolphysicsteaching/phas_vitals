@@ -3,8 +3,14 @@ from django import forms
 from django.contrib.admin import SimpleListFilter, StackedInline, register
 
 # external imports
+from accounts.models import Account
 from import_export.admin import ImportExportModelAdmin
-from util.admin import CohortListFilter, StaffListFilter, StudentListFilter
+from util.admin import (
+    CohortListFilter,
+    StaffListFilter,
+    StudentListFilter,
+    add_inlines,
+)
 
 # app imports
 from . import resources
@@ -111,6 +117,14 @@ class TutorialAssignmentInlineForm(forms.ModelForm):
         exclude = ("tutorial",)
 
 
+class AltTutorialAssignmentInlineForm(forms.ModelForm):
+    """Inline admin form class for Tutorial Assignment."""
+
+    class Meta:
+        model = TutorialAssignment
+        fields = ("tutorial", "student")
+
+
 class TutorialAdminInline(StackedInline):
     """Inline admin class for Tutorial Group."""
 
@@ -130,7 +144,18 @@ class TutorialAssignmentInline(StackedInline):
     verbose_name_plural = "Tutees"
     extra = 1
     form = TutorialAssignmentInlineForm
-    suit_classes = "suit-tab suit-tab-students"
+
+
+class AltTutorialAssignmentInline(StackedInline):
+    """Inline admin class for tutorial assignment."""
+
+    model = TutorialAssignment
+    verbose_name = "Tutor"
+    extra = 0
+    form = AltTutorialAssignmentInlineForm
+
+
+add_inlines(Account, AltTutorialAssignmentInline, "tutorial_group_assignment")
 
 
 @register(Tutorial)

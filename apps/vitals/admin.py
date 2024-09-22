@@ -7,6 +7,7 @@ from import_export.admin import ImportExportModelAdmin
 from util.admin import add_action, add_inlines
 
 # app imports
+from .forms import VITAL_ResultForm, VITAL_Test_MapForm, VITALForm
 from .models import VITAL, VITAL_Result, VITAL_Test_Map
 from .resource import (
     VITAL_ResultResource,
@@ -21,6 +22,7 @@ class VITAL_Test_MapInline(admin.StackedInline):
     """Inline Admin for Test Mapping for use with VITALs."""
 
     model = VITAL_Test_Map
+    form = VITAL_Test_MapForm
     extra = 0
 
 
@@ -28,6 +30,7 @@ class VITAL_ResultInline(admin.StackedInline):
     """Inline admin for Test Result mapping for VITALS."""
 
     model = VITAL_Result
+    form = VITAL_ResultForm
     extra = 0
 
 
@@ -35,6 +38,7 @@ class VITALInline(admin.StackedInline):
     """Inline admin for VITALS."""
 
     model = VITAL
+    form = VITALForm
     extra = 0
 
 
@@ -74,9 +78,9 @@ add_action("minerva.Module", update_module_vitals)
 class VITALAdmin(ImportExportModelAdmin):
     """Admin class for VITALs."""
 
-    list_display = ("name", "module")
+    list_display = ("name", "module", "VITAL_ID")
     list_filter = list_display
-    search_fields = ["name", "description", "module__name"]
+    search_fields = ["name", "description", "module__name", "VITAL_ID"]
     inlines = [VITAL_Test_MapInline, VITAL_ResultInline]
     actions = [
         update_vital_users,
@@ -86,7 +90,7 @@ class VITALAdmin(ImportExportModelAdmin):
         (
             "Details",
             {
-                "fields": ("name", "description", "module"),
+                "fields": ("name", "description", "module", "VITAL_ID"),
                 "classes": ("baton-tabs-init", "baton-tab-inline-tests_mappings", "baton-tab-inline-student_results"),
             },
         ),

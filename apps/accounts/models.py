@@ -22,14 +22,6 @@ students_Q = Q(groups__name="Student")
 markers_Q = models.Q(groups__name="Grader") | models.Q(is_staff=True) | models.Q(is_superuser=True)
 
 
-def update_new_user(user):
-    """If a new user is a student and not a member of a cohort, assign them to the current cohort."""
-    if not user.cohort and not (user.is_staff or user.is_superuser):
-        cohort, _ = Cohort.current
-        user.cohort = cohort
-    return user
-
-
 DEGREE_LEVEL = [("B", "Bachelors"), ("MB", "Integrated Masters"), ("PGT", "Taught Masters"), ("O", "Other")]
 
 LEVEL_OF_STUDY = [
@@ -111,9 +103,8 @@ class Account(AbstractUser):
 
     USERNAME_FIELD = "username"
 
-    number = models.IntegerField(blank=True, null=True)
+    number = models.IntegerField(unique=True)
     title = models.CharField(max_length=20, blank=True, null=True)
-    cohort = models.ForeignKey(Cohort, on_delete=models.SET_NULL, related_name="students", blank=True, null=True)
     programme = models.ForeignKey(Programme, on_delete=models.SET_NULL, blank=True, null=True, related_name="students")
     level = models.IntegerField(
         default=1,
@@ -124,8 +115,10 @@ class Account(AbstractUser):
     # Fields updated by celery tasks
     tests_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
     labs_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
+    coding_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
     vitals_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
     engagement = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
+    activity_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
 
     def natural_key(self):
         """Use the username as a natural key."""
@@ -136,12 +129,19 @@ class Account(AbstractUser):
         """Display name is what we commonly use for lists of account objects."""
         return f"{self.last_name},{self.first_name}"
 
-    @cached_property
+    @property
     def apt(self):
         """Property to get to the APT."""
-        if self.tutorial_group:
-            return self.tutorial_group.first().tutor
+        if self.tutorial_group.count() > 0:
+            return self.tutorial_group.order_by("cohort__name").last().tutor
         return None
+
+    @apt.setter
+    def apt(self, value):
+        """Set the tutorial group for the current cohort."""
+        if not isinstance(value, Account):
+            return
+        self.tutorial_group.filter(cohort=self.cohort).delete()
 
     @cached_property
     def formal_name(self):

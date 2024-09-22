@@ -5,11 +5,13 @@
 # Django imports
 # Create your views here.
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Q
 from django.utils.html import format_html
 from django.views.generic import DetailView, FormView
 
 # external imports
 from accounts.views import StudentSummaryView
+from dal import autocomplete
 from django_tables2 import SingleTableMixin
 from django_tables2.columns import Column
 from minerva.forms import ModuleSelectForm
@@ -191,3 +193,18 @@ class VitalDetailView(IsStudentViewixin, DetailView):
     slug_url_kwarg = "pk"
     model = VITAL
     context_object_name = "vital"
+
+
+class VITALAutocomplete(autocomplete.Select2QuerySetView):
+    """Autocomplete lookup for VITALs."""
+
+    def get_queryset(self):
+        # Don't forget to filter out results depending on the visitor !
+        if not self.request.user.is_authenticated:
+            return VITAL.objects.none()
+
+        qs = VITAL.objects.all()
+
+        if self.q:
+            qs = qs.filter(Q(name__icontains=self.q) | Q(VITAL_ID__icontains=self.q)).order_by("VITAL_ID")
+        return qs

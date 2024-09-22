@@ -1,12 +1,14 @@
 """Import Export Admin Resources for the minerva app models."""
 
 # external imports
+import numpy as np
 from accounts.models import Account
-from accounts.resource import AccountWidget
+from accounts.resource import AccountsWidget, AccountWidget, ProgrammesWidget
 from import_export import fields, resources, widgets
 
 # app imports
 from .models import (
+    GradebookColumn,
     Module,
     ModuleEnrollment,
     StatusCode,
@@ -23,13 +25,31 @@ class ModuleResource(resources.ModelResource):
 
     class Meta:
         model = Module
-        fields = ("id", "uuid", "courseId", "name", "description", "programmes")
+        fields = (
+            "id",
+            "uuid",
+            "courseId",
+            "year",
+            "semester",
+            "level",
+            "exam_code",
+            "code",
+            "name",
+            "description",
+            "module_leader",
+            "team_members",
+        )
         import_id_fields = ["id"]
 
-    programmes = fields.Field(
-        column_name="programmes",
-        attribute="programmes",
-        widget=widgets.ManyToManyWidget("accounts.Programme", ";", "name"),
+    module_leader = fields.Field(
+        column_name="module_leader",
+        attribute="module_leader",
+        widget=AccountWidget("accounts.Account", "display_name"),
+    )
+    team_members = fields.Field(
+        column_name="team_members",
+        attribute="team_members",
+        widget=AccountsWidget("accounts.Account", ";", "display_name"),
     )
 
 
@@ -42,9 +62,11 @@ class TestResource(resources.ModelResource):
             "test_id",
             "module",
             "name",
+            "type",
             "description",
             "externalGrade",
             "score_possible",
+            "passing_score",
             "grading_due",
             "release_date",
             "recommended_date",
@@ -56,6 +78,26 @@ class TestResource(resources.ModelResource):
         column_name="module",
         attribute="module",
         widget=widgets.ForeignKeyWidget(Module, "id"),
+    )
+
+    def before_import_row(self, row, row_number=None, **kwargs):
+        super().before_import_row(row, row_number=row_number, **kwargs)
+        if not row["test_id"]:
+            row["test_id"] = f"_{np.random.randint(1E6)}_X"
+
+
+class GradebookColumnResource(resources.ModelResource):
+    """Import-Export resource for Gradebook columns."""
+
+    class Meta:
+        model = GradebookColumn
+        fields = ("gradebook_id", "name", "test")
+        import_id_fields = ["gradebook_id"]
+
+    test = fields.Field(
+        column_name="test",
+        attribute="test",
+        widget=widgets.ForeignKeyWidget(Test, "test_id"),
     )
 
 

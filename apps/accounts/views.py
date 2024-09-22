@@ -4,14 +4,19 @@ from collections import namedtuple
 
 # Django imports
 from django.conf import settings
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.views import PasswordChangeView
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMessage
+from django.db.models import Q
 from django.template import loader
+from django.urls import reverse_lazy
 from django.views.generic import FormView, TemplateView
 
 # external imports
 import matplotlib.pyplot as plt
 import numpy as np
+from dal import autocomplete
 from util.http import svg_data
 from util.spreadsheet import TutorReportSheet, save_virtual_workbook
 from util.views import IsStudentViewixin, IsSuperuserViewMixin
@@ -32,9 +37,16 @@ def pie_chart(data, colours):
     _, texts = ax.pie(list(data.values()), labels=list(data.keys()), colors=colours, labeldistance=0.3)
     for text in texts:
         text.set_bbox({"facecolor": (1, 1, 1, 0.75), "edgecolor": (1, 1, 1, 0.25)})
+    plt.tight_layout()
     data = svg_data(fig, base64=True)
     plt.close()
     return data
+
+
+class ChangePasswordView(PasswordChangeView):
+    form_class = PasswordChangeForm
+    success_url = reverse_lazy("home")
+    template_name = "change_password.html"
 
 
 class TutorGroupEmailsView(IsSuperuserViewMixin, FormView):
@@ -74,9 +86,10 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
         else:
             user = Account.objects.get(number=self.kwargs["number"])
         modules = user.modules.all()
-        VITALS = user.VITALS.model.objects.filter(module__in=modules).order_by("module", "start_date")
-        Tests = user.tests.model.homework.filter(module__in=modules).order_by("release_date")
-        Labs = user.tests.model.labs.filter(module__in=modules).order_by("release_date")
+        VITALS = user.VITALS.model.objects.filter(module__in=modules).order_by("module", "start_date", "VITAL_ID")
+        Tests = user.tests.model.homework.filter(module__in=modules).order_by("release_date", "name")
+        Labs = user.tests.model.labs.filter(module__in=modules).order_by("release_date", "name")
+        Code_tasks = user.tests.model.code_tasks.filter(module__in=modules).order_by("release_date", "name")
 
         test_scores = {}
         for test in Tests:
@@ -96,6 +109,15 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
                 new_tr.test_status = new_tr.manual_test_satus
                 new_tr.standing = "Missing"
                 lab_scores[lab] = new_tr
+        code_scores = {}
+        for code in Code_tasks:
+            try:
+                code_scores[code] = user.test_results.get(test=code)
+            except ObjectDoesNotExist:
+                new_tr = user.test_results.model(user=user, test=code, passed=False, score=None)
+                new_tr.test_status = new_tr.manual_test_satus
+                new_tr.standing = "Missing"
+                code_scores[code] = new_tr
         vitals_results = {}
         for vital in VITALS:
             try:
@@ -112,13 +134,16 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
             "VITALS": VITALS,
             "Tests": Tests,
             "Labs": Labs,
+            "Code_tasks": Code_tasks,
             "scores": test_scores,
             "lab_scores": lab_scores,
+            "code_scores": code_scores,
             "vitals_results": vitals_results,
             "tab": self.kwargs.get("selected_tab", "#tests"),
             "tutorial_plot": self.tutorial_plot(user),
             "homework_plot": self.homework_plot(test_scores),
-            "lab_plot": self.homework_plot(lab_scores),
+            "lab_plot": self.homework_plot(lab_scores, what="Lab"),
+            "code_plot": self.homework_plot(code_scores, what="Code Tasks"),
             "vitals_plot": self.vitals_plot(vitals_results),
         }
         return context
@@ -137,24 +162,24 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
         alt = "Tutproal attendance" + " ".join([f"{label}:{count}" for label, count in data.items()])
         return ImageData(pie_chart(data, colours), alt)
 
-    def homework_plot(self, test_scores):
+    def homework_plot(self, test_scores, what="Homework"):
         """Make a pie chart of test statuses."""
         data = {}
         colours = []
         for test, test_score in test_scores.items():
-            if test.status == "Not Started":
+            if test.status == "Not Started" and test_score.standing == "Missing":
                 continue
             try:
                 attempted = test_score.attempts.count()
             except ValueError:  # New test_score
                 attempted = 0
             for label, (attempts, colour) in settings.TESTS_ATTEMPTS_PROFILE[test_score.standing].items():
-                if attempts <= attempted:
+                if attempts < 0 or attempts >= attempted:
                     if label not in data:
                         colours.append(colour)
                     data[label] = data.get(label, 0) + 1
                     break
-        alt = "Homework results" + " ".join([f"{label}:{count}" for label, count in data.items()])
+        alt = f"{what} results" + " ".join([f"{label}:{count}" for label, count in data.items()])
         return ImageData(pie_chart(data, colours), alt)
 
     def vitals_plot(self, vitals_results):
@@ -172,3 +197,37 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
                 colours.append(colour)
         alt = "VITALs results" + " ".join([f"{label}:{count}" for label, count in data.items()])
         return ImageData(pie_chart(data, colours), alt)
+
+
+class StudentAutocomplete(autocomplete.Select2QuerySetView):
+    """Autocomplete lookup for VITALs."""
+
+    def get_queryset(self):
+        # Don't forget to filter out results depending on the visitor !
+        if not self.request.user.is_authenticated:
+            return Account.objects.none()
+
+        qs = Account.objects.filter(is_staff=False)
+
+        if self.q:
+            qs = qs.filter(
+                Q(last_name__icontains=self.q) | Q(first_name__icontains=self.q) | Q(username__icontains=self.q)
+            ).order_by("last_name")
+        return qs
+
+
+class StaffAutocomplete(autocomplete.Select2QuerySetView):
+    """Autocomplete lookup for VITALs."""
+
+    def get_queryset(self):
+        # Don't forget to filter out results depending on the visitor !
+        if not self.request.user.is_authenticated:
+            return Account.objects.none()
+
+        qs = Account.objects.filter(is_staff=True)
+
+        if self.q:
+            qs = qs.filter(
+                Q(last_name__icontains=self.q) | Q(first_name__icontains=self.q) | Q(username__icontains=self.q)
+            ).order_by("last_name")
+        return qs

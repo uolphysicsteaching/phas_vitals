@@ -29,7 +29,7 @@
 <script>
 $(document).ready(function () {
     $(".test_link").click(function () {
-        var id=$(this).attr("id").split("_")[1];
+        var id=$(this).attr("id");
         window.location.href = "/minerva/detail/"+id+"/";
 
     });

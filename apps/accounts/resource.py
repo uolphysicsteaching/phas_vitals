@@ -25,13 +25,22 @@ def _user_from_email(value):
 
 def _fname_from_name(value):
     """Return the first Word in the value."""
-    words = [x for x in value.split(" ") if x != ""]
+    if "," in value:  # Assume last_name, name (initial)
+        words = [x.strip() for x in value.split(",")]
+        first_names = [x.strip() for x in words[1].split(" ")]
+        return first_names[0].title()
+    else:
+        words = [x for x in value.split(" ") if x != ""]
     return words[0].title()
 
 
 def _lname_from_name(value):
     """Return the last Word in the value."""
-    words = [x for x in value.split(" ") if x != ""]
+    if "," in value:  # Assume last_name, name (initial)
+        words = [x.strip() for x in value.split(",")]
+        return words[0].title()
+    else:
+        words = [x for x in value.split(" ") if x != ""]
     return words[-1].title()
 
 
@@ -44,12 +53,35 @@ class StrippedCharWidget(widgets.CharWidget):
 
 
 class ProgrammeWidget(widgets.ForeignKeyWidget):
+
+    """Import export ediget that looks up programmes by name or code."""
+
     def clean(self, value, row=None, *args, **kwargs):
         """Do a lookup attempting to match code or name."""
-        qs = self.model.objects.filter(Q(code=value) | Q(name=value))
+        qs = Programme.objects.filter(Q(code=value) | Q(name=value))
         if qs.count() < 1:
             return None
         return qs.last()
+
+
+class ProgrammesWidget(widgets.ManyToManyWidget):
+
+    """Import Export Wdiget that understands lists of programmes"""
+
+    def clean(self, value, row=None, **kwargs):
+        """Do a lookup attempting to match code or name."""
+        if not value:
+            return Programme.objects.none()
+        if isinstance(value, (float, int)):
+            ids = [int(value)]
+        else:
+            ids = value.split(self.separator)
+            ids = filter(None, [i.strip() for i in ids])
+
+        qs = Programme.objects.filter(Q(code__in=ids) | Q(name__in=ids))
+        if qs.count() < 1:
+            return None
+        return qs.all()
 
 
 class AccountWidget(widgets.ForeignKeyWidget):
@@ -57,25 +89,100 @@ class AccountWidget(widgets.ForeignKeyWidget):
 
     def clean(self, value, row=None, *args, **kargs):
         """Attempt to match to a user account."""
+        if value is None:
+            return None
         try:
             value = int(value)
-            qs = self.model.objects.filter(number=value)
-        except ValueError:
-            qs = self.model.objects.filter(username=value)
+            qs = Account.objects.filter(number=value)
+        except (TypeError, ValueError):
+            qs = Account.objects.filter(username=value)
         if qs.count() > 0:
             return qs.first()
+
+        initials = {}
+        formal_names = {}
+        for staff in Account.objects.filter(is_staff=True):
+            initials[staff.initials] = staff
+            formal_names[staff.formal_name] = staff
+
+        try:
+            return initials[value]
+        except KeyError:
+            pass
+        try:
+            return formal_names[value]
+        except KeyError:
+            pass
+
         if "," in value:
             last_name, first_name = value.split(",")
-            qs = self.model.objects.filter(last_name=last_name, first_name=first_name)
+            qs = Account.objects.filter(last_name=last_name, first_name=first_name)
             if qs.count() > 0:
                 return qs.first()
+
         elif " " in value:
             values = [x for x in value.split(" ") if x != ""]
             if values:
                 first_name, last_name = values[0], values[-1]
-                qs = self.model.objects.filter(last_name=last_name, first_name=first_name)
+                qs = Account.objects.filter(last_name=last_name, first_name=first_name)
                 if qs.count() > 0:
                     return qs.first()
+        return None
+
+
+class AccountsWidget(widgets.ManyToManyWidget):
+
+    """An import-export widget that understands lists of user names."""
+
+    def clean(self, value, row=None, **kwargs):
+        """Do a lookup attempting to match code or name."""
+        if not value:  # Early exit
+            return Account.objects.none()
+        if isinstance(value, (float, int)):  # Single int/float id
+            ids = [int(value)]
+        else:  # Assume a string that we can split on separator
+            ids = value.split(self.separator)
+            ids = filter(None, [i.strip() for i in ids])
+
+        try:  # try as a list of student numbers
+            qs = Account.objects.filter(number__in=[int(i) for i in ids])
+        except (TypeError, ValueError):  # not a list of numbers, try as a list of usernames
+            qs = Account.objects.filter(username__in=ids)
+        if qs.count() > 0:
+            return qs.all()
+        # At this point we are going to have to mangle for a name
+        # First build tables of initials and formal names
+        pks = []
+        initials = {}
+        formal_names = {}
+        for staff in Account.objects.filter(is_staff=True):
+            initials[staff.initials] = staff.pk
+            formal_names[staff.formal_name] = staff.pk
+
+        for value in ids:  # recast from display name
+            if "," in value:  # last_name, first_name
+                last_name, first_name = value.split(",")
+                qs = Account.objects.filter(last_name=last_name, first_name=first_name)
+                if qs.count() > 0:
+                    pks.append(qs.first().pk)
+
+            elif value in initials:  # Staff member initials
+                pks.append(initials[value])
+
+            elif value in formal_names:  # Staff member formal names
+                pks.append(formal_names[value])
+
+            elif " " in value:  # first_name initials last_name
+                values = [x for x in value.split(" ") if x != ""]
+                if values:
+                    first_name, last_name = values[0], values[-1]
+                    qs = Account.objects.filter(last_name=last_name, first_name=first_name)
+                    if qs.count() > 0:
+                        pks.append(qs.first().pk)
+        # pks is a list of matching primary keys, need to lookup again to get correct queryset
+        qs = Account.objects.filter(pk__in=pks)
+        if qs.count() > 0:
+            return qs.all()
         return None
 
 
@@ -115,8 +222,8 @@ class UserResource(resources.ModelResource):
             "mark",
             "students",
             "is_staff",
+            "is_superuser",
             "number",
-            "cohort",
             "programme",
             "registration_status",
             "apt",
@@ -146,7 +253,6 @@ class UserResource(resources.ModelResource):
             "Student_Name": _lname_from_name,
             "Student Name": _lname_from_name,
         },
-        "cohort": {"cohort": _none, "Term": _none, "Term_Code": _none},
         "programme": {"programme": _none, "Programme": _none},
         "registtration_status": {"registtration_status": _none, "Registration Status": _none, "ESTS_Code": _none},
         "apt": {"apt": _none, "tutor": _none, "Tutor Name": _none},

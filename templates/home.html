@@ -1,2 +1,6 @@
 {% extends "base.html" %}
-{% block content %}{% lorem 3 p %}{% endblock content %}
+{% load flatpages %}
+{% block content %}
+{% get_flatpages '/home/index/' as pages %}
+{{ pages.first.content|safe }}
+{% endblock content %}

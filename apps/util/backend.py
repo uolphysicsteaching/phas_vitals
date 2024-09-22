@@ -15,7 +15,7 @@ from django_auth_adfs.config import provider_config, settings
 # app imports
 from phas_vitals import celery_app
 
-update_account = celery_app.signature("accounts.update_user_from_graph")
+update_account = celery_app.signature("accounts.tasks.update_user_from_graph")
 logger = logging.getLogger("django_auth_adfs")
 
 
@@ -109,7 +109,9 @@ class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
         actually talks to the MS Graph API to update the user account object.
         """
         obo_access_token = self.get_obo_access_token(self.access_token)
+        logger.debug(f"Calling account.update_user_from_graph task with {user.pk} - {user.username}")
         update_account.delay(user.pk, obo_access_token)
+        logger.debug("User update taks dispatched")
 
     def update_user_groups(self, user, claim_groups):
         """Stub method that eventually should do ldap lookup."""

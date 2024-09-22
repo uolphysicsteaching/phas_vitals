@@ -1,7 +1,9 @@
 """Views for the uil app - mainly mixin classes."""
 
 # Django imports
+from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django.urls import reverse
 from django.views.generic import TemplateView, View
 
 
@@ -13,7 +15,7 @@ class IsStudentViewixin(UserPassesTestMixin):
     number of the currently logged in user account.
     """
 
-    login_url = "/login"
+    login_url = settings.LOGIN_URL
 
     def test_func(self):
         """Test if you a member of the correct group or have the staff/superuser flag set.
@@ -36,7 +38,7 @@ class IsStudentViewixin(UserPassesTestMixin):
 class IsStaffViewMixin(UserPassesTestMixin):
     """Mixin class to ensure logged in user is a staff user."""
 
-    login_url = "/login"
+    login_url = settings.LOGIN_URL
 
     def test_func(self):
         """Test is either staff or superuser flag is set."""
@@ -46,7 +48,7 @@ class IsStaffViewMixin(UserPassesTestMixin):
 class IsSuperuserViewMixin(UserPassesTestMixin):
     """Mixin class to ensure logged in User is a Superuser account."""
 
-    login_url = "/login"
+    login_url = "/isteach/"
 
     def test_func(self):
         """Test if the superuser flag is set."""
@@ -56,7 +58,7 @@ class IsSuperuserViewMixin(UserPassesTestMixin):
 class IsMemberViewMixin(UserPassesTestMixin):
     """Mixin class to ensure logged in user is a member of a particular group."""
 
-    login_url = "/login"
+    login_url = settings.LOGIN_URL
     groups = []
 
     def get_groups(self):

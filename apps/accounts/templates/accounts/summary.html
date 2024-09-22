@@ -27,6 +27,18 @@ a.vital_link:hover {
     background-color: #cc1525!important;
 }
 
+img.pie {
+    max-width: 100%;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+@media screen and (max-width: 900px) {
+    img.pie {
+        max-width: 360px;
+    }
+}
+
 li.vital_passed {
     list-style-type: "\2713";
 }
@@ -49,6 +61,7 @@ $(document).ready( function() {
 {% load django_bootstrap5 %}
 }
 {% block content %}
+<p>Minerva data last updated: {{ config.LAST_MINERVA_UPDATE|date:"r"}}</p>
 <div class="col-sm-12">
     <div class="row text-sm-center fs-2" style="background-color: {{ user.activity_colour }}; display: block; width:100%; color: {{ user.activity_colour|comp_colour }};">
         <span>{{ user.first_name }} {{ user.last_name }} ({{ user.number }})</span>
@@ -70,6 +83,9 @@ $(document).ready( function() {
         </li>
         <li class="nav-item" role="tab" id="labs-tab">
             <a href="#labs" class="nav-link{% if tab == '#labs' %} active{% endif %}" data-bs-toggle="tab"><span class="fs-3">Labs</span></a>
+        </li>
+        <li class="nav-item" role="tab" id="code-tab">
+            <a href="#code" class="nav-link{% if tab == '#code' %} active{% endif %}" data-bs-toggle="tab"><span class="fs-3">Code Tasks</span></a>
         </li>
         <li class="nav-item" role="tab" id="vitals-tab">
             <a href="#VITALS" class="nav-link{% if tab == '#VITALS' %} active{% endif %}" data-bs-toggle="tab"><span class="fs-3">VITALS status</span></a>
@@ -129,17 +145,17 @@ $(document).ready( function() {
       </div>
       <div class="tab-pane fade{% if tab == '#labs' %} show active{% endif %}" id="labs" role="tabpanel" aria-label="Lab Results tab">
           <h3>Lab Results</h3>
-          {% for lab_score in labs.values %}
+          {% for lab_score in lab_scores.values %}
               <div class="border-top border-dark border-2 row {{ lab_score.test.bootstrap5_class }}">
                   <div class="col-md-3">
-                      <strong><a class="vital_link" href="{{ test_score.test.url }}">{{ test_score.test.name }}</a>
+                      <strong><a class="vital_link" href="{{ lab_score.test.url }}">{{ lab_score.test.name }}</a>
                       ({{ lab_score.test.score_possible }} marks)</strong><br/>
                       Released: {{ lab_score.test.release_date }}<br/>
                       Recommended: {{ lab_score.test.recommended_date }}
                   </div>
-                    <div class="col-md-3  align-middle {{ test_score.bootstrap5_class }}">
+                    <div class="col-md-3  align-middle {{ lab_score.bootstrap5_class }}">
                         <div class="row">
-                            <span class="col-sm-2 fs-1 {{ test_score.icon }}">&nbsp;</span>
+                            <span class="col-sm-2 fs-1 {{ lab_score.icon }}">&nbsp;</span>
                             <div class="col-sm-10 text-center align-middle fs-4">
                           {% if lab_score.passed %}
                             Passed in {{ lab_score.attempts.count }}attempt{% if lab_score.attempts.count > 1%}s{% endif %}
@@ -177,6 +193,56 @@ $(document).ready( function() {
               </div>
           {% endfor %}
       </div>
+      <div class="tab-pane fade{% if tab == '#code' %} show active{% endif %}" id="code" role="tabpanel" aria-label="Code Tasks Results tab">
+          <h3>Code Tasks</h3>
+          {% for code_score in code_scores.values %}
+              <div class="border-top border-dark border-2 row {{ code_score.test.bootstrap5_class }}">
+                  <div class="col-md-3">
+                      <strong><a class="vital_link" href="{{ code_score.test.url }}">{{ code_score.test.name }}</a>
+                      ({{ code_score.test.score_possible }} marks)</strong><br/>
+                      Released: {{ code_score.test.release_date }}<br/>
+                      Recommended: {{ code_score.test.recommended_date }}
+                  </div>
+                    <div class="col-md-3  align-middle {{ code_score.bootstrap5_class }}">
+                        <div class="row">
+                            <span class="col-sm-2 fs-1 {{ code_score.icon }}">&nbsp;</span>
+                            <div class="col-sm-10 text-center align-middle fs-4">
+                          {% if code_score.passed %}
+                            Passed in {{ code_score.attempts.count }}attempt{% if code_score.attempts.count > 1%}s{% endif %}
+                          {% elif code_score.score is None %}
+                               {% if code_score.test_status != "Not Started" %}
+                                    Not Attempted
+                               {% endif %}
+                          {% else %}
+                               Not Passed ({{ code_score.attempts.count }}attempt{% if code_score.attempts.count > 1%}s{% endif %})
+                          {% endif %}
+                        </div>
+                    </div>
+                  </div>
+                  <div class="col-md-2 text-center align-middle">
+                      {% if code_score.attempts.count > 0 %}
+                      {{ code_score.score }} / {{ code_score.test.score_possible }} marks
+                      {% else %}
+                      {{ code_score.test.score_possible }} mark{% if code_score.test.score_possible > 1%}s{% endif %} possible
+                      {% endif %}
+                  </div>
+                  <div class="col-md-3">
+                      {{ code_score.vitals_text }}
+                      <ul>
+                      {% for vm in code_score.test.vitals_mappings.all %}
+                            {% if vm.vital in  user.passed_vitals %}
+                          <li class="vital_passed"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
+                            {% elif vm.vital in user.failed_vitals %}
+                          <li class="vital_failed"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
+                            {% else %}
+                          <li class="vital_unknown"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
+                            {% endif %}
+                      {% endfor %}
+                      </ul>
+                  </div>
+              </div>
+          {% endfor %}
+      </div>
       <div class="tab-pane fade{% if tab == '#VITALS' %} show active{% endif %}" id="VITALS" role="tabpanel" aria-label="VITALS Listing tab">
           <h3>VITALS passed/not passed</h3>
           <div class="accordion" id="accordianVITALs">
@@ -198,7 +264,7 @@ $(document).ready( function() {
                         {% for vital_result in vr %}
                             <div class="row border-top border-dark border-2 {{ vital_result.vital.bootstrap5_class }}">
                                 <div class="col-md-4">
-                                    <strong><a class="vital_link" href="{{ vital_result.vital.url }}">{{ vital_result.vital.name }}
+                                    <strong><a class="vital_link" href="{{ vital_result.vital.url }}">{{ vital_result.vital }}
                                     ({{ vital_result.vital.module.code }})</a></strong><br/>
                                     {% if vital_result.passed %}Passed: {{ vital_result.date_passed }}{% endif %}
                                 </div>
@@ -209,7 +275,7 @@ $(document).ready( function() {
 
                                             {% if vital_result.passed %}
                                               Passed
-                                            {% elif vital_result.vital_status != "Not Started" %}
+                                            {% elif vital_result.status != "Not Started" %}
                                               Not Passed
                                             {% else %}
                                               &nbsp;
@@ -222,8 +288,7 @@ $(document).ready( function() {
                                     <ul>
                                         {% for vm in vital_result.vital.tests_mappings.all %}
                                         <li><a class="vital_link" href="{{ vm.test.url }}">
-                                            {{ vm.test.name  }} ({{ vm.test.module.code }})</a>
-                                            {{ vm.test.passing_score }} / {{ vm.test.score_possible }}</li>
+                                            {{ vm.test.name  }} ({{ vm.test.module.code }})</a></li>
                                         {% endfor %}
                                     </ul>
                                 </div>
@@ -237,21 +302,31 @@ $(document).ready( function() {
       </div>
       <div class="tab-pane fade{% if tab == '#dashboard' %} show active{% endif %}" id="dashboard" role="tabpanel" aria-label="Dashboard Tab">
           <div class="row">
-            <div class="col-lg-3">
-                <h3 class="text-center">Homework {{ user.tests_score }}%</h3>
-                <img class="col-md-12"  src='{{ homework_plot.data }}' alt="{{ homework_plot.alt }}" />
+            <div class="col-lg-4">
+                <h3 class="text-center">Homework {% if user.tests_score is not None %}{{ user.tests_score }}%{% endif %}</h3>
+                <img class="pie"  src='{{ homework_plot.data }}' alt="{{ homework_plot.alt }}" />
             </div>
-            <div class="col-lg-3">
-                <h3 class="text-center">Labs {{ user.labs_score }}%</h3>
-                <img class="col-md-12"  src='{{ lab_plot.data }}' alt="{{ lab_plot.alt }}" />
+            <div class="col-lg-4">
+                <h3 class="text-center">Labs {% if user.labs_score is not None %}{{ user.labs_score }}%{% endif %}</h3>
+                <img class="pie"  src='{{ lab_plot.data }}' alt="{{ lab_plot.alt }}" />
             </div>
-            <div class="col-lg-3">
-                <h3 class="text-center">VITALs {{ user.vitals_score }}%</h3>
-                <img class="col-md-12" src='{{ vitals_plot.data }}' alt="{{ vitals_plot.alt }}" />
+            <div class="col-lg-4">
+                <h3 class="text-center">Coding {% if user.coding_score is not None %}{{ user.coding_score }}%{% endif %}</h3>
+                <img class="pie col-md-12"  src='{{ code_plot.data }}' alt="{{ code_plot.alt }}" />
             </div>
-            <div class="col-lg-3">
-                <h3 class="text-center">Tutorials {{ user.engagement }}%</h3>
-                <img class="col-md-12"  src='{{ tutorial_plot.data }}' alt="{{ tutorial_plot.alt }}" />
+          </div>
+          <div class="row">
+
+            <div class="col-lg-4">
+                <h3 class="text-center">VITALs {% if user.vitals_score is not None %}{{ user.vitals_score }}%{% endif %}</h3>
+                <img class="pie" src='{{ vitals_plot.data }}' alt="{{ vitals_plot.alt }}" />
+            </div>
+            <div class="col-lg-4">
+            &nbsp;
+            </div>
+            <div class="col-lg-4">
+                <h3 class="text-center">Tutorials {% if user.engagement is not None %}{{ user.engagement }}%{% endif %}</h3>
+                <img class="pie"  src='{{ tutorial_plot.data }}' alt="{{ tutorial_plot.alt }}" />
             </div>
           </div>
       </div>

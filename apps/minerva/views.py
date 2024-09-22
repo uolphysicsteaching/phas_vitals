@@ -8,6 +8,7 @@ from traceback import format_exc
 # Django imports
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Q
 from django.db.utils import IntegrityError
 from django.forms import ValidationError
 from django.http import StreamingHttpResponse
@@ -19,6 +20,7 @@ import numpy as np
 import pandas as pd
 from accounts.models import Account, Cohort
 from accounts.views import StudentSummaryView
+from dal import autocomplete
 from django_tables2 import SingleTableMixin
 from django_tables2.columns import Column
 from pytz import timezone
@@ -37,7 +39,7 @@ from .forms import (
     TestHistoryImportForm,
     TestImportForm,
 )
-from .models import ModuleEnrollment, Test, Test_Attempt, Test_Score
+from .models import Module, ModuleEnrollment, Test, Test_Attempt, Test_Score
 
 TZ = timezone(settings.TIME_ZONE)
 
@@ -147,7 +149,6 @@ class StreamingImportTestsView(ImportTestsView):
                 user.first_name = first_name
                 user.last_name = last_name
                 user.number = sid
-                user.cohort = Cohort.current
                 user.save()
                 ModuleEnrollment.objects.get_or_create(module=self.module, student=user)
                 for mod in self.module.sub_modules.all():
@@ -277,7 +278,7 @@ class TestResultColumn(Column):
         test = kargs.pop("test")
         attrs.update(
             {
-                "th": {"class": f"vertical test_link {self.status_class_map[test.status]}", "id": f"vital_{test.pk}"},
+                "th": {"class": f"vertical test_link {self.status_class_map[test.status]}", "id": f"{test.pk}"},
             }
         )
         kargs["attrs"] = attrs
@@ -289,32 +290,46 @@ class TestResultColumn(Column):
         match value:
             case False:
                 ret = '<div class="badge rounded-pil bg-secondary">&nbsp;</div>'
-            case {"score": score, "passed": passed, "attempt_count": attempts}:
+            case Test_Score():
                 if self.mode == "score":
-                    ret = self.format_score(passed, score)
+                    ret = self.format_score(value)
                 elif self.mode == "attempts":
-                    ret = self.format_attempts(attempts, passed)
+                    ret = self.format_attempts(value)
             case _:
                 ret = f'<div class="badge rounded-pil bg-secondary">{value}</div>'
 
         return format_html(ret)
 
-    def format_score(self, passed, score):
+    def format_score(self, test_score):
         """Format the html for a score."""
-        if passed:
-            return f'<div class="badge rounded-pil bg-success">{score:.1f}</div>'
-        if np.isnan(score):
-            return f'<div class="badge rounded-pil bg-primary">{score:.1f}</div>'
-        return f'<div class="badge rounded-pil bg-danger">{score:.1f}</div>'
-
-    def format_attempts(self, attempts, passed):
-        """Format some html for counting attempts at passing."""
-        bi_class = "bi bi-emoji-smile" if passed else "bi bi-emoji-frown"
-        if passed:
-            bg_class = "bg-success" if attempts == 1 else "bg-primary"
+        passed = test_score.passed
+        score = test_score.score
+        attempted = test_score.attempts.count()
+        for _, (attempts, colour) in settings.TESTS_ATTEMPTS_PROFILE[test_score.standing].items():
+            if attempts < 0 or attempts >= attempted:
+                bg_color = colour
+                break
         else:
-            bg_class = "bg-warning" if attempts <= 1 else "bg-danger"
-        return f'<div class="badge rounded-pil {bi_class} {bg_class}">&nbsp;</div>'
+            bg_color = "white"
+        if passed:
+            return f'<div class="badge rounded-pil" style="background-color: {bg_color};">{score:.1f}</div>'
+        if np.isnan(score):
+            return f'<div class="badge rounded-pil" style="background-color: {bg_color};">{score:.1f}</div>'
+        return f'<div class="badge rounded-pil"  style="background-color: {bg_color};">{score:.1f}</div>'
+
+    def format_attempts(self, test_score):
+        """Format some html for counting attempts at passing."""
+        bi_class = "bi bi-emoji-smile" if test_score.passed else "bi bi-emoji-frown"
+        attempted = test_score.attempts.count()
+        for _, (attempts, colour) in settings.TESTS_ATTEMPTS_PROFILE[test_score.standing].items():
+            if attempts < 0 or attempts >= attempted:
+                bg_color = colour
+                break
+        else:
+            bg_color = "white"
+        return (
+            f'<div class="badge rounded-pil {bi_class}" style="background-color: {bg_color};">&nbsp;{attempted}</div>'
+        )
 
 
 class BaseShowTestResultsView(SingleTableMixin, FormView):
@@ -330,6 +345,7 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
         """Construct instance variables."""
         self.module = None
         self.mode = "scor3e"
+        self.type = "homework"
         self.tests = []
         self._entries = []
         super().__init__(*args, **kargs)
@@ -345,8 +361,9 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
         """Update self.module with the module selected in the form."""
         self.module = form.cleaned_data["module"]
         self.mode = form.cleaned_data.get("mode", "score")
+        self.type = form.cleaned_data.get("type", "homework")
         if self.module is not None:
-            self.tests = self.module.tests.all().order_by("release_date", "name")
+            self.tests = self.module.tests.filter(type=self.type).order_by("release_date", "name")
         return self.render_to_response(self.get_context_data())
 
     def get_table_class(self):
@@ -374,7 +391,7 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
 
         for entry in self.entries:
             record = {  # Standard student information entries
-                "student": entry.student.display_name,
+                "student": entry.student,
                 "number": entry.student.number,
                 "programme": entry.student.programme.name,
                 "status": entry.status.code,
@@ -382,9 +399,7 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
             for test in self.tests:  # Add columns for the tests
                 try:
                     ent = entry.student.test_results.get(test=test)
-                    record[shorten(test.name, width=30)] = {
-                        x: getattr(ent, x) for x in ["score", "passed", "attempt_count"]
-                    }
+                    record[shorten(test.name, width=30)] = ent
                 except ObjectDoesNotExist:
                     record[test.name] = None
 
@@ -454,3 +469,37 @@ class TestDetailView(IsStudentViewixin, DetailView):
     slug_url_kwarg = "pk"
     model = Test
     context_object_name = "test"
+
+
+class ModuleAutocomplete(autocomplete.Select2QuerySetView):
+    """Class for autocomplete on module titles."""
+
+    def get_queryset(self):
+        """If authenticated, get the list of modules."""
+        # Don't forget to filter out results depending on the visitor !
+        if not self.request.user.is_authenticated:
+            return Module.objects.none()
+
+        qs = Module.objects.all()
+
+        if self.q:
+            qs = qs.filter(Q(name__icontains=self.q) | Q(code__icontains=self.q))
+
+        return qs.order_by("code")
+
+
+class TestAutocomplete(autocomplete.Select2QuerySetView):
+    """Class for autocomplete on module titles."""
+
+    def get_queryset(self):
+        """If authenticated, get the list of modules."""
+        # Don't forget to filter out results depending on the visitor !
+        if not self.request.user.is_authenticated:
+            return Test.objects.none()
+
+        qs = Test.objects.all()
+
+        if self.q:
+            qs = qs.filter(Q(name__icontains=self.q) | Q(description__icontains=self.q))
+
+        return qs.order_by("module__code")

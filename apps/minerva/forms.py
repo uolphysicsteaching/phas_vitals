@@ -6,10 +6,11 @@ from django.db.models import Count
 from django.forms.widgets import Select
 
 # external imports
+from dal import autocomplete
 from util.forms import get_mime
 
 # app imports
-from .models import Module
+from .models import Module, Test, Test_Score
 
 
 class TestImportForm(forms.Form):
@@ -109,3 +110,20 @@ class ModuleSelectPlusForm(forms.Form):
         choices=[("score", "Test Scores"), ("attempts", "Test Attempts")],
         widget=Select(attrs={"onChange": "this.form.submit();"}),
     )
+
+    type = forms.ChoiceField(
+        choices=Test.TEST_TYPES,
+        widget=Select(attrs={"onChange": "this.form.submit();"}),
+    )
+
+
+class Test_ScoreForm(forms.ModelForm):
+    """Form with lookup for Test and student fields."""
+
+    class Meta:
+        model = Test_Score
+        fields = "__all__"
+        widgets = {
+            "test": autocomplete.ModelSelect2(url="minerva:Test_lookup"),
+            "user": autocomplete.ModelSelect2(url="accounts:Student_lookup"),
+        }

@@ -1,4 +1,5 @@
 """Model objects for the VITALs app."""
+
 # Python imports
 import re
 from datetime import timedelta
@@ -36,7 +37,7 @@ class VITAL_ResultManager(models.Manager):
         qs = (
             qs.annotate(
                 vital_release=models.Min("vital__tests__release_date"),
-                vital_start_date=models.Min("vital__tests__recommended_date"),
+                vital_start_date=models.Min("vital__tests__release_date"),
                 vital_end_date=models.Max("vital__tests__recommended_date"),
             )
             .annotate(
@@ -71,7 +72,7 @@ class VITAL_Result(models.Model):
         """Calculate the status of this result object."""
         if self.passed:
             return "Ok"
-        return VITAL.objects.get(pk=self.vital.pk).status
+        return self.vital.manual_satus
 
     @property
     def bootstrap5_class(self):
@@ -97,12 +98,27 @@ class VITAL_Result(models.Model):
     @property
     def tests_text(self):
         """Get text for advise about tests."""
-        mapping = {
-            "Ok": "You passed at least one of:",  # PAssed
-            "Finished": "You need to pass at least one of:",  # Overdue passing
-            "Started": "Pass one of these:",  # Underway, not passed yet
-            "Not Started": "You will need to pass one of:",  # In the future, no worries yet
-        }
+        if self.vital.tests_mappings.count() == 0:
+            mapping = {
+                "Ok": "Requirements to be confirmed.",  # PAssed
+                "Finished": "Requirements to be confirmed.",  # Overdue passing
+                "Started": "Requirements to be confirmed.",  # Underway, not passed yet
+                "Not Started": "Requirements to be confirmed.",  # In the future, no worries yet
+            }
+        elif self.vital.tests_mappings.count() == 1:
+            mapping = {
+                "Ok": "You passed:",  # PAssed
+                "Finished": "You need to pass:",  # Overdue passing
+                "Started": "Pass:",  # Underway, not passed yet
+                "Not Started": "You will need to pass:",  # In the future, no worries yet
+            }
+        else:
+            mapping = {
+                "Ok": "You passed at least one of:",  # PAssed
+                "Finished": "You need to pass at least one of:",  # Overdue passing
+                "Started": "Pass one of these:",  # Underway, not passed yet
+                "Not Started": "You will need to pass one of:",  # In the future, no worries yet
+            }
         return mapping.get(self.status, "")
 
 
@@ -124,7 +140,7 @@ class VITAL_Manager(models.Manager):
         qs = (
             qs.annotate(
                 release=models.Min("tests__release_date"),
-                start_date=models.Min("tests__recommended_date"),
+                start_date=models.Min("tests__release_date"),
                 end_date=models.Max("tests__recommended_date"),
             )
             .annotate(from_start=tz.now() - models.F("start_date"), from_end=tz.now() - models.F("end_date"))
@@ -145,6 +161,7 @@ class VITAL(models.Model):
     objects = VITAL_Manager()
     # Fields
     name = models.CharField(max_length=255, blank=True, null=True)
+    VITAL_ID = models.CharField(max_length=20, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     module = models.ForeignKey("minerva.Module", on_delete=models.CASCADE, related_name="VITALS")
     tests = models.ManyToManyField("minerva.Test", related_name="VITALS", through=VITAL_Test_Map)
@@ -152,6 +169,7 @@ class VITAL(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["name", "module"], name="Singleton VITAL name per module")]
+        ordering = ["module__code", "VITAL_ID"]
 
     def natural_key(self):
         """Set natural key of a VITAL to be the string representation."""
@@ -163,10 +181,14 @@ class VITAL(models.Model):
         zerotime = timedelta(0)
         data = self.tests.aggregate(
             release=models.Min("release_date"),
-            start=models.Min("recommended_date"),
+            start=models.Min("release_date"),
             end=models.Max("recommended_date"),
         )
-        from_start = tz.now() - data["start"]
+        if data["start"] is None:
+            return "Not Started"
+        from_start = tz.now() - data.get("start", tz.now())
+        if data["end"] is None:
+            return "Not Started"
         from_end = tz.now() - data["end"]
         if from_end >= zerotime:
             return "Finished"
@@ -217,7 +239,7 @@ class VITAL(models.Model):
 
     def __str__(self):
         """Use name and code as a string representation."""
-        return f"{self.name} ({self.module.code}"
+        return f"{self.VITAL_ID}:{self.name} ({self.module.code}"
 
 
 @patch_model(Account, prep=property)
@@ -238,24 +260,6 @@ def failed_vitals(self):
 def untested_vitals(self):
     """Return the set of vitals passed by the current user."""
     return VITAL.objects.exclude(student_results__user=self).exclude(status="Not Started")
-
-
-@patch_model(Account, prep=property)
-def activity_score(self):
-    """Give an overall activity score for an account."""
-    hw = self.tests_score
-    if not isinstance(hw, float):
-        hw = 100.0
-    vt = self.vitals_score
-    if not isinstance(vt, float):
-        vt = 100.0
-    tt = self.engagement
-    if not isinstance(tt, float):
-        tt = 100.0
-    return np.round(
-        (config.TESTS_WEIGHT * hw + config.VITALS_WEIGHT * vt + config.TUTORIALS_WEIGHT * tt)
-        / (config.TESTS_WEIGHT + config.VITALS_WEIGHT + config.TUTORIALS_WEIGHT)
-    )
 
 
 @patch_model(Account, prep=property)

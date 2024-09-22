@@ -26,11 +26,15 @@ from phas_vitals import celery_app
 # app imports
 from . import json
 
-update_vitals = celery_app.signature("minerva.update_vitals")
-update_tests_score = celery_app.signature("accounts.update_tests_score")
-update_labs_score = celery_app.signature("accounts.update_labs_score")
+update_vitals = celery_app.signature("minerva.tasks.update_vitals")
+update_tests_score = celery_app.signature("accounts.tasks.update_tests_score")
+update_labs_score = celery_app.signature("accounts.tasks.update_labs_score")
+update_code_score = celery_app.signature("accounts.tasks.update_code_score")
+
 
 logger = logging.getLogger(__name__)
+task_logger = logging.getLogger("celery_tasks")
+
 
 # Create your models here.
 
@@ -67,16 +71,24 @@ class ModuleManager(models.Manager):
 class Module(models.Model):
     """Represents a single module marksheet."""
 
-    uuid = models.CharField(max_length=32)
-    courseId = models.CharField(max_length=255, null=True, blank=True)
-    code = models.CharField(max_length=11, null=False, blank=False, validators=[module_validator])
-    alt_code = models.CharField(max_length=11, null=True, blank=True)  # For merged Modules
+    LEVELS = [(0, "Foundation"), (1, "Level 1"), (2, "Level 2"), (3, "Level 3"), (5, "Masters 5M")]
+    SEMESTERS = [(1, "Semester 1"), (2, "Semester 2"), (3, "Semester 1&2")]
+    EXAM_CODES = [(1, "Normal"), (2, "Alternative"), (9, "Old syllabus")]
+
+    uuid = models.CharField(max_length=32, verbose_name="Minerva internal ID")  # Minerva internal id
+    courseId = models.CharField(max_length=255, null=True, blank=True, verbose_name="Banner CRN")  # Banner CRN
+    code = models.CharField(
+        max_length=11, null=False, blank=False, validators=[module_validator], verbose_name="Module Code"
+    )
+    alt_code = models.CharField(
+        max_length=11, null=True, blank=True, verbose_name="Additional Code"
+    )  # For merged Modules
     credits = models.IntegerField(default=0)
     name = models.CharField(max_length=80)
-    level = models.IntegerField(null=True, blank=True)
+    level = models.IntegerField(null=True, blank=True, choices=LEVELS)
     year = models.ForeignKey("accounts.Cohort", on_delete=models.CASCADE, related_name="modules")
-    semester = models.IntegerField(null=True, blank=True)
-    exam_code = models.IntegerField(default=1, null=False, blank=False)
+    semester = models.IntegerField(null=True, blank=True, choices=SEMESTERS)
+    exam_code = models.IntegerField(default=1, null=False, blank=False, choices=EXAM_CODES)
     description = models.TextField(blank=True, null=True)
     module_leader = models.ForeignKey(
         "accounts.Account", on_delete=models.SET_NULL, blank=True, null=True, related_name="_modules"
@@ -125,6 +137,12 @@ class Module(models.Model):
         """Name of JSON file that has the course details."""
         return f"{self.key}_Course_Memberships.json"
 
+    @property
+    def json_updated(self):
+        """Get the last modified timestamp for the course_json file."""
+        client = json.get_blob_client(self.course_json)
+        return client.get_blob_properties()["last_modified"]
+
     def generate_spreadsheet(self):
         """Generate a spreadsheet object instance for this module."""
         spreadsheet = Spreadsheet(path.join(TEMPLATE_ROOT, "Module_Template.xlsx"), blank=True)
@@ -168,19 +186,32 @@ class Module(models.Model):
         data = {x["id"]: x for x in json_data}
         if not only_valid:
             return data
-        if match_names:
-            data = {y["name"]: y for x, y in data.items()}
-        data_ids = set(data.keys())
-        if match_names:
+
+        if match_names:  # Run the name matching algorithm
+            lab_pattern = re.compile(config.LAB_PATTERN)
+            homework_pattern = re.compile(config.HOMEWORK_PATTERN)
+            code_pattern = re.compile(config.CODE_PATTERN)
+            new_data = {}
+            for json_name, dictionary in data.items():
+                name = dictionary["name"]  # get the column name
+                for pattern in (homework_pattern, code_pattern, lab_pattern):
+                    if match := pattern.match(name):
+                        name = match.groupdict()["name"]
+                        break
+                else:  # Not a lab or a quizz, so we're going to ignore it for now # TODO other tests?
+                    continue
+                new_data[name] = new_data.get(name, []) + [dictionary]  # Can have more than one JSON file per test
+            data_ids = set(new_data.keys())
             test_ids = set([x[0] for x in self.tests.all().values_list("name")])
-        else:
-            test_ids = set([x[0] for x in self.tests.all().values_list("test_id")])
-        common = list(data_ids | test_ids)
-        if match_names:
-            data = {data[x]["id"]: self.tests.get(name=x) for x in common}
-        else:
-            data = {x: self.tests.get(test_id=x) for x in common}
-        return data
+            data = {}
+            for k in list(data_ids & test_ids):  # Run through the keys that match tests
+                for dictionary in new_data[k]:  # Run through the JSON files for each test
+                    data[dictionary["id"]] = self.tests.get(name=k)  # Column ID maps Manyy->1 Test
+            return data
+        data_ids = set(list(data.keys()))
+        test_ids = set([x[0] for x in self.tests.all().values_list("test_id")])
+        common = list(data_ids & test_ids)
+        return {x: self.tests.get(test_id=x) for x in common}
 
     def update_enrollments(self):
         """Get the mapping between SIDs and Blackboard IDs and update the enrollment table."""
@@ -303,11 +334,12 @@ class Test_Manager(models.Manager):
 class Test(models.Model):
     """Represents a single Gradebook column."""
 
-    TEST_TYPES = [("homework", "Homework"), ("lab_exp", "Lab Experiment")]
+    TEST_TYPES = [("homework", "Homework"), ("lab_exp", "Lab Experiment"), ("code_task", "Coding Task")]
 
     objects = Test_Manager()
     homework = Test_Manager(type="homework")
     labs = Test_Manager(type="lab_exp")
+    code_tasks = Test_Manager(type="code_task")
 
     # test_id is actually a composite of course_id and column_id
     test_id = models.CharField(max_length=255, primary_key=True)
@@ -317,7 +349,7 @@ class Test(models.Model):
     description = models.TextField(blank=True, null=True)
     type = models.CharField(max_length=10, choices=TEST_TYPES, default=TEST_TYPES[0][0])
     score_possible = models.FloatField(default=100, verbose_name="Maximum possible score")
-    passing_score = models.FloatField(default=80, verbose_name="Maximum possible score")
+    passing_score = models.FloatField(default=80, verbose_name="Passing score")
     grading_due = models.DateTimeField(blank=True, null=True, verbose_name="Minerva Due Date")
     release_date = models.DateTimeField(blank=True, null=True, verbose_name="Test Available Date")
     recommended_date = models.DateTimeField(blank=True, null=True, verbose_name="Recomemnded Attempt Date")
@@ -346,8 +378,14 @@ class Test(models.Model):
     def manual_satus(self):
         """Do the same as the annotation test_status from the model manager, but in Python."""
         zerotime = timedelta(0)
+        if self.release_date is None:
+            return "Not Started"
         from_release = tz.now() - self.release_date
+        if self.recommended_date is None:
+            return "Not Started"
         from_recommended = tz.now() - self.recommended_date
+        if self.grading_due is None:
+            return "Not Started"
         from_due = tz.now() - self.grading_due
         if from_due >= zerotime:
             return "Finished"
@@ -365,7 +403,7 @@ class Test(models.Model):
     @property
     def attempts_json(self):
         """MAtch the filename for the test attempts."""
-        return self.module.key + f"_Grade_Columns_Attempt_{self.test_id}.json"
+        return [x.json_file for x in self.columns.all()]
 
     def natural_key(self):
         """Return string representation a natural key."""
@@ -373,7 +411,7 @@ class Test(models.Model):
 
     def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
         """Check whether we need to update test_score passing fields."""
-        if self.results.count() > 0:
+        if self.pk and self.results.count() > 0:
             orig = Test.objects.get(pk=self.pk)
             update_results = orig.passing_score != self.passing_score
         else:
@@ -383,27 +421,10 @@ class Test(models.Model):
             for test_score in self.results.all():  # Update all test_scores for both passes and fails
                 test_score.save()
 
-    def attempts_from_dicts(self, json_data=None):
+    def attempts_from_dicts(self):
         """Create a test attempt from with a single, or list of dictionaries derived from a json file."""
-        if json_data is None:
-            json_data = json.get_blob_by_name(self.attempts_json)
-            if json_data is None:
-                raise IOError(f"No json blob {self.attemps_json}")
-        if not isinstance(json_data, list):
-            json_data = [json_data]
-        json_data = {x["userId"]: x for x in json_data}
-        attempts = Test_Attempt.objects.filter(test_entry__test=self)
-        qs = self.module.student_enrollments.filter(user_id__in=set(json_data.keys())).prefetch_related("student")
-        for enrollment in qs.all():
-            data = json_data[enrollment.user_id]
-            result, _ = Test_Score.objects.get_or_create(user=enrollment.student, test=self)
-            attempt, _ = Test_Attempt.objects.get_or_create(test_entry=result, attempt_id=data["id"])
-            attempt.status = data.get("status", "")
-            attempt.score = data.get("score", None)
-            attempt.created = pytz.utc.localize(data["created"])
-            attempt.attempted = pytz.utc.localize(data["attemptDate"])
-            attempt.modified = pytz.utc.localize(data["modified"])
-            attempt.save()
+        for column in self.columns.all():
+            column.update_attempts()
 
     @classmethod
     def create_or_update_from_dict(cls, data, module):
@@ -419,6 +440,90 @@ class Test(models.Model):
         test.score_possible = data["score"]["possible"]
         test.save()
         return test
+
+    @classmethod
+    def create_or_update_from_json(cls, module):
+        """Create Test objects based on matching column names from a module's columns JSON file."""
+        json_data = module.columns_json
+        if (json_data := json.get_blob_by_name(module.columns_json, False)) is None:
+            raise IOError(f"No JSON file for {module}")
+        data = {x["id"]: x for x in json_data}
+
+        lab_pattern = re.compile(config.LAB_PATTERN)
+        homework_pattern = re.compile(config.HOMEWORK_PATTERN)
+        code_pattern = re.compile(config.CODE_PATTERN)
+        new_data = {}
+        for json_name, dictionary in data.items():
+            name = dictionary["name"]  # get the column name
+            for pattern in (homework_pattern, code_pattern, lab_pattern):
+                if match := pattern.match(name):
+                    name = match.groupdict()["name"]
+                    break
+            else:  # Not a lab or a quizz, so we're going to ignore it for now # TODO other tests?
+                continue
+            new_data[name] = new_data.get(name, []) + [dictionary]  # Can have more than one JSON file per test
+        data_ids = set(new_data.keys())
+        for k in list(data_ids):  # Run through the keys that match tests
+            for dictionary in new_data[k]:  # Run through the JSON files for each test
+                try:
+                    test = cls.objects.get(module=module, name=k)
+                except ObjectDoesNotExist:
+                    test = cls(test_id=dictionary["id"], module=module, name=k)
+                test.grading_attemptsAllowed = dictionary["grading"]["attemptsAllowed"]
+                test.score_possible = dictionary["score"]["possible"]
+                test.save()
+                column, _ = GradebookColumn.objects.get_or_create(gradebook_id=dictionary["id"])
+                column.name = dictionary["name"]
+                column.test = test
+                column.save()
+
+
+class GradebookColumn(models.Model):
+
+    """A representation of a single column in Minerva Gradebook that links to a Test."""
+
+    gradebook_id = models.CharField(max_length=255)
+    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="columns", blank=True, null=True)
+    name = models.CharField(max_length=255, null=True)
+
+    class Meta:
+        ordering = ["test__module__code", "test__name"]
+
+    def __str__(self):
+        """Refer to a column."""
+        return f"{self.name} ({self.gradebook_id})"
+
+    @property
+    def json_file(self):
+        """Return the name of the JSON column file."""
+        return self.test.module.key + f"_Grade_Columns_Attempt_{self.gradebook_id}.json"
+
+    def natural_key(self):
+        """Return string representation a natural key."""
+        return str(self)
+
+    def update_attempts(self):
+        """Update the TestAttempts from this Gradebook column."""
+        json_data = json.get_blob_by_name(self.json_file)
+        if json_data is None:
+            raise IOError(f"No json blob {self.attemps_json}")
+        json_data = {x["userId"]: x for x in json_data}
+        attempts = Test_Attempt.objects.filter(test_entry__test=self.test)
+        qs = self.test.module.student_enrollments.filter(user_id__in=set(json_data.keys())).prefetch_related("student")
+        for enrollment in qs.all():
+            data = json_data.get(enrollment.user_id, None)
+            if data is None:  # No data for this enrollment for some reason
+                continue
+            result, _ = Test_Score.objects.get_or_create(user=enrollment.student, test=self.test)
+            attempt, _ = Test_Attempt.objects.get_or_create(
+                test_entry=result, attempt_id=f'{self.test.test_id}+{data["id"]}'
+            )
+            attempt.status = data.get("status", "")
+            attempt.score = data.get("score", None)
+            attempt.created = pytz.utc.localize(data["created"])
+            attempt.attempted = pytz.utc.localize(data["attemptDate"])
+            attempt.modified = pytz.utc.localize(data["modified"])
+            attempt.save()
 
 
 class TestScoreManager(models.Manager):
@@ -511,8 +616,11 @@ class Test_Score(models.Model):
         return mapping.get(self.manual_standing, "")
 
     @property
-    def vitals_text(Self):
+    def vitals_text(self):
         """Get a Label for whether we pass VITALS or not."""
+        vitals_count = self.test.vitals_mappings.count()
+        if vitals_count == 0:
+            return "Possible VITALs to be confirmed:"
         mapping = {
             "Ok": "You passed:",  # PAssed
             "Overdue": "You can still pass:",  # Past the recomemneded time
@@ -521,7 +629,7 @@ class Test_Score(models.Model):
             "Released": "You will pass:",  # Underway, not passed yet
             "Not Started": "This will let you pass",
         }
-        return mapping.get(Self.manual_standing, "")
+        return mapping.get(self.manual_standing, "")
 
     def check_passed(self, orig=None):
         """Check whether the user has passed the test."""
@@ -542,15 +650,17 @@ class Test_Score(models.Model):
             super().save(force_insert, force_update, using, update_fields)
             force_insert = False
         score, passed, send_signal = self.check_passed(orig)
+        task_logger.debug(f"Saving Test_Score {self.test.name} {score=} {passed=} {send_signal=}")
         self.score = score
         self.passed = passed
         super().save(force_insert, force_update, using, update_fields)
-        if send_signal:
-            update_vitals.delay_on_commit(self.pk)
-            if self.test.type == "homework":
-                update_tests_score.delay_on_commit(self.user.pk)
-            elif self.test.type == "lab_exp":
-                update_labs_score.delay_on_commit(self.user.pk)
+        update_vitals.delay(self.pk)
+        if self.test.type == "homework":
+            update_tests_score.delay(self.user.pk)
+        elif self.test.type == "lab_exp":
+            update_labs_score.delay(self.user.pk)
+        elif self.test.type == "code_task":
+            update_code_score.delay(self.user.pk)
 
     def __str__(self):
         """Give us a more friendly string version."""
@@ -605,7 +715,7 @@ def untested_tests(self):
 @patch_model(Account, prep=property)
 def passed_labs(self):
     """Return the set of vitals passed by the current user."""
-    return Test.labs.filter(results__passed=True, results__user=self).exclude(status="Not Started")
+    return Test.labs.filter(results__passed=True, results__user=self)
 
 
 @patch_model(Account, prep=property)
@@ -618,3 +728,21 @@ def failed_labs(self):
 def untested_labs(self):
     """Return the set of vitals passed by the current user."""
     return Test.labs.exclude(results__user=self).exclude(status="Not Started")
+
+
+@patch_model(Account, prep=property)
+def passed_coding(self):
+    """Return the set of vitals passed by the current user."""
+    return Test.code_tasks.filter(results__passed=True, results__user=self)
+
+
+@patch_model(Account, prep=property)
+def failed_coding(self):
+    """Return the set of vitals passed by the current user."""
+    return Test.code_tasks.filter(results__passed=False, results__user=self).exclude(status="Not Started")
+
+
+@patch_model(Account, prep=property)
+def untested_coding(self):
+    """Return the set of vitals passed by the current user."""
+    return Test.code_tasks.exclude(results__user=self).exclude(status="Not Started")

@@ -40,6 +40,7 @@ urlpatterns = [
     path(r"imigh/", auth_views.LogoutView.as_view(next_page="/"), name="core_logout"),
     path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
     path("oauth2/", include("django_auth_adfs.urls")),
+    path("tinymce/", include("tinymce.urls")),
 ]
 
 # Add urls path for all the apps

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load humanize %}
+{% load flatpages %}
 {% load tutorial_tags %}
 {% block title %}{{ block.super }}Marking Sheets for {{ user.displayname }}{% endblock title %}
 {% block javascript %}
@@ -49,43 +50,44 @@ td.semester.inactive_semester > a {
 {% endblock css %}
 
 {% block content %}
-<h2>Record Student Attendance and Engagement with Tutorials</h2>
-<p>This page shows your first uyear tutees for the selected year and semester. Click on the header for a given week to Record
-attendance and engagement by your tutees for that week. The Status score and colour is based ont he average mark, weighted
-exponetially in favour of the most recent marked tutorial sessions.</p>
-
+{% get_flatpages '/tutorial/index/' as pages %}
+{{ pages.first.content | safe }}
 <form action="" id="cohort_form" method="POST">
 {% csrf_token %}
 {{ form }}
 </form><br/>
-<table width=95% role="presentation" aria-label="Semester Selection">
-<tr>
-<td colspan=6 class='semester{% if semester == 1 %} active_semester{% else %} inactive_semester{% endif %}'><a href=/tutorial/engagement_view/1/{{ cohort.name }}/>Semester 1</a></td>
-<td colspan=8 class='semester{% if semester == 2 %} active_semester{% else %} inactive_semester{% endif %}'><a href=/tutorial/engagement_view/2/{{ cohort.name }}/>Semester 2</a></td>
-</tr>
-</table>
+<div class="table-container table-responsive" tabindex="0">
+    <table width=95% role="presentation" aria-label="Semester Selection">
+    <tr>
+    <td colspan=6 class='semester{% if semester == 1 %} active_semester{% else %} inactive_semester{% endif %}'><a href=/tutorial/engagement_view/1/{{ cohort.name }}/>Semester 1</a></td>
+    <td colspan=8 class='semester{% if semester == 2 %} active_semester{% else %} inactive_semester{% endif %}'><a href=/tutorial/engagement_view/2/{{ cohort.name }}/>Semester 2</a></td>
+    </tr>
+    </table>
+</div>
 {% for group in groups %}
     <h2>Engagement Summary for Tutorial group {{ group.code }} {{ group.cohort }}
     <a href=mailto:?to={{group.tutor.nice_email|urlencode }}&bcc={% for student in group.members %}{{ student.nice_email|urlencode }},{% endfor %}>Email Group</a></h2>
-    <table width=95% role="table" aria-label="Summary of student engagement: {{ group }}">
-    <tr>
-    <th id="students_{{ group.pk }}" colspan=2>Name of Student</th>
-    {% for session in sessions %}
-        <th id="session_{{ group.pk }}_{{ session.pk }}"><a href="/tutorial/engagement_view/" class="session" id="{{ group.pk }}:{{ session.pk }}">{{ session.name }}</a></th>
-    {% endfor %}
-    <th colspan=2 id="status_{{ group.pk }}">Status</th>
-    </tr>
-    {% for student in group.members %}
+    <div class="table-container table-responsive" tabindex="0">
+        <table width=95% role="table" aria-label="Summary of student engagement: {{ group }}">
         <tr>
-        <td headers="students_{{ group.pk }}">
-            <a href="/accounts/detail/{{ student.number }}/#dashboard">{{ student.display_name }}</a>
-        </td>
-        <td>T<br/>L</td>
-        {% engagement student semester cohort %}
-        <td colspan=2 style="background-color: {{ student.activity_colour }}; color: {{ student.activity_colour|comp_colour }}" headers="status_{{ group.pk }}">{{ student.activity_label }}</td>
-        </tr>
+        <th id="students_{{ group.pk }}" colspan=2>Name of Student</th>
+        {% for session in sessions %}
+            <th id="session_{{ group.pk }}_{{ session.pk }}"><a href="/tutorial/engagement_view/" class="session" id="{{ group.pk }}:{{ session.pk }}">{{ session.name }}</a></th>
         {% endfor %}
-    </table>
+        <th colspan=2 id="status_{{ group.pk }}">Status</th>
+        </tr>
+        {% for student in group.members %}
+            <tr>
+            <td headers="students_{{ group.pk }}">
+                <a href="/accounts/detail/{{ student.number }}/#dashboard">{{ student.display_name }}</a>
+            </td>
+            <td>T<br/>L</td>
+            {% engagement student semester cohort %}
+            <td colspan=2 style="background-color: {{ student.activity_colour }}; color: {{ student.activity_colour|comp_colour }}" headers="status_{{ group.pk }}">{{ student.activity_label }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
 {% endfor %}
 <div id="dialog_container" role="dialog" aria-label="Popup dialog for entering engagement data">
 <div id="engagement_grid">&nbsp;</div>

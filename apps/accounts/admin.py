@@ -99,7 +99,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
             _("Personal info"),
             {
                 "fields": [
-                    ("username", "number", "cohort"),
+                    ("username", "number"),
                     ("title", "first_name", "last_name"),
                     ("email"),
                     ("programme", "registration_status"),
@@ -128,15 +128,14 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
             },
         ),
     )
-    list_display = ["username", "last_name", "first_name", "cohort", "programme", "is_staff", "is_superuser"]
-    list_editable = ["cohort", "programme", "is_staff", "is_superuser"]
-    list_filter = ("groups", "cohort", "programme", "is_staff", "is_superuser")
+    list_display = ["username", "last_name", "first_name", "number", "programme", "is_staff", "is_superuser"]
+    list_editable = ["number", "programme", "is_staff", "is_superuser"]
+    list_filter = ("groups", "programme", "is_staff", "is_superuser")
     search_fields = (
         "username",
         "first_name",
         "last_name",
         "groups__name",
-        "cohort__name",
         "programme__name",
     )
 

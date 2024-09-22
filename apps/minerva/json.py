@@ -45,6 +45,22 @@ def get_container_client(container_name=None, blob_service_client=None):
         logger.error(f"Unable to open ContainerClient - error {ex}")
 
 
+def get_blob_client(blob_name, container_name=None, blob_service_client=None):
+    """Get a Blob container client, use django settings by default."""
+    if blob_service_client is None:
+        blob_service_client = get_blob_service_client()
+    if container_name is None:
+        container_name = settings.SAS_DATA["CONTAINER"]
+    container_client = get_container_client(container_name=container_name, blob_service_client=blob_service_client)
+    blobs = get_blob_list(container_client)
+    if blob_name in blobs:
+        blob_name = blobs[blob_name]["name"]
+    try:
+        return blob_service_client.get_blob_client(container=container_name, blob=blob_name)
+    except Exception as ex:
+        logger.error(f"Unable to open ContainerClient - error {ex}")
+
+
 def get_blob_list(container_client=None):
     """Build a dictionary of blobs in the store."""
     if container_client is None:

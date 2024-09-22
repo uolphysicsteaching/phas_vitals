@@ -1,10 +1,12 @@
 # Python imports
 """Models for tutorial app."""
 # Python imports
+import logging
 from typing import Optional, Tuple, Union
 
 # Django imports
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import DEFAULT_DB_ALIAS, models
 from django.db.models import QuerySet
 from django.utils import timezone as tz
@@ -22,7 +24,8 @@ from util.models import colour, contrast, patch_model
 # app imports
 from phas_vitals import celery_app
 
-update_engagement = celery_app.signature("accounts.update_engagement")
+update_engagement = celery_app.signature("accounts.tasks.update_engagement")
+task_logger = logging.getLogger("celery_tasks")
 
 
 def list_join(items, oxford=False):
@@ -288,7 +291,8 @@ class Attendance(models.Model):
     def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
         """Save the model and then signal to update the student's attendance reocrd."""
         super().save(force_insert, force_update, using, update_fields)
-        update_engagement.delay_on_commit(self.student.pk)
+        task_logger.debug(f"Posting update user task for {self}")
+        update_engagement.delay_on_commit(self.student.pk, True)
 
 
 class MeetingAttendanceManager(models.Manager):
@@ -460,6 +464,15 @@ def lab_engagement_label(self) -> str:
         if low <= score <= high:
             return name
     return "Unknown"
+
+
+@patch_model(Account, prep=property)
+def cohort(self) -> Optional[Cohort]:
+    """Return the cohort object of the students tutorial module."""
+    try:
+        return self.module_enrollments.get(module__code=config.TUTORIAL_MODULE).module.year
+    except ObjectDoesNotExist:
+        return None
 
 
 @patch_model(Account, prep=property)

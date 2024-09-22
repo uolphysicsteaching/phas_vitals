@@ -100,6 +100,7 @@ DEFAULT_APPS = (
         "corsheaders",
         "dal",
         "dal_select2",
+        "dal_admin_filters",
         "django_bootstrap5",
         "django_extensions",
         "django_filters",
@@ -330,6 +331,7 @@ LOGGING = {
         "": {"handlers": ["file"], "level": "DEBUG", "propagate": True},
         "auth": {"handlers": ["file"], "level": "INFO", "propagate": True},
         "django_auth_adfs": {"handlers": ["file_debug"], "level": "DEBUG", "propagate": True},
+        "celery_tasks": {"handlers": ["file_debug"], "level": "DEBUG", "propagate": True},
         "django.request": {"handlers": ["mail_admins"], "level": "ERROR", "propagate": True},
         "django.security": {"handlers": ["mail_admins"], "level": "ERROR", "propagate": True},
         "phys_utils.middleware": {
@@ -491,6 +493,8 @@ REST_FRAMEWORK = {
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_RESULT_BACKEND = "django-db"
+CELERY_RESULT_EXTENDED = True
+
 
 #### SITETREE Customisation ##############################
 
