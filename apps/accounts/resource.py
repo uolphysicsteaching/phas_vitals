@@ -9,7 +9,7 @@ from django.db.models import Q
 from import_export import fields, resources, widgets
 
 # app imports
-from .models import Account, Cohort, Programme
+from .models import Account, Cohort, Programme, Section
 
 
 def _none(value):
@@ -53,7 +53,6 @@ class StrippedCharWidget(widgets.CharWidget):
 
 
 class ProgrammeWidget(widgets.ForeignKeyWidget):
-
     """Import export ediget that looks up programmes by name or code."""
 
     def clean(self, value, row=None, *args, **kwargs):
@@ -65,7 +64,6 @@ class ProgrammeWidget(widgets.ForeignKeyWidget):
 
 
 class ProgrammesWidget(widgets.ManyToManyWidget):
-
     """Import Export Wdiget that understands lists of programmes"""
 
     def clean(self, value, row=None, **kwargs):
@@ -131,7 +129,6 @@ class AccountWidget(widgets.ForeignKeyWidget):
 
 
 class AccountsWidget(widgets.ManyToManyWidget):
-
     """An import-export widget that understands lists of user names."""
 
     def clean(self, value, row=None, **kwargs):
@@ -192,22 +189,21 @@ class UserResource(resources.ModelResource):
     groups = fields.Field(
         column_name="groups", attribute="groups", widget=widgets.ManyToManyWidget(Group, ";", "name")
     )
-
     programme = fields.Field(
         column_name="programme",
         attribute="programme",
         widget=ProgrammeWidget(Programme, "code"),
     )
-
     apt = fields.Field(
         column_name="apt",
         attribute="apt",
         widget=AccountWidget(Account, "display_name"),
     )
-
     username = fields.Field(column_name="username", attribute="username", widget=StrippedCharWidget())
-
     cohort = fields.Field(column_name="cohort", attribute="cohort", widget=widgets.ForeignKeyWidget(Cohort, "name"))
+    section = fields.Field(
+        column_name="section", attribute="section", widget=widgets.ForeignKeyWidget(Section, "name")
+    )
 
     class Meta:
         model = Account
@@ -225,6 +221,7 @@ class UserResource(resources.ModelResource):
             "is_superuser",
             "number",
             "programme",
+            "section",
             "registration_status",
             "apt",
         )
@@ -254,6 +251,7 @@ class UserResource(resources.ModelResource):
             "Student Name": _lname_from_name,
         },
         "programme": {"programme": _none, "Programme": _none},
+        "section": {"section": _none, "Section": _none},
         "registtration_status": {"registtration_status": _none, "Registration Status": _none, "ESTS_Code": _none},
         "apt": {"apt": _none, "tutor": _none, "Tutor Name": _none},
     }
@@ -301,4 +299,13 @@ class CohortResource(resources.ModelResource):
     class Meta:
         model = Cohort
         fields = ("name",)
+        import_id_fields = ["name"]
+
+
+class SectionResource(resources.ModelResource):
+    """Import Export Resource classes for Cohort objects."""
+
+    class Meta:
+        model = Section
+        fields = ("name", "group_code", "group_set")
         import_id_fields = ["name"]

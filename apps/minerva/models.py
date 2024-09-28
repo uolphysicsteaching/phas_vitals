@@ -244,9 +244,7 @@ class Module(models.Model):
         except IOError:
             return
         try:
-            for id, test in self.get_tests_map(match_names=True).items():
-                test.test_id = id
-                test.save()
+            for test in self.tests.all():
                 test.attempts_from_dicts()
         except IOError:
             return None
@@ -524,6 +522,16 @@ class GradebookColumn(models.Model):
             attempt.attempted = pytz.utc.localize(data["attemptDate"])
             attempt.modified = pytz.utc.localize(data["modified"])
             attempt.save()
+
+    @classmethod
+    def create_or_update_from_json(cls, module):
+        """Use a modules' columns json data to create GradeScope column entities."""
+        json_data = module.columns_json
+        if (json_data := json.get_blob_by_name(module.columns_json, False)) is None:
+            raise IOError(f"No JSON file for {module}")
+        for column_data in json_data:
+            column, _ = cls.objects.get_or_create(gradebook_id=column_data["id"], name=column_data["name"])
+            column.save()
 
 
 class TestScoreManager(models.Manager):

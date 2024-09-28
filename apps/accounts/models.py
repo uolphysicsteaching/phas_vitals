@@ -2,6 +2,9 @@
 
 from __future__ import unicode_literals
 
+# Python imports
+import string
+
 # Django imports
 from django.contrib.auth.models import AbstractUser, Group
 from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
@@ -112,6 +115,7 @@ class Account(AbstractUser):
         choices=LEVEL_OF_STUDY,
     )
     registration_status = models.CharField(max_length=10, blank=True, null=True, default="")
+    section = models.ForeignKey("Section", on_delete=models.SET_NULL, blank=True, null=True, related_name="students")
     # Fields updated by celery tasks
     tests_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
     labs_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
@@ -136,22 +140,14 @@ class Account(AbstractUser):
             return self.tutorial_group.order_by("cohort__name").last().tutor
         return None
 
-    @apt.setter
-    def apt(self, value):
-        """Set the tutorial group for the current cohort."""
-        if not isinstance(value, Account):
-            return
-        self.tutorial_group.filter(cohort=self.cohort).delete()
-
     @cached_property
     def formal_name(self):
         """Formal Name is used for referring to a specific single user."""
-        if self.title is None:
+        if self.title is None or self.title == "":
             title = ""
         else:
             title = self.title
-        initials = [x for x in self.initials]
-        initials = ".".join(initials[:-1])
+        initials = ".".join([x for x in self.initials][:-1])
         return f"{title} {initials} {self.last_name}".strip()
 
     def __str__(self):
@@ -172,16 +168,37 @@ class Account(AbstractUser):
     @cached_property
     def initials(self):
         """Generate a set of initials from either email or name."""
-        if "." in self.email:
+        if "." in self.email.split("@")[0]:
             userfield = self.email.split("@")[0]
-            initials = [x.upper()[0] for x in userfield.split(".")]
+            initials = [x.upper()[0] for x in userfield.split(".") if x[0] in string.ascii_letters]
             initials = "".join(initials)
         else:
-            initials = (self.first_name + "?")[0].upper() + (self.last_name + "?")[0].upper()
+            name = f"{self.first_name} {self.last_name}"
+            initials = "".join([char[0] for char in name.split(" ")])
         if len(initials) > 1:
             return initials
-        else:
-            return self.username
+        return self.username
+
+    @property
+    def nice_email(self):
+        return f"{self.formal_name}<{self.email}>"
+
+
+class Section(models.Model):
+
+    """Represent a student's lab groups for managing Gradescope."""
+
+    name = models.CharField(max_length=150, default="Unknown", unique=True)
+    group_code = models.CharField(max_length=150, default="", verbose_name="Minerva Group Code")
+    group_set = models.CharField(max_length=150, default="", verbose_name="Minerva Group Set")
+    self_enrol = models.BooleanField(default=False)
+    description = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
 
 
 class AccountGroup(Group):
