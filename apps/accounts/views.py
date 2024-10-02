@@ -1,4 +1,5 @@
 """View classes for the accounts app."""
+
 # Python imports
 from collections import namedtuple
 
@@ -19,10 +20,10 @@ import numpy as np
 from dal import autocomplete
 from util.http import svg_data
 from util.spreadsheet import TutorReportSheet, save_virtual_workbook
-from util.views import IsStudentViewixin, IsSuperuserViewMixin
+from util.views import FormListView, IsStudentViewixin, IsSuperuserViewMixin
 
 # app imports
-from .forms import TutorSelectForm
+from .forms import CohortFilterActivityScoresForm, TutorSelectForm
 from .models import Account
 
 TEMPLATE_PATH = settings.PROJECT_ROOT_PATH / "run" / "templates" / "Tutor_Report.xlsx"
@@ -231,3 +232,21 @@ class StaffAutocomplete(autocomplete.Select2QuerySetView):
                 Q(last_name__icontains=self.q) | Q(first_name__icontains=self.q) | Q(username__icontains=self.q)
             ).order_by("last_name")
         return qs
+
+
+class CohortFilterActivityScoresView(IsSuperuserViewMixin, FormListView):
+    """Produce a list of students according to criteria based on their activity etc. scorfe."""
+
+    form_class = CohortFilterActivityScoresForm
+    template_name = "accounts/admin/activity_score_list.html"
+    model = Account
+    context_object_name = "students"
+
+    def get_queryset(self):
+        """Return either a filtered queryset, or empty queryset depending on form."""
+        if not self.form.is_valid():
+            return self.model.objects.none()
+
+        data = self.form.cleaned_data
+        query_arg = {f"{data['what']}__{data['how']}": data["value"]}
+        return self.model.objects.filter(modules=data["module"], **query_arg).distinct().order_by(data["what"])

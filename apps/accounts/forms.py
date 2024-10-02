@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 # Django imports
 from django import forms
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.forms.widgets import Select
+
+# external imports
+from minerva.models import Module
 
 # app imports
 from .models import Account, Cohort, academic_Q, students_Q
@@ -74,3 +77,30 @@ class ChangePasswordForm(forms.Form):
     old_password = forms.CharField(widget=forms.PasswordInput())
     new_password = forms.CharField(widget=forms.PasswordInput())
     confirm_password = forms.CharField(widget=forms.PasswordInput())
+
+
+class CohortFilterActivityScoresForm(forms.Form):
+    """Form to filer accounts based on user activity score criteria."""
+
+    module = forms.ModelChoiceField(
+        queryset=Module.objects.annotate(tests_count=Count("tests")).filter(tests_count__gt=0)
+    )
+
+    what = forms.ChoiceField(
+        choices=[
+            ("activity_score", "Overall Activity"),
+            ("engagement", "Tutorial Engagement"),
+            ("vitals_score", "VITALs passed %"),
+            ("labs_score", "Lab Sessions"),
+            ("coding_score", "Code Assignments %"),
+            ("tests_score", "Homework Assignments %"),
+        ],
+        required=True,
+        initial="activity",
+    )
+    how = forms.ChoiceField(
+        choices=[("lte", "Less than or equal"), ("gt", "Greater than")],
+        required=True,
+        initial="lt",
+    )
+    value = forms.FloatField(required=True, initial=40.0)

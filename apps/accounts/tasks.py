@@ -163,6 +163,7 @@ def update_engagement(requests):
                 record = record[:, 0].astype(float)
 
                 record = np.where(record < 0, np.nan, record)
+                record = np.where(record == 2, 3, record)  # Good and excellent engagement should count the same
                 weight = np.exp(-np.arange(len(record)) / config.ENGAGEMENT_TC)
                 perfect = (3 * np.ones_like(record) * weight)[~np.isnan(record)].sum()
                 actual = (record * weight)[~np.isnan(record)].sum()

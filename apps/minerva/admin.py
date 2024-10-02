@@ -108,7 +108,7 @@ class ModuleAdmin(ImportExportModelAdmin):
     iniines = [
         ModuleEnrollmentInline,
     ]
-    actions = ["generate_marksheet", "update_tests"]
+    actions = ["generate_marksheet", "update_tests", "update_columns"]
 
     fieldsets = (
         (
@@ -147,9 +147,15 @@ class ModuleAdmin(ImportExportModelAdmin):
 
     @admin.action(description="Generate Tests for module")
     def update_tests(self, request, queryset):
-        """Call the makrsheet generation method for the selected module."""
+        """Call the Tests generation from json method for the selected module."""
         for module in queryset.all():
             Test.create_or_update_from_json(module)
+
+    @admin.action(description="Generate Gradescope Columns for module")
+    def update_columns(self, request, queryset):
+        """Call the GradescopoeColumns generation from json method for the selected module."""
+        for module in queryset.all():
+            GradebookColumn.create_or_update_from_json(module)
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""

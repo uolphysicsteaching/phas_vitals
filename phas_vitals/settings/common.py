@@ -471,6 +471,22 @@ GRAPH_MODELS = {
     "group_models": True,
 }
 
+# #### DJNAGO-TINYMCE #####################################
+
+TINYMCE_DEFAULT_CONFIG = {
+    "theme": "silver",
+    "height": 500,
+    "menubar": True,
+    "browser_spellcheck": True,
+    "plugins": "advlist,autolink,lists,link,image,charmap,preview,anchor,code,"
+    "searchreplace,visualblocks,code,fullscreen,insertdatetime,media,table,"
+    "help,wordcount",
+    "toolbar": "undo redo | blocks | code | "
+    "bold italic backcolor | alignleft aligncenter "
+    "alignright alignjustify | bullist numlist outdent indent | "
+    "removeformat | help",
+}
+
 
 # #### DJNAGO-TABLES2 #####################################
 
