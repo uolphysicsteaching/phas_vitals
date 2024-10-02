@@ -15,6 +15,7 @@ from django.utils.functional import cached_property, classproperty
 
 # external imports
 from six import string_types
+from util.models import colour
 from util.validators import RangeValueValidator
 
 # Some useful query objects
@@ -182,6 +183,67 @@ class Account(AbstractUser):
     @property
     def nice_email(self):
         return f"{self.formal_name}<{self.email}>"
+
+    @property
+    def activity_label(self) -> str:
+        """Monkey patched property for attendance ranking to a string."""
+        translation = {
+            "Exclellent": (90.0, 100.0),
+            "Good": (60.0, 90.0),
+            "Could be better": (40.0, 60.0),
+            "Must Improve": (20.0, 40.0),
+            "Unsatisfactory": (0, 20.0),
+        }
+
+        score = self.activity_score
+        if not isinstance(score, (float, int)):
+            return "No Data"
+        for name, (low, high) in translation.items():
+            if low <= score <= high:
+                return name
+        return "Unknown"
+
+    @property
+    def activity_colour(self) -> str:
+        """Monkeypatch a routine to convert engagement scaore into a hex colour."""
+        return colour(self.activity_score)
+
+    @property
+    def engagement_label(self) -> str:
+        """Monkey patched property for attendance ranking to a string."""
+        translation = {
+            "Exclellent": (90.0, 100.0),
+            "Good": (60.0, 90.0),
+            "Could be better": (40.0, 60.0),
+            "Must Improve": (20.0, 40.0),
+            "Unsatisfactory": (0, 20.0),
+        }
+
+        score = self.engagement
+        if not isinstance(score, (float, int)):
+            return "No Data"
+        for name, (low, high) in translation.items():
+            if low <= score <= high:
+                return name
+        return "Unknown"
+
+    @property
+    def lab_engagement_label(self) -> str:
+        """Monkey patched property for attendance ranking to a string."""
+        translation = {
+            "No Issues": (60.0, 100.0),
+            "Could be better": (40.0, 60.0),
+            "Must Improve": (20.0, 40.0),
+            "Unsatisfactory": (0, 20.0),
+        }
+
+        score = self.lab_engagement
+        if not isinstance(score, (float, int)):
+            return "No Data"
+        for name, (low, high) in translation.items():
+            if low <= score <= high:
+                return name
+        return "Unknown"
 
 
 class Section(models.Model):

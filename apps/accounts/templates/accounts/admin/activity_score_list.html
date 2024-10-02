@@ -28,8 +28,8 @@
 </tr>
 {% for student in students %}
 <tr>
-    <td>{{ student.display_name }}</td>
-    <td>{{ student.number }}</td>
+    <td><a href="mailto:{{ student.email }}">{{ student.display_name }}</a></td>
+    <td><a href="/accounts/detail/{{ student.number }}/#dashboard">{{ student.number }}</a></td>
     <td>{{ student.programme.name }}</td>
     <td>{{ student.tests_score }}</td>
     <td>{{ student.labs_score }}</td>

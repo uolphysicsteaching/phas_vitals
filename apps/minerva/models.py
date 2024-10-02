@@ -704,53 +704,53 @@ class Test_Attempt(models.Model):
 
 @patch_model(Account, prep=property)
 def passed_tests(self):
-    """Return the set of vitals passed by the current user."""
+    """Return the set of vitals passed by the current user, but not counting this that haven't started yet."""
     return Test.homework.filter(results__passed=True, results__user=self).exclude(status="Not Started")
 
 
 @patch_model(Account, prep=property)
 def failed_tests(self):
     """Return the set of vitals passed by the current user."""
-    return Test.homework.filter(results__passed=False, results__user=self).exclude(status="Not Started")
+    return Test.homework.filter(results__passed=False, results__user=self, status__in=["Finished", "Overdue"])
 
 
 @patch_model(Account, prep=property)
 def untested_tests(self):
     """Return the set of vitals passed by the current user."""
-    return Test.homework.exclude(results__user=self).exclude(status="Not Started")
+    return Test.homework.exclude(results__user=self).exclude(status__in=["Released", "Not Started"])
 
 
 @patch_model(Account, prep=property)
 def passed_labs(self):
     """Return the set of vitals passed by the current user."""
-    return Test.labs.filter(results__passed=True, results__user=self)
+    return Test.labs.filter(results__passed=True, results__user=self).exclude(status="Not Started")
 
 
 @patch_model(Account, prep=property)
 def failed_labs(self):
     """Return the set of vitals passed by the current user."""
-    return Test.labs.filter(results__passed=False, results__user=self).exclude(status="Not Started")
+    return Test.labs.filter(results__passed=False, results__user=self, status__in=["Finished", "Overdue"])
 
 
 @patch_model(Account, prep=property)
 def untested_labs(self):
     """Return the set of vitals passed by the current user."""
-    return Test.labs.exclude(results__user=self).exclude(status="Not Started")
+    return Test.labs.exclude(results__user=self).exclude(status__in=["Released", "Not Started"])
 
 
 @patch_model(Account, prep=property)
 def passed_coding(self):
     """Return the set of vitals passed by the current user."""
-    return Test.code_tasks.filter(results__passed=True, results__user=self)
+    return Test.code_tasks.filter(results__passed=True, results__user=self).exclude(status="Not Started")
 
 
 @patch_model(Account, prep=property)
 def failed_coding(self):
     """Return the set of vitals passed by the current user."""
-    return Test.code_tasks.filter(results__passed=False, results__user=self).exclude(status="Not Started")
+    return Test.code_tasks.filter(results__passed=False, results__user=self, status__in=["Finished", "Overdue"])
 
 
 @patch_model(Account, prep=property)
 def untested_coding(self):
     """Return the set of vitals passed by the current user."""
-    return Test.code_tasks.exclude(results__user=self).exclude(status="Not Started")
+    return Test.code_tasks.exclude(results__user=self).exclude(status__in=["Released", "Not Started"])

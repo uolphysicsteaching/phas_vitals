@@ -370,12 +370,6 @@ def tutorial_sessions(self):
 
 
 @patch_model(Account, prep=property)
-def lab_sessions(self):
-    """Patch the user account model with a lab sessions property."""
-    return self.attendance.filter(type=SessionType.LAB, session__cohort=self.cohort)
-
-
-@patch_model(Account, prep=property)
 def Tutorials_mark(self) -> Union[np.ndarray, float, None]:
     """Monkeypatched property for attendance ranking."""
     record = np.array(
@@ -390,80 +384,6 @@ def Tutorials_mark(self) -> Union[np.ndarray, float, None]:
     if np.isnan(ret):
         ret = None
     return ret
-
-
-@patch_model(Account, prep=property)
-def AIT_mark(self) -> float:
-    """Return a mark for the Academic Integrity test."""
-    if self.tutorial_group_assignment.integrity_test:
-        return 100.0
-    else:
-        return 0.0
-
-
-@patch_model(Account, prep=property)
-def PF_mark(self) -> float:
-    """Return a mark for the Academic Integrity test."""
-    if self.tutorial_group_assignment.pebblepad_form:
-        return 100.0
-    else:
-        return 0.0
-
-
-@patch_model(Account, prep=property)
-def lab_engagement(self) -> Union[str, np.ndarray, float]:
-    """Monkeypatched property for attendance ranking."""
-    record = np.array(
-        self.lab_sessions.filter(session__cohort=self.cohort).order_by("-session__start").values_list("score")
-    )
-    if record.size > 0:
-        record = record[:, 0].astype(float)
-    else:
-        return format_html('<img src="/static/admin/img/icon-alert.svg" Alt="No data"/>')
-    record = np.where(record < 0, np.nan, record)
-    weight = np.exp(-np.arange(len(record)) / config.ENGAGEMENT_TC)
-    perfect = (4 * np.ones_like(record) * weight)[~np.isnan(record)].sum()
-    actual = (record * weight)[~np.isnan(record)].sum()
-    return np.round(100 * actual / perfect, 1)
-
-
-@patch_model(Account, prep=property)
-def engagement_label(self) -> str:
-    """Monkey patched property for attendance ranking to a string."""
-    translation = {
-        "Exclellent": (90.0, 100.0),
-        "Good": (60.0, 90.0),
-        "Could be better": (40.0, 60.0),
-        "Must Improve": (20.0, 40.0),
-        "Unsatisfactory": (0, 20.0),
-    }
-
-    score = self.engagement
-    if not isinstance(score, (float, int)):
-        return "No Data"
-    for name, (low, high) in translation.items():
-        if low <= score <= high:
-            return name
-    return "Unknown"
-
-
-@patch_model(Account, prep=property)
-def lab_engagement_label(self) -> str:
-    """Monkey patched property for attendance ranking to a string."""
-    translation = {
-        "No Issues": (60.0, 100.0),
-        "Could be better": (40.0, 60.0),
-        "Must Improve": (20.0, 40.0),
-        "Unsatisfactory": (0, 20.0),
-    }
-
-    score = self.lab_engagement
-    if not isinstance(score, (float, int)):
-        return "No Data"
-    for name, (low, high) in translation.items():
-        if low <= score <= high:
-            return name
-    return "Unknown"
 
 
 @patch_model(Account, prep=property)

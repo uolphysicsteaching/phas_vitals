@@ -154,14 +154,16 @@ def update_engagement(requests):
 
         try:
             logger.debug(f"Updating engagement score for {account.username}")
-            record = np.array(
-                account.tutorial_sessions.filter(session__cohort=cohort)
-                .order_by("-session__start")
-                .values_list("score")
+            record = (
+                np.array(
+                    account.tutorial_sessions.filter(session__cohort=cohort)
+                    .order_by("-session__start")
+                    .values_list("score")
+                )
+                .ravel()
+                .astype(float)
             )
             if record.size > 0:
-                record = record[:, 0].astype(float)
-
                 record = np.where(record < 0, np.nan, record)
                 record = np.where(record == 2, 3, record)  # Good and excellent engagement should count the same
                 weight = np.exp(-np.arange(len(record)) / config.ENGAGEMENT_TC)
@@ -195,19 +197,19 @@ def update_activity(requests):
         try:
             logger.debug(f"Updating overall activity score for {account.username}")
             hw = account.tests_score
-            if not isinstance(hw, float):
+            if not isinstance(hw, float) or np.isnan(hw):
                 hw = 100.0
             lb = account.labs_score
-            if not isinstance(lb, float):
+            if not isinstance(lb, float) or np.isnan(lb):
                 lb = 100.0
             ct = account.coding_score
-            if not isinstance(ct, float):
+            if not isinstance(ct, float) or np.isnan(ct):
                 ct = 100.0
             vt = account.vitals_score
-            if not isinstance(vt, float):
+            if not isinstance(vt, float) or np.isnan(vt):
                 vt = 100.0
             tt = account.engagement
-            if not isinstance(tt, float):
+            if not isinstance(tt, float) or np.isnan(tt):
                 tt = 100.0
             account.activity_score = np.round(
                 (

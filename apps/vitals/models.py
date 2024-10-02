@@ -250,39 +250,11 @@ def passed_vitals(self):
 
 @patch_model(Account, prep=property)
 def failed_vitals(self):
-    """Return the set of vitals passed by the current user."""
-    return VITAL.objects.filter(student_results__passed=False, student_results__user=self).exclude(
-        status="Not Started"
-    )
+    """Return the set of vitals that gave finished and not been passed."""
+    return VITAL.objects.filter(student_results__passed=False, student_results__user=self, status="Finished")
 
 
 @patch_model(Account, prep=property)
 def untested_vitals(self):
-    """Return the set of vitals passed by the current user."""
-    return VITAL.objects.exclude(student_results__user=self).exclude(status="Not Started")
-
-
-@patch_model(Account, prep=property)
-def activity_label(self) -> str:
-    """Monkey patched property for attendance ranking to a string."""
-    translation = {
-        "Exclellent": (90.0, 100.0),
-        "Good": (60.0, 90.0),
-        "Could be better": (40.0, 60.0),
-        "Must Improve": (20.0, 40.0),
-        "Unsatisfactory": (0, 20.0),
-    }
-
-    score = self.activity_score
-    if not isinstance(score, (float, int)):
-        return "No Data"
-    for name, (low, high) in translation.items():
-        if low <= score <= high:
-            return name
-    return "Unknown"
-
-
-@patch_model(Account, prep=property)
-def activity_colour(self) -> str:
-    """Monkeypatch a routine to convert engagement scaore into a hex colour."""
-    return colour(self.activity_score)
+    """Return the set of vitals that the student doesn't have a result and that have finished."""
+    return VITAL.objects.exclude(student_results__user=self).filter(status="Finished")
