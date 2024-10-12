@@ -10,20 +10,34 @@ from django.contrib.auth.views import PasswordChangeView
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMessage
 from django.db.models import Q
+from django.http import HttpResponse
 from django.template import loader
 from django.urls import reverse_lazy
 from django.views.generic import FormView, TemplateView
+from django.views.generic.base import TemplateResponseMixin
 
 # external imports
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from dal import autocomplete
 from util.http import svg_data
 from util.spreadsheet import TutorReportSheet, save_virtual_workbook
-from util.views import FormListView, IsStudentViewixin, IsSuperuserViewMixin
+from util.views import (
+    FormListView,
+    IsStudentViewixin,
+    IsSuperuserViewMixin,
+    MultiFormMixin,
+    ProcessMultipleFormsView,
+)
 
 # app imports
-from .forms import CohortFilterActivityScoresForm, TutorSelectForm
+from .forms import (
+    AllStudentSelectForm,
+    CohortFilterActivityScoresForm,
+    ToggleActiveForm,
+    TutorSelectForm,
+)
 from .models import Account
 
 TEMPLATE_PATH = settings.PROJECT_ROOT_PATH / "run" / "templates" / "Tutor_Report.xlsx"
@@ -249,4 +263,146 @@ class CohortFilterActivityScoresView(IsSuperuserViewMixin, FormListView):
 
         data = self.form.cleaned_data
         query_arg = {f"{data['what']}__{data['how']}": data["value"]}
-        return self.model.objects.filter(modules=data["module"], **query_arg).distinct().order_by(data["what"])
+        return self.model.students.filter(modules=data["module"], **query_arg).distinct().order_by(data["what"])
+
+
+class CohortFilterActivityScoresExportView(CohortFilterActivityScoresView):
+    """Make an excel spreadsheet from the filtered list of students."""
+
+    def render_to_response(self, context, **response_kwargs):
+        """Render the object list to a pandas dataframe and then output as Excel."""
+        fields = {
+            "number": "SID",
+            "first_name": "First Name",
+            "last_name": "Last Name",
+            "email": "Email",
+            "programme__name": "Programme",
+            "tests_score": "Homework",
+            "labs_score": "Labs",
+            "coding_score": "Code Taks",
+            "vitals_score": "VITALs",
+            "engagement": "Tutorial Engagement",
+            "activity_score": "Overall Activity",
+        }
+        form = self.form.cleaned_data
+        data = context["students"].values(*list(fields.keys()))
+        df = pd.DataFrame(data)
+        df.rename(columns=fields, inplace=True)
+        df.set_index("SID", inplace=True)
+        response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        response[
+            "Content-Disposition"
+        ] = f"attachment; filename=Output_{form['what']}_{form['how']}_{form['value']:.1f}.xlsx"
+
+        df.to_excel(response)
+        return response
+
+
+class CohortScoresOverview(IsSuperuserViewMixin, TemplateView):
+    """A Template view that makes some plots."""
+
+    template_name = "accounts/admin/summary_plots.html"
+
+    def get_context_data(self, **kwargs):
+        """Get data for the student view."""
+        context = super().get_context_data(**kwargs)
+        context["plot"] = ImageData(data=svg_data(self.mod_cdf(), base64=True), alt="Summary Student Scores")
+        return context
+
+    def _prepare_plot(self):
+        """Get aset of axes ready for plotting."""
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        return fig, ax
+
+    def mod_cdf(self, figure=None, ax=None):
+        """Make a cumulative distribution plot."""
+        if figure is None:
+            figure, ax = self._prepare_plot()
+        else:
+            plt.sca(ax)
+
+        scorenames = {
+            "tests_score": "Tests",
+            "labs_score": "Labs",
+            "coding_score": "Coding",
+            "vitals_score": "VITALs",
+            "engagement": "Tutorial",
+            "activity_score": "Overall",
+        }
+        # TODO: Modify to work with different modules.
+        data = pd.DataFrame(Account.students.filter(modules__code="PHAS1000").values(*scorenames.keys())).fillna(
+            value=np.NaN
+        )
+
+        x = np.linspace(0, 101, 102)
+        for ix, (k, label) in enumerate(scorenames.items()):
+            entries = data[k].loc[~np.isnan(data[k])]  # Remove bad marks
+            if len(entries) < 4:  # Insufficient entries to compute a cdf
+                continue
+            span = (entries.min(), entries.max())
+            y = np.array([100 * len(entries[entries >= ix]) / len(entries) for ix in x])
+            plt.step(x, y, linewidth=2, label=f"{label}")
+        ax.legend(fontsize="small", loc="upper right")
+        ax.set_xlabel("Student Mark %")
+        ax.set_ylabel("% students getting this mark or better")
+        ax.set_title("Scores Cumulative Distribution")
+        return figure
+
+
+class DeactivateStudentView(IsSuperuserViewMixin, MultiFormMixin, TemplateResponseMixin, ProcessMultipleFormsView):
+    """View to locate a student recortd and then edit to set account activity flag."""
+
+    form_classes = {"search": AllStudentSelectForm, "update": ToggleActiveForm}
+    success_urls = {"search": "", "update": ""}
+    template_name = "accounts/admin/toggle_ative.html"
+    user = None
+
+    def search_form_valid(self, form):
+        """Process the user search form being valid."""
+        self.user = form.cleaned_data["user"]
+        return self.render_to_response(self.get_context_data(forms=self._forms))
+
+    def search_form_invalid(self, form):
+        data = form.data
+        errs = form.errors
+        inst = self.__dict__
+        assert False
+
+    def update_form_invalid(self, form):
+        data = form.data
+        errs = form.errors
+        inst = self.__dict__
+        assert False
+
+    def update_form_valid(self, form):
+        """Save the updated user instance."""
+        try:
+            self.user = Account.objects.get(username=form.cleaned_data["username"])
+        except ObjectDoesNotExist:
+            form.errors.add(f"{form.cleaned_data['username']} not a valid username.")
+            return self.form_invalid(form)
+        xx = self.user
+        yy = form.cleaned_data
+        self.user.is_active = form.cleaned_data["is_active"]
+        self.user.save()
+        return self.render_to_response(self.get_context_data(forms=self._forms))
+
+    def create_update_form(self, **kwargs):
+        """Force use of the existing user account to load fields."""
+        if self.user:
+            kwargs["data"] = {
+                "username": self.user.username,
+                "number": self.user.number,
+                "display_name": self.user.display_name,
+                "is_active": self.user.is_active,
+            }
+            kwargs["initial"] = kwargs["data"]
+        return ToggleActiveForm(**kwargs)
+
+    def create_search_form(self, **kwargs):
+        """Force use of existing user object to populate."""
+        if self.user:
+            kwargs["data"] = {"user": self.user}
+            kwargs["initial"] = kwargs["data"]
+        return AllStudentSelectForm(**kwargs)

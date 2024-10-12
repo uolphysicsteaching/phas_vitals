@@ -86,8 +86,10 @@ class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
 
         try:
             user = usermodel.objects.get(**userdata)
-        except usermodel.DoesNotExist:  # No on the fly user creation here
-            logger.debug(f"User '{username}' doesn't exist and creating users is disabled.")
+            if not user.is_active:
+                raise PermissionDenied
+        except (usermodel.DoesNotExist, PermissionDenied):  # No on the fly user creation here
+            logger.debug(f"User '{username}' doesn't exist or is inactive and creating users is disabled.")
             raise PermissionDenied
         if not user.password:
             user.set_unusable_password()

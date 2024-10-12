@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% load tutorial_tags %}
+{% block title %}
+{{ block.super }} Summary Score Stats
+{% endblock title %}
+{% load django_bootstrap5 %}
+{% block content %}
+<h2>Summary data of Student Scores.</h2>
+    <img class="plot"  src='{{ plot.data|safe }}' alt="{{ plot.alt|safe }}" />
+{% endblock content %}

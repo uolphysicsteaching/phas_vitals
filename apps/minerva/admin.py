@@ -3,16 +3,18 @@
 from django.contrib import admin, messages
 from django.contrib.flatpages.admin import FlatPageAdmin
 from django.contrib.flatpages.models import FlatPage
+from django.http import HttpResponse
 from django.urls import reverse
 
 # external imports
+import pandas as pd
 from dal_admin_filters import AutocompleteFilter
 from import_export.admin import ImportExportModelAdmin
 from tinymce.widgets import TinyMCE
 from util.admin import add_inlines
 
 # app imports
-from .forms import Test_ScoreForm
+from .forms import GradebookColumnForm, Test_ScoreForm
 from .models import (
     GradebookColumn,
     Module,
@@ -108,7 +110,7 @@ class ModuleAdmin(ImportExportModelAdmin):
     iniines = [
         ModuleEnrollmentInline,
     ]
-    actions = ["generate_marksheet", "update_tests", "update_columns"]
+    actions = ["generate_marksheet", "update_tests", "update_columns", "mapping_export"]
 
     fieldsets = (
         (
@@ -156,6 +158,30 @@ class ModuleAdmin(ImportExportModelAdmin):
         """Call the GradescopoeColumns generation from json method for the selected module."""
         for module in queryset.all():
             GradebookColumn.create_or_update_from_json(module)
+
+    @admin.action(description="Generate Tests-VITAL mapping for module")
+    def mapping_export(self, request, queryset):
+        """Make an excel file showing the tests-VITALs mappings."""
+        if queryset.count() != 1:
+            self.message_user(request, "Select only one module at a time for this function")
+            return
+        module = queryset.first()
+        tests = module.tests.all().order_by("release_date")
+        vitals = module.VITALS.model.objects.filter(module__in=Module.objects.filter(VITALS__tests__module=module))
+        cols = [t.name for t in tests.all()]
+        data = []
+        for v in vitals.all():
+            row = {"VITAL": f"{v.VITAL_ID}\n{v.name}"}
+            row.update({"t.name": "" for t in tests.all()})
+            for vm in v.tests_mappings.all():
+                row[vm.test.name] = "X"
+            data.append(row)
+        df = pd.DataFrame(data).set_index("VITAL")
+        response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        response["Content-Disposition"] = f"attachment; filename=VITALs_map_{module.code}.xlsx"
+
+        df.to_excel(response)
+        return response
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
@@ -248,6 +274,8 @@ class TestAdmin(ImportExportModelAdmin):
 @admin.register(GradebookColumn)
 class GradebookColumnAdmin(ImportExportModelAdmin):
     """Admin class for Gradebook columns."""
+
+    form = GradebookColumnForm
 
     list_display = ("gradebook_id", "name", "test")
     list_filter = ["test"]

@@ -3,6 +3,7 @@
 # Django imports
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import transaction
+from django.db.models import Count
 from django.http import JsonResponse
 from django.utils import timezone as tz
 from django.views.generic import DetailView, FormView, ListView, UpdateView
@@ -130,6 +131,8 @@ class AdminEngagementSummaryView(TutorStudentEngagementSummary):
         cohort = self.get_initial()["cohort"]  # force sorting out our cohort
         ret = (
             Tutorial.objects.filter(cohort=cohort)
+            .annotate(number=Count("students"))
+            .exclude(number=0)
             .prefetch_related("students", "tutor", "cohort", "cohort__sessions", "students__attendance")
             .order_by("tutor__last_name")
         )

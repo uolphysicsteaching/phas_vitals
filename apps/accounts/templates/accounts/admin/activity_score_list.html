@@ -3,14 +3,33 @@
 {% load django_bootstrap5 %}
 {% block title %}
 {{ block.super }} Filter Student records by activity.{% endblock title %}
+{% block javascript %}
+{{ block.super }}
+<script>
+$(document).ready(
+    function () {
+        $('button[name="export"]').click(
+            function (e) {
+                e.preventDefault();
+                var form=$("form#activity_form");
+                form.prop("action", "{{ request.path }}xlsx/");
+                form.submit();
+                form.prop("action", "{{ request.path }}");
+            }
+        )
+    }
+)
+</script>
+{% endblock javascript%}
 {% block content %}
 <h2>Filter Student by Activity</h2>
 
-<form id="activity_form" action="{{ request.url }}" method="post" enctype="multipart/form-data" >
+<form id="activity_form" action="{{ request.path }}" method="post" enctype="multipart/form-data" >
     {% csrf_token %}
     {% bootstrap_form form layout='horizontal' %}
     <br/>
 {% bootstrap_button "Filter" button_type="submit" button_class="btn-primary" %}
+{% bootstrap_button "Export to Excel" button_type="submit" button_class="btn-secondary" name="export" %}
 </form>
 
 <div class="table-responsive">

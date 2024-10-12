@@ -154,7 +154,7 @@ class ShowAllVitalResultsView(IsSuperuserViewMixin, BaseShowvitalResults):
     def get_entries(self):
         """Get all module enrollments for the module."""
         return (
-            ModuleEnrollment.objects.filter(module=self.module)
+            ModuleEnrollment.objects.filter(active=True, module=self.module)
             .prefetch_related("student", "student__vital_results", "student__programme", "status")
             .order_by("student__last_name", "student__first_name")
         )
@@ -166,7 +166,9 @@ class ShowTutorVitalResultsView(IsStaffViewMixin, BaseShowvitalResults):
     def get_entries(self):
         """Get all module enrollments for the module."""
         return (
-            ModuleEnrollment.objects.filter(module=self.module, student__tutorial_group__tutor=self.request.user)
+            ModuleEnrollment.objects.filter(
+                active=True, module=self.module, student__tutorial_group__tutor=self.request.user
+            )
             .prefetch_related("student", "student__vital_results", "student__programme", "status")
             .order_by("student__last_name", "student__first_name")
         )

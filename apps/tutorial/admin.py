@@ -67,11 +67,12 @@ class TutorialListFilter(SimpleListFilter):
 class TutorialAssignmentAdmin(ImportExportModelAdmin):
     """Admin class for Tutorial Assignment."""
 
-    list_display = ("tutorial", "student", "integrity_test", "pebblepad_form")
-    list_filter = ("tutorial", StudentListFilter, "integrity_test", "pebblepad_form")
+    list_display = ("tutorial", "student")
+    list_filter = ("tutorial", StudentListFilter)
     search_fields = [
         "student__first_name",
         "student__last_name",
+        "studnet_givenName",
         "student__username",
         "student__number",
         "tutorial__code",

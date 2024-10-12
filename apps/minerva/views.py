@@ -417,7 +417,7 @@ class ShowAllTestResultsViiew(IsSuperuserViewMixin, BaseShowTestResultsView):
     def get_entries(self):
         """Get the students to include in the table."""
         return (
-            ModuleEnrollment.objects.filter(module=self.module)
+            ModuleEnrollment.objects.filter(active=True, module=self.module)
             .prefetch_related("student", "student__test_results", "student__programme", "status")
             .order_by("student__last_name", "student__first_name")
         )
@@ -429,7 +429,9 @@ class ShowTutorTestResultsViiew(IsStaffViewMixin, BaseShowTestResultsView):
     def get_entries(self):
         """Get the students to include in the table."""
         return (
-            ModuleEnrollment.objects.filter(module=self.module, student__tutorial_group__tutor=self.request.user)
+            ModuleEnrollment.objects.filter(
+                active=True, module=self.module, student__tutorial_group__tutor=self.request.user
+            )
             .prefetch_related("student", "student__test_results", "student__programme", "status")
             .order_by("student__last_name", "student__first_name")
         )

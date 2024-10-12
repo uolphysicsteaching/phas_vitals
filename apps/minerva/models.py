@@ -273,8 +273,20 @@ class StatusCode(models.Model):
         return self.code
 
 
+class ModuleEnrollmentManager(models.Manager):
+
+    """Add an extra active field based on whether the student account is active."""
+
+    def get_queryset(self):
+        """Annotate with active flag."""
+        return super().get_queryset().annotate(active=models.F("student__is_active"))
+
+
 class ModuleEnrollment(models.Model):
     """Records students enrolled on modules."""
+
+    # Manager
+    objects = ModuleEnrollmentManager()
 
     module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name="student_enrollments")
     student = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="module_enrollments")
@@ -424,6 +436,24 @@ class Test(models.Model):
         for column in self.columns.all():
             column.update_attempts()
 
+    def add_attempt(self, student, mark, date=None):
+        """Add a Test_Attempt, including Test_Score as necessary."""
+        score, _ = self.results.get_or_create(user=student)
+        if not score.score or score.score < mark:
+            score.score = mark
+        if date is None:
+            date = tz.now()
+        attempt_id = f"{self.test_id}_{student.number}_{date.strftime('%Y%m%d')}_{mark}"
+        score.save()
+        try:
+            attempt = score.attempts.get(attempt_id=attempt_id)
+        except ObjectDoesNotExist:
+            attempt = Test_Attempt(attempt_id=attempt_id, score=mark, test_entry=score)
+        attempt.score = mark
+        attempt.attempted = date
+        attempt.modified = tz.now()
+        attempt.save()
+
     @classmethod
     def create_or_update_from_dict(cls, data, module):
         """Create or update a test using dictionary data from Minerva."""
@@ -477,7 +507,6 @@ class Test(models.Model):
 
 
 class GradebookColumn(models.Model):
-
     """A representation of a single column in Minerva Gradebook that links to a Test."""
 
     gradebook_id = models.CharField(max_length=255)

@@ -8,6 +8,7 @@ from io import StringIO
 from django.contrib.admin import (
     SimpleListFilter,
     action,
+    display,
     register,
     site,
     sites,
@@ -45,7 +46,7 @@ class StudentListFilter(SimpleListFilter):
 
     def lookups(self, request, model_admin):
         """Return a sorted list of student names."""
-        res = Account.objects.filter(groups__name="Student").order_by("last_name", "first_name")
+        res = Account.students.filter(groups__name="Student").order_by("last_name", "first_name")
         return tuple([(user.username, user.display_name) for user in res.all()])
 
     def queryset(self, request, queryset):
@@ -189,7 +190,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
             {
                 "fields": [
                     ("username", "number"),
-                    ("title", "first_name", "last_name"),
+                    ("title", "first_name", "givenName", "last_name"),
                     ("email"),
                     ("programme", "registration_status", "section"),
                 ],
@@ -220,8 +221,9 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
     list_per_page = 250
     list_display = [
         "username",
-        "last_name",
         "first_name",
+        "givenName",
+        "last_name",
         "number",
         "programme",
         "is_staff",
@@ -233,6 +235,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
     search_fields = (
         "username",
         "first_name",
+        "givenName",
         "last_name",
         "groups__name",
         "programme__name",

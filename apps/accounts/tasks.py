@@ -5,6 +5,7 @@ import logging
 
 # Django imports
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
+from django.db import transaction
 
 # external imports
 import numpy as np
@@ -250,13 +251,8 @@ def update_all_users():
 def update_user_from_graph(user_pk, obo_access_token):
     """Use MSGraph API to update a user account."""
     # At the moment I don't have outgoing msgraph.com I think
-    url = "https://graph.microsoft.com/v1.0/me?$select=employeeId"
+    url = "https://graph.microsoft.com/v1.0/me?$select=employeeId,givenName,surname"
     logger.debug(f"Starting MS Graph call for {user_pk}")
-    try:
-        user = Account.objects.get(pk=user_pk)
-    except ObjectDoesNotExist:
-        logger.debug("No such user {user_pk} giving up.")
-        return
 
     headers = {"Authorization": "Bearer {}".format(obo_access_token)}
     response = provider_config.session.get(url, headers=headers, timeout=30, verify=False)
@@ -271,4 +267,15 @@ def update_user_from_graph(user_pk, obo_access_token):
         raise PermissionDenied
 
     payload = response.json()
-    user.number = int(payload["employeeId"])
+
+    with transaction.atomic():  # We're in a potential race condition here so use db transactions
+        try:
+            user = Account.objects.get(pk=user_pk)
+        except ObjectDoesNotExist:
+            logger.debug("No such user {user_pk} giving up.")
+            return
+
+        user.number = int(payload["employeeId"])
+        user.last_name = payload["surname"]
+        user.givenName = payload["givenName"]
+        user.save()

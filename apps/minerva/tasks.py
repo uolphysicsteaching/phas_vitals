@@ -3,10 +3,16 @@
 # Python imports
 import logging
 from datetime import datetime
+from pathlib import Path
+
+# Django imports
+from django.conf import settings
 
 # external imports
+import pandas as pd
 from celery import shared_task
 from constance import config
+from djano.utils import timezone as tz
 from minerva.models import Module, Test_Score
 from pytz import UTC
 
@@ -52,3 +58,31 @@ def update_vitals(requests):
         ):  # For each vital that this test could pass
             logger.debug(f"Checking mapping {vm}")
             vm.vital.check_vital(test_score.user)
+
+
+@shared_task()
+def take_time_series(module_code="PHAS1000"):
+    """Load DataFrames and add new row for the current date."""
+    datapath = Path(settings.MEDIA_ROOT) / "data"
+    attrs = ["activity_score", "tests_score", "labs_score", "coding_score", "vitals_score", "engagement"]
+    try:
+        module = Module.objects.get(code=module_code)
+    except ObjectDoesNotExist:
+        logger.debug("Failed to run time series collection for module {module_code}")
+    data = module.students.all()
+    for attr in attrs:
+        filename = "data_{attr}.xlsx"
+        if (filepath := (datapath / "filename")).exists():
+            df = pd.read_excel(filepath).set_index("Date")
+        else:
+            df = pd.DataFrame(columns=["Date"]).set_index("Date")
+        row = {entrynumber: getattr(entry, attr, np.nan) for entry in data}
+        date = tz.now().date()
+        if date in df.index:  # Check for double running on the same day!
+            for k, v in row.items():
+                df.loc[date, k] = v
+        else:
+            row["Date"] = date
+            row_df = pd.DataFrame([row]).set_index("Date")
+            df = pd.concat((df, row))
+        df.to_excel(filepath)

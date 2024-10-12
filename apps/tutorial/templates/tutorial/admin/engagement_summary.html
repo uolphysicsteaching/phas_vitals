@@ -65,50 +65,43 @@ The more red either of the status indicators are for the student the worse their
 pattern has been. Clicking on the tutorial group header will open an email to the tutor and the colour indicates how up to date they are
 with fulling in attendance data.</p>
 <table width=100% role="presentation" aria-label="Semester Selection">
-<tr>
-<td colspan=6 class='semester{% if semester == 1 %} active_semester{% else %} inactive_semester {% endif %}'><a href=/tutorial/admin/engagement/1/{{ cohort.name }}/>Semester 1</a></td>
-<td colspan=8 class='semester{% if semester == 2 %} active_semester{% else %} inactive_semester {% endif %}'><a href=/tutorial/admin/engagement/2/{{ cohort.name }}/>Semester 2</a></td>
-</tr>
+    <tr>
+        <td colspan=6 class='semester{% if semester == 1 %} active_semester{% else %} inactive_semester {% endif %}'>
+            <a href=/tutorial/admin/engagement/1/{{ cohort.name }}/>Semester 1</a>
+        </td>
+        <td colspan=8 class='semester{% if semester == 2 %} active_semester{% else %} inactive_semester {% endif %}'>
+            <a href=/tutorial/admin/engagement/2/{{ cohort.name }}/>Semester 2</a>
+        </td>
+    </tr>
 </table>
 
 <table width=100% role="table" aria-label="Summary of student engagement">
 {% for group in groups %}
-    <tr><th colspan=15 style='background-color: {{ group.recorded_colour }};'>
-        <span style='color: {{ group.recorded_text_colour }}; background-color: {{ group.recorded_colour }};'>
-        Engagement Summary for Tutorial group {{ group.code }} {{ group.cohort }}
-        <a href=mailto:?to={{ group.tutor.nice_email|urlencode }}>( {{ group.tutor.formal_name }} )</a>
-         - <a href=mailto:?to={{group.tutor.nice_email|urlencode }}&bcc={% for student in group.members %}{{ student.nice_email|urlencode }},{% endfor %}>Email Group</a></span>
-    </th></tr>
     <tr>
-    <th id="students_{{ group.pk }}" width=25% colspan=2>Name of Student</th>
-    {% for session in sessions %}
-        <th id="session_{{ group.pk }}_{{ session.pk }}">{{ session.name }}</th>
-    {% endfor %}
-    <th colspan=2 id="status_{{ group.pk }}">Status</th>
+        <th colspan=15 style='background-color: {{ group.recorded_colour }};'>
+            <span style='color: {{ group.recorded_text_colour }}; background-color: {{ group.recorded_colour }};'>
+            Engagement Summary for Tutorial group {{ group.code }} {{ group.cohort }}
+            <a href=mailto:?to={{ group.tutor.nice_email|urlencode }}>( {{ group.tutor.formal_name }} )</a>
+            - <a href=mailto:?to={{group.tutor.nice_email|urlencode }}&bcc={% for student in group.members %}{{ student.nice_email|urlencode }},{% endfor %}>Email Group</a></span>
+        </th>
+    </tr>
+    <tr>
+        <th id="students_{{ group.pk }}" width=25% colspan=2>Name of Student</th>
+        {% for session in sessions %}
+            <th id="session_{{ group.pk }}_{{ session.pk }}">{{ session.name }}</th>
+        {% endfor %}
+        <th colspan=2 id="status_{{ group.pk }}">Status</th>
     </tr>
     {% for student in group.members %}
         <tr>
-        <td headers="students_{{ group.pk }}">
-            <a href="/accounts/detail/{{ student.number }}/#dashboard">{{ student.display_name }}</a>
-        </td>
-        <td width=5% >T<br/>L</td>
-        {% engagement student semester cohort %}
-        <td headers="status_{{ group.pk }}">
-        <span style="background-color: {{ student.activity_colour }}; display: block; width:100%; color: {{ student.activity_colour|comp_colour }};" >
-            <a href=mailto:?to={{ student.nice_email|urlencode }}&cc={{ group.tutor.nice_email|urlencode }} >
-                {{ student.activity_score }}%
-            <a/>
-        </span>
-        <span style="background-color: {{ student.lab_engagement_colour }};  display: block; width:100%; color: {{ student.lab_engagement_colour|comp_colour }};">
-            <a href=mailto:?to={{ student.nice_email|urlencode }}&cc={{ group.tutor.nice_email|urlencode }}>
-                {{ student.lab_engagement_label }}
-            <a/>
-        </span>
-        </td>
-            <td>{% absence student semester cohort "Tutorial" %}{% absence student semester cohort "Lab" %}</td>
+            <td headers="students_{{ group.pk }}">
+                <a href="/accounts/detail/{{ student.number }}/#dashboard">{{ student.display_name }}</a>
+            </td>
+            <td>&nbsp;</td>
+            {% engagement student semester cohort %}
+            <td colspan=2 style="background-color: {{ student.activity_colour }}; color: {{ student.activity_colour|comp_colour }}" headers="status_{{ group.pk }}">{{ student.activity_label }}</td>
         </tr>
-        </tr>
-        {% endfor %}
+    {% endfor %}
 {% endfor %}
 </table>
 

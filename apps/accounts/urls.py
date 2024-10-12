@@ -14,6 +14,11 @@ urlpatterns = [
     path("detail/<int:number>/", views.StudentSummaryView.as_view(), name="student_detail"),
     path("change-password/", views.ChangePasswordView.as_view(), name="change_password"),
     path("tools/student_list/", views.CohortFilterActivityScoresView.as_view(), name="cohort_activity_list"),
+    path(
+        "tools/student_list/xlsx/", views.CohortFilterActivityScoresExportView.as_view(), name="cohort_activity_list"
+    ),
+    path("tools/toggle_active/", views.DeactivateStudentView.as_view(), name="toggle_active"),
+    path("tools/scores_summary/", views.CohortScoresOverview.as_view(), name="score_summary_plot"),
     path("student_lookup", views.StudentAutocomplete.as_view(), name="Student_lookup"),
     path("staff_lookup", views.StaffAutocomplete.as_view(), name="Staff_lookup"),
 ]

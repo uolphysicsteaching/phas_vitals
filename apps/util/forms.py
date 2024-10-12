@@ -14,6 +14,10 @@ from mimetypes import guess_type
 
 # Django imports
 from django import forms
+from django.db.models import Count
+
+# external imports
+from minerva.models import Module
 
 
 def get_mime(content):
@@ -140,3 +144,17 @@ class FileSelectForm(forms.Form):
         if content is None, use self.content as the file.
         """
         return get_mime(content)
+
+
+class UploadGradecentreForm(forms.Form):
+
+    """Provide a form for uploading a zip file and a spreadsheet excel file."""
+
+    module = forms.ModelChoiceField(Module.objects.annotate(ntests=Count("tests")).exclude(ntests=0))
+
+    gradecentre = MultipleFileField()
+
+    def __init__(self, **kwargs):
+        """Remove the instance keyword."""
+        kwargs.pop("instance", None)  #
+        super().__init__(**kwargs)

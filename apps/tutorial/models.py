@@ -65,8 +65,6 @@ class TutorialAssignment(models.Model):
         related_name="tutorial_group_assignment",
         limit_choices_to=students_Q,
     )
-    integrity_test: models.BooleanField = models.BooleanField(default=False, verbose_name="Academic Integrity Test")
-    pebblepad_form: models.BooleanField = models.BooleanField(default=False, verbose_name="Pebblepad Workbook")
 
     class Meta:
         unique_together = ["tutorial", "student"]
@@ -132,7 +130,7 @@ class Tutorial(models.Model):
     @property
     def members(self) -> "QuerySet[Tutorial]":
         """Sort the students but last name, first name."""
-        return self.students.all().order_by("last_name", "first_name")
+        return self.students.filter(is_active=True).order_by("last_name", "first_name")
 
     @property
     def past_sessions(self) -> "QuerySet[Session]":
@@ -145,7 +143,9 @@ class Tutorial(models.Model):
         if self.numStudents == 0:
             return 1.0
         return (
-            Attendance.objects.filter(student__in=self.students.all(), session__in=self.past_sessions).count()
+            Attendance.objects.filter(student__in=self.students.all(), session__in=self.past_sessions)
+            .exclude(score=None)
+            .count()
             / self.numStudents
         )
 
@@ -401,12 +401,6 @@ def engagement_colour(self) -> str:
     return colour(self.engagement)
 
 
-@patch_model(Account, prep=property)
-def lab_engagement_colour(self) -> str:
-    """Monkeypatch a routine to convert engagement scaore into a hex colour."""
-    return colour(self.lab_engagement)
-
-
 @patch_model(Account)
 def engagement_session(self, cohort=None, semester=None) -> dict:
     """Monkeypatch a method for getting the session engagement score."""
@@ -430,28 +424,6 @@ def engagement_session(self, cohort=None, semester=None) -> dict:
 
 
 @patch_model(Account)
-def lab_engagement_session(self, cohort=None, semester=None) -> dict:
-    """Monkeypatch a method for getting the session engagement score."""
-    if cohort is None:
-        cohort: Cohort = self.cohort
-    if semester is None:
-        semester = 1 if tz.now().month >= 8 else 2
-    sessions: QuerySet[Session] = Session.objects.filter(cohort=cohort, semester=semester)
-    base: format_html[int, str] = {x.pk: format_html("&nbsp;-&nbsp;") for x in sessions}
-    for attendance in self.lab_sessions.filter(session__cohort=cohort, session__semester=semester):
-        session = attendance.session
-        if attendance.score is None:
-            base[session.pk] = format_html(" - ")
-        elif attendance.score < 0:
-            base[session.pk] = format_html('<img src="/static/admin/img/icon-yes.svg" Alt="Authorised "Absence"/>')
-        elif attendance.score == 0:
-            base[session.pk] = format_html('<img src="/static/admin/img/icon-no.svg" Alt="Unauthorised Absence"/>')
-        else:
-            base[session.pk] = format_html("{}", int(attendance.score))
-    return base
-
-
-@patch_model(Account)
 def engagement_scores(self, cohort: Optional[Cohort] = None, semester: Optional[int] = None) -> float:
     """Monkeypatch a method for getting the session engagement score."""
     if cohort is None:
@@ -461,19 +433,6 @@ def engagement_scores(self, cohort: Optional[Cohort] = None, semester: Optional[
     ret = np.array(
         self.tutorial_sessions.filter(session__cohort=cohort, session__semester=semester).values_list("score")
     )
-    if ret.size == 0:
-        return np.array([])
-    return ret.T[0].astype(float)
-
-
-@patch_model(Account)
-def lab_engagement_scores(self, cohort: Optional[Cohort] = None, semester: Optional[int] = None) -> float:
-    """Monkeypatch a method for getting the session engagement score."""
-    if cohort is None:
-        cohort = self.cohort
-    if semester is None:
-        semester = 1 if tz.now().month >= 8 else 2
-    ret = np.array(self.lab_sessions.filter(session__cohort=cohort, session__semester=semester).values_list("score"))
     if ret.size == 0:
         return np.array([])
     return ret.T[0].astype(float)
@@ -495,23 +454,7 @@ def absence(self, cohort: Optional[Cohort] = None, semester: Optional[int] = Non
     return min(in_a_row + total, 100.0)
 
 
-@patch_model(Account)
-def lab_absence(self, cohort: Optional[Cohort] = None, semester: Optional[int] = None) -> float:
-    """Calculate the proportion of lab absences."""
-    if cohort is None:
-        cohort = self.cohort
-    if semester is None:
-        semester = 1 if tz.now().month >= 8 else 2
-    ret = self.lab_engagement_scores(cohort, semester)
-    if ret.size == 0:
-        return 0.0
-    absent = ret <= 0
-    in_a_row = (absent & np.roll(absent, -1) & np.roll(absent, -2)).sum() * 33
-    total = 100 * absent.sum() / max(3, absent.size)
-    return min(in_a_row + total, 100.0)
-
-
 @patch_model(Account, prep=property)
-def students(self) -> QuerySet[Account]:
+def number_tutees(self) -> QuerySet[Account]:
     """Return how many of students a tutor has."""
-    return Account.objects.filter(tutorial__tutor=self).count()
+    return Account.students.filter(tutorial__tutor=self).count()

@@ -5,6 +5,7 @@ from django.db.models import Count, Q
 from django.forms.widgets import Select
 
 # external imports
+from dal import autocomplete
 from minerva.models import Module
 
 # app imports
@@ -15,7 +16,7 @@ class StudentSelectForm(forms.Form):
     """A form to select students with."""
 
     user = forms.ModelChoiceField(
-        queryset=Account.objects.filter(students_Q).order_by("last_name"),
+        queryset=Account.students.filter(students_Q).order_by("last_name"),
         widget=Select(attrs={"onChange": "this.form.submit();"}),
     )
 
@@ -23,6 +24,29 @@ class StudentSelectForm(forms.Form):
         """Filter accounts for students."""
         filters = kargs.pop("filters", tuple(tuple()))
         super(StudentSelectForm, self).__init__(*args, **kargs)
+        for field, filt in filters:
+            Qs = [Q(**{k: filt[k]}) for k in filt]
+            if len(Qs) > 1:
+                Qs_f = Qs[0]
+                for Qs_i in Qs[1:]:
+                    Qs_f = Qs_f | Qs_i
+            else:
+                Qs_f = Qs[0]
+            self.fields[field].queryset = self.fields[field].queryset.filter(Qs_f)
+
+
+class AllStudentSelectForm(forms.Form):
+    """A form to select students with."""
+
+    user = forms.ModelChoiceField(
+        queryset=Account.objects.filter(students_Q).order_by("last_name"),
+        widget=autocomplete.ModelSelect2(url="accounts:Student_lookup", attrs={"onChange": "this.form.submit();"}),
+    )
+
+    def __init__(self, *args, **kargs):
+        """Filter accounts for students."""
+        filters = kargs.pop("filters", tuple(tuple()))
+        super(AllStudentSelectForm, self).__init__(*args, **kargs)
         for field, filt in filters:
             Qs = [Q(**{k: filt[k]}) for k in filt]
             if len(Qs) > 1:
@@ -77,6 +101,15 @@ class ChangePasswordForm(forms.Form):
     old_password = forms.CharField(widget=forms.PasswordInput())
     new_password = forms.CharField(widget=forms.PasswordInput())
     confirm_password = forms.CharField(widget=forms.PasswordInput())
+
+
+class ToggleActiveForm(forms.Form):
+    """Tweaks to the User Admin account form."""
+
+    number = forms.IntegerField(disabled=True, label="SID", required=False)
+    display_name = forms.CharField(disabled=True, label="Student Name", required=False)
+    username = forms.CharField(widget=forms.HiddenInput())
+    is_active = forms.ChoiceField(choices=[(None, "-"), (False, "In-Active"), (True, "Active")])
 
 
 class CohortFilterActivityScoresForm(forms.Form):

@@ -10,7 +10,7 @@ from dal import autocomplete
 from util.forms import get_mime
 
 # app imports
-from .models import Module, Test, Test_Score
+from .models import GradebookColumn, Module, Test, Test_Score
 
 
 class TestImportForm(forms.Form):
@@ -126,4 +126,15 @@ class Test_ScoreForm(forms.ModelForm):
         widgets = {
             "test": autocomplete.ModelSelect2(url="minerva:Test_lookup"),
             "user": autocomplete.ModelSelect2(url="accounts:Student_lookup"),
+        }
+
+
+class GradebookColumnForm(forms.ModelForm):
+    """Form with lookup for Test field for admining Gradebook columns."""
+
+    class Meta:
+        model = GradebookColumn
+        fields = "__all__"
+        widgets = {
+            "test": autocomplete.ModelSelect2(url="minerva:Test_lookup"),
         }

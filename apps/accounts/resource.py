@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """Import-Export Admin Resources for accounts"""
 
+# Python imports
+import re
+
 # Django imports
 from django.contrib.auth.models import Group
 from django.db.models import Q
@@ -85,6 +88,9 @@ class ProgrammesWidget(widgets.ManyToManyWidget):
 class AccountWidget(widgets.ForeignKeyWidget):
     """Try to match a user account."""
 
+    display_name_pattern = re.compile(r"(?P<last_name>[^\,]+)\,(?P<first_name>[^\(]+)$")
+    given_name__pattern = re.compile(r"(?P<last_name>[^\,]+)\,(?P<givenName>[^\(]+)\((?P<first_name>]^\)]+)\)")
+
     def clean(self, value, row=None, *args, **kargs):
         """Attempt to match to a user account."""
         if value is None:
@@ -113,10 +119,14 @@ class AccountWidget(widgets.ForeignKeyWidget):
             pass
 
         if "," in value:
-            last_name, first_name = value.split(",")
-            qs = Account.objects.filter(last_name=last_name, first_name=first_name)
-            if qs.count() > 0:
-                return qs.first()
+            if "(" in value:
+                pattern = self.given_name__pattern
+            else:
+                pattern = self.display_name_pattern
+            if match := pattern.match(value):
+                qs = Account.objects.filter(**match.groupdict())
+                if qs.count() > 0:
+                    return qs.first()
 
         elif " " in value:
             values = [x for x in value.split(" ") if x != ""]

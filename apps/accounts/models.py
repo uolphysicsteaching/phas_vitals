@@ -6,7 +6,7 @@ from __future__ import unicode_literals
 import string
 
 # Django imports
-from django.contrib.auth.models import AbstractUser, Group
+from django.contrib.auth.models import AbstractUser, Group, UserManager
 from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
 from django.db import models
 from django.db.models import Q
@@ -94,6 +94,15 @@ class Programme(models.Model):
         return f"{self.name} ({self.code})"
 
 
+class ActiveStudents(UserManager):
+
+    """Provide a quick queryset directly to active student accounts."""
+
+    def get_queryset(self):
+        """Filter default queryset for non-staff, non-superuser, active only accounts."""
+        return super().get_queryset().exclude(is_staff=True).exclude(is_superuser=True).exclude(is_active=False)
+
+
 class Account(AbstractUser):
     """Custom user class that has information about student registrations, programmes etc."""
 
@@ -107,6 +116,10 @@ class Account(AbstractUser):
 
     USERNAME_FIELD = "username"
 
+    # Managers
+    objects = UserManager()
+    students = ActiveStudents()
+
     number = models.IntegerField(unique=True)
     title = models.CharField(max_length=20, blank=True, null=True)
     programme = models.ForeignKey(Programme, on_delete=models.SET_NULL, blank=True, null=True, related_name="students")
@@ -115,6 +128,7 @@ class Account(AbstractUser):
         verbose_name="Current Level of Study",
         choices=LEVEL_OF_STUDY,
     )
+    givenName = models.CharField(max_length=128, blank=True, null=True, verbose_name="MS account given name")
     registration_status = models.CharField(max_length=10, blank=True, null=True, default="")
     section = models.ForeignKey("Section", on_delete=models.SET_NULL, blank=True, null=True, related_name="students")
     # Fields updated by celery tasks
@@ -132,6 +146,8 @@ class Account(AbstractUser):
     @cached_property
     def display_name(self):
         """Display name is what we commonly use for lists of account objects."""
+        if self.givenName and self.givenName != self.first_name:
+            return f"{self.last_name},{self.givenName} ({self.first_name})"
         return f"{self.last_name},{self.first_name}"
 
     @property

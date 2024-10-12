@@ -8,6 +8,17 @@ from django.views.generic import ListView, TemplateView, View
 from django.views.generic.base import ContextMixin, TemplateResponseMixin
 from django.views.generic.edit import FormMixin, ProcessFormView
 
+# external imports
+import chardet
+
+
+def get_encoding(fname):
+    """Use chardet to determine a file's unicode encoiding."""
+    with open(fname, "rb") as f:
+        data = f.read()
+        ret = chardet.detect(data)
+        return ret
+
 
 # Create your views here.
 class IsStudentViewixin(UserPassesTestMixin):
@@ -147,6 +158,7 @@ class MultiFormMixin(ContextMixin):
     success_url = None
     forms_context_name = "forms"
     bind_data_methods = ["POST", "PUT"]
+    _forms = {}
 
     def get_context_data(self, **kwargs):
         """Add previous cohorts tp the context in the correct prder."""
@@ -185,6 +197,7 @@ class MultiFormMixin(ContextMixin):
     def forms_valid(self, forms, form_name):
         """Handle the case for valid forms returning the appropriate redirect."""
         form_valid_method = "%s_form_valid" % form_name
+        self._forms = forms
         if hasattr(self, form_valid_method):
             return getattr(self, form_valid_method)(forms[form_name])
         else:
@@ -193,6 +206,7 @@ class MultiFormMixin(ContextMixin):
     def forms_invalid(self, forms, form_name):
         """Handle the case for invalid forms returning the appropriate redirect."""
         form_invalid_method = "%s_form_invalid" % form_name
+        self._forms = forms
         if hasattr(self, form_invalid_method):
             return getattr(self, form_invalid_method)(forms[form_name])
         else:
