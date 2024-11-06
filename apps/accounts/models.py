@@ -14,9 +14,14 @@ from django.utils import timezone
 from django.utils.functional import cached_property, classproperty
 
 # external imports
+import numpy as np
+from constance import config
 from six import string_types
 from util.models import colour
 from util.validators import RangeValueValidator
+
+# app imports
+from . import names
 
 # Some useful query objects
 
@@ -95,7 +100,6 @@ class Programme(models.Model):
 
 
 class ActiveStudents(UserManager):
-
     """Provide a quick queryset directly to active student accounts."""
 
     def get_queryset(self):
@@ -143,12 +147,31 @@ class Account(AbstractUser):
         """Use the username as a natural key."""
         return self.username
 
-    @cached_property
+    @property
     def display_name(self):
         """Display name is what we commonly use for lists of account objects."""
         if self.givenName and self.givenName != self.first_name:
-            return f"{self.last_name},{self.givenName} ({self.first_name})"
-        return f"{self.last_name},{self.first_name}"
+            first_name = f"{self.givenName} ({self.first_name})"
+        else:
+            first_name = self.first_name
+        last_name = self.last_name
+        if config.SHOWCASE_MODE:
+            first_name = names.first_names[self.number % len(names.first_names)]
+            last_name = names.last_names[self.number % len(names.last_names)]
+        return f"{last_name},{first_name}"
+
+    @property
+    def friendly_name(self):
+        """A display name that is student facing."""
+        if self.givenName and self.givenName != self.first_name:
+            first_name = self.givenName
+        else:
+            first_name = self.first_name
+        last_name = self.last_name
+        if config.SHOWCASE_MODE:
+            first_name = names.first_names[self.number % len(names.first_names)]
+            last_name = names.last_names[self.number % len(names.last_names)]
+        return f"{first_name} {last_name}"
 
     @property
     def apt(self):
@@ -157,7 +180,7 @@ class Account(AbstractUser):
             return self.tutorial_group.order_by("cohort__name").last().tutor
         return None
 
-    @cached_property
+    @property
     def formal_name(self):
         """Formal Name is used for referring to a specific single user."""
         if self.title is None or self.title == "":
@@ -165,7 +188,8 @@ class Account(AbstractUser):
         else:
             title = self.title
         initials = ".".join([x for x in self.initials][:-1])
-        return f"{title} {initials} {self.last_name}".strip()
+        last_name = names.last_names[self.number % len(names.last_names)] if config.SHOWCASE_MODE else self.last_name
+        return f"{title} {initials} {last_name}".strip()
 
     def __str__(self):
         """Show a standard representation of displayname + username."""
@@ -182,7 +206,7 @@ class Account(AbstractUser):
         else:
             return False
 
-    @cached_property
+    @property
     def initials(self):
         """Generate a set of initials from either email or name."""
         if "." in self.email.split("@")[0]:
@@ -190,7 +214,7 @@ class Account(AbstractUser):
             initials = [x.upper()[0] for x in userfield.split(".") if x[0] in string.ascii_letters]
             initials = "".join(initials)
         else:
-            name = f"{self.first_name} {self.last_name}"
+            name = self.friendly_name
             initials = "".join([char[0] for char in name.split(" ")])
         if len(initials) > 1:
             return initials
@@ -201,10 +225,18 @@ class Account(AbstractUser):
         return f"{self.formal_name}<{self.email}>"
 
     @property
+    def SID(self):
+        """Return studnet number or obfuscated stiudent number in showcase mode."""
+        if config.SHOWCASE_MODE:
+            digits = np.sum([int(x) for x in str(self.number)])
+            return self.number - digits
+        return self.number
+
+    @property
     def activity_label(self) -> str:
         """Monkey patched property for attendance ranking to a string."""
         translation = {
-            "Exclellent": (90.0, 100.0),
+            "Excellent ": (90.0, 100.0),
             "Good": (60.0, 90.0),
             "Could be better": (40.0, 60.0),
             "Must Improve": (20.0, 40.0),
@@ -228,7 +260,7 @@ class Account(AbstractUser):
     def engagement_label(self) -> str:
         """Monkey patched property for attendance ranking to a string."""
         translation = {
-            "Exclellent": (90.0, 100.0),
+            "Excellent ": (90.0, 100.0),
             "Good": (60.0, 90.0),
             "Could be better": (40.0, 60.0),
             "Must Improve": (20.0, 40.0),
@@ -263,7 +295,6 @@ class Account(AbstractUser):
 
 
 class Section(models.Model):
-
     """Represent a student's lab groups for managing Gradescope."""
 
     name = models.CharField(max_length=150, default="Unknown", unique=True)

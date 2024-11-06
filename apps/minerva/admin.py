@@ -51,6 +51,7 @@ class TestFilter(AutocompleteFilter):
     title = "Test"  # filter's title
     field_name = "test"  # field name - ForeignKey to Country model
     autocomplete_url = "minerva:Test_lookup"  # url name of Country autocomplete view
+    parameter_name = "test_id"
 
 
 class Test_ScoreInline(admin.StackedInline):
@@ -242,9 +243,8 @@ class TestAdmin(ImportExportModelAdmin):
                         "name",
                     ),
                     "description",
-                    "score_possible",
-                    "passing_score",
-                    "grading_attemptsAllowed",
+                    ("score_possible", "passing_score"),
+                    ("grading_attemptsAllowed", "ignore_zero"),
                 ),
                 "classes": [
                     "baton-tabs-init",

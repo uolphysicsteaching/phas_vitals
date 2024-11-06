@@ -31,6 +31,7 @@ TESTS_ATTEMPTS_PROFILE = {
         "Not passed\nmore than 3 attempts": (999, "red"),
     },
     "Missing": {"Not attempted": (-1, "grey")},
+    "Waiting for Mark": {"Waiting for Mark": (-1, "dimgrey")},
     "Not Started": {"Attempted early": (-1, "lightgrey")},
     "Finished": {"Failed": (-1, "darkred")},
     "Released": {

@@ -21,7 +21,7 @@ class StudentColumn(Column):
 
     def render(self, value):
         """Render the cell values."""
-        ret = f'<div style="background-color: {value.activity_colour}">{value.display_name}</div>'
+        ret = f'<div id="{value.number}" style="background-color: {value.activity_colour}">{value.display_name}</div>'
         return format_html(ret)
 
 

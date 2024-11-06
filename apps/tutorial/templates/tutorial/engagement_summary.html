@@ -87,6 +87,23 @@ td.semester.inactive_semester > a {
                 </tr>
             {% endfor %}
         </table>
+        {% if group.recorded < 100 %}
+            <div class="col-md-12 h4 text-center" style="padding: 10px; background-color: {{ group.recorded_colour }};">
+                Tutorial attendance record for this group is {{ group.recorded|floatformat:0 }}% Complete.
+            </div>
+            <strong>Missing records for:</strong><br/>
+            {% for session,session_list in group.missing_records.items %}
+                <strong>{{ session }}</strong>
+                <ul>
+                {% for student in session_list %}
+                    <li>{{ student.display_name }}</li>
+                {% endfor %}
+                </ul>
+            {% endfor %}
+            <p>If the student was a no-show then please return them as unexplained absent. If the student is
+            on temporary leave, or joined the group late, please return them as allowed absence. This will
+            help ensure that their overal engagemnt level is being accurately reflected.</p>
+        {% endif %}
     </div>
 {% endfor %}
 <div id="dialog_container" role="dialog" aria-label="Popup dialog for entering engagement data">

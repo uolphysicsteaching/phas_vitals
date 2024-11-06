@@ -1,7 +1,9 @@
 """View classes for the app that handles Minerva integration."""
+
 # Python imports
 import csv
 import re
+from collections import namedtuple
 from textwrap import shorten
 from traceback import format_exc
 
@@ -23,7 +25,11 @@ from accounts.views import StudentSummaryView
 from dal import autocomplete
 from django_tables2 import SingleTableMixin
 from django_tables2.columns import Column
+from matplotlib import pyplot as plt
+from matplotlib.patches import Rectangle
+from matplotlib.style import context as plot_context
 from pytz import timezone
+from util.http import buffer_to_base64, svg_data
 from util.tables import BaseTable
 from util.views import (
     IsStaffViewMixin,
@@ -42,6 +48,8 @@ from .forms import (
 from .models import Module, ModuleEnrollment, Test, Test_Attempt, Test_Score
 
 TZ = timezone(settings.TIME_ZONE)
+
+ImageData = namedtuple("ImageData", ["data", "alt"], defaults=["", ""])
 
 
 def _delimiter(filename):
@@ -313,8 +321,8 @@ class TestResultColumn(Column):
             bg_color = "white"
         if passed:
             return f'<div class="badge rounded-pil" style="background-color: {bg_color};">{score:.1f}</div>'
-        if np.isnan(score):
-            return f'<div class="badge rounded-pil" style="background-color: {bg_color};">{score:.1f}</div>'
+        if score is None or np.isnan(score):
+            return f'<div class="badge rounded-pil" style="background-color: dimgrey;">&nbsp;!&nbsp;</div>'
         return f'<div class="badge rounded-pil"  style="background-color: {bg_color};">{score:.1f}</div>'
 
     def format_attempts(self, test_score):
@@ -392,7 +400,7 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
         for entry in self.entries:
             record = {  # Standard student information entries
                 "student": entry.student,
-                "number": entry.student.number,
+                "number": entry.student.SID,
                 "programme": entry.student.programme.name,
                 "status": entry.status.code,
             }
@@ -472,6 +480,33 @@ class TestDetailView(IsStudentViewixin, DetailView):
     model = Test
     context_object_name = "test"
 
+    def get_context_data(self, **kwargs):
+        """Get plots as extra context data."""
+        context = super().get_context_data(**kwargs)
+        context["plot"] = self._make_plots(context["test"])
+        return context
+
+    def _make_plots(self, test):
+        """Make the figure for a Test's plots."""
+        fig, (pie, hist) = plt.subplots(ncols=2, figsize=(10, 5))
+        data = test.stats
+        colours = ["green", "red", "dimgrey", "black"]
+        _, texts = pie.pie(list(data.values()), labels=list(data.keys()), colors=colours, labeldistance=0.3)
+        for text in texts:
+            text.set_bbox({"facecolor": (1, 1, 1, 0.75), "edgecolor": (1, 1, 1, 0.25)})
+        with plot_context("seaborn-v0_8-bright"):
+            hist.hist(test.scores, bins=np.linspace(0.0, test.score_possible, int(min(test.score_possible, 21))))
+            ymin, ymax = plt.ylim()
+            hist.add_patch(Rectangle((0, ymin), test.passing_score, ymax, facecolor=(0, 0, 0, 0.25)))
+            plt.ylim(ymin, ymax)
+            hist.set_xlabel("Score")
+            hist.set_ylabel("Number of students")
+            plt.xlim(0, test.score_possible)
+        plt.tight_layout()
+        alt = f"{test.name} results" + " ".join([f"{label}:{count}" for label, count in data.items()])
+        plt.close()
+        return ImageData(svg_data(fig, base64=True), alt)
+
 
 class ModuleAutocomplete(autocomplete.Select2QuerySetView):
     """Class for autocomplete on module titles."""
@@ -504,4 +539,4 @@ class TestAutocomplete(autocomplete.Select2QuerySetView):
         if self.q:
             qs = qs.filter(Q(name__icontains=self.q) | Q(description__icontains=self.q))
 
-        return qs.order_by("module__code")
+        return qs.order_by("module__code", "release_date")

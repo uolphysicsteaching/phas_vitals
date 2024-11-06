@@ -5,11 +5,12 @@
 from django.urls import path
 
 # app imports
-from .views import SuperuserTemplateView
+from .views import StaffUserTemplateView, SuperuserTemplateView
 from .wizard import GradebookImport
 
 urlpatterns = [
     path("tools/", SuperuserTemplateView.as_view(template_name="util/tools.html")),
+    path("data/", StaffUserTemplateView.as_view(template_name="util/data.html")),
     path(
         "gradebook/",
         GradebookImport.as_view(

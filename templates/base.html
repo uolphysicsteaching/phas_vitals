@@ -81,6 +81,10 @@
             </div>
         </div>
         <main class="container-lg">
+            {% if config.SHOWCASE_MODE %}
+                <div class="alert alert-danger"><p>The site is currently being showcased. All student identification has been changed.
+                As a result student names and numbers are not real!</p></div>
+            {% endif %}
             {% block content %}base.html{% endblock %}
         </main>
         <footer class="container-lg">

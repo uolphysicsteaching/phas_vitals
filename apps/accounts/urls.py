@@ -19,6 +19,7 @@ urlpatterns = [
     ),
     path("tools/toggle_active/", views.DeactivateStudentView.as_view(), name="toggle_active"),
     path("tools/scores_summary/", views.CohortScoresOverview.as_view(), name="score_summary_plot"),
+    path("tools/scores_progression/", views.CohortProgressionOverview.as_view(), name="score_progression_plot"),
     path("student_lookup", views.StudentAutocomplete.as_view(), name="Student_lookup"),
     path("staff_lookup", views.StaffAutocomplete.as_view(), name="Staff_lookup"),
 ]

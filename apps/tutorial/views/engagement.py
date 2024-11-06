@@ -98,10 +98,12 @@ class SubmitStudentEngagementView(IsStaffViewMixin, ModelFormSetView):
         group, session = self.kwargs["session"].split(":")
         session = Session.objects.get(pk=int(session))
         group = Tutorial.objects.get(pk=int(group))
-        for student in group.students.all().distinct():
+        for student in group.members.distinct():
             _, _ = Attendance.objects.get_or_create(student=student, session=session, type=SessionType.TUTORIAL)
 
-        ret = Attendance.objects.filter(session=session, student__tutorial_group=group, type=SessionType.TUTORIAL)
+        ret = Attendance.objects.filter(
+            session=session, student__tutorial_group=group, student__is_active=True, type=SessionType.TUTORIAL
+        )
         return ret
 
     def get_factory_kwargs(self):
@@ -116,8 +118,10 @@ class SubmitStudentEngagementView(IsStaffViewMixin, ModelFormSetView):
         group, session = self.kwargs["session"].split(":")
         session = Session.objects.get(pk=int(session))
         group = Tutorial.objects.get(pk=int(group))
-        qs = Attendance.objects.filter(session=session, student__tutorial_group=group, type=SessionType.TUTORIAL)
-        ret["extra"] = max(0, group.students.all().count() - qs.all().count())
+        qs = Attendance.objects.filter(
+            session=session, student__tutorial_group=group, student__is_active=True, type=SessionType.TUTORIAL
+        )
+        ret["extra"] = max(0, group.members.count() - qs.all().count())
         return ret
 
 

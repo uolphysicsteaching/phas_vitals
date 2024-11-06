@@ -91,6 +91,10 @@ class SuperuserTemplateView(IsSuperuserViewMixin, TemplateView):
     """A template view that is restricted to superusers."""
 
 
+class StaffUserTemplateView(IsStaffViewMixin, TemplateView):
+    """A template view that is restricted to superusers."""
+
+
 class RedirectView(View):
     """Redirects the view to another class depending on the request user's attributes.
 

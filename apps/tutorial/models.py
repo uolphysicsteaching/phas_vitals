@@ -2,7 +2,7 @@
 """Models for tutorial app."""
 # Python imports
 import logging
-from typing import Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 # Django imports
 from django.conf import settings
@@ -125,7 +125,7 @@ class Tutorial(models.Model):
     @cached_property
     def numStudents(self) -> int:
         """Get the number of students in the tutorial group."""
-        return self.students.count()
+        return self.students.filter(is_active=True).count()
 
     @property
     def members(self) -> "QuerySet[Tutorial]":
@@ -138,12 +138,29 @@ class Tutorial(models.Model):
         return Session.objects.filter(cohort=self.cohort, end__lt=tz.now())
 
     @property
+    def missing_records(self) -> Dict[str, List[Account]]:
+        """Build a dictionary of missing tutorial records."""
+        if self.recorded_sessions == 1.0:  # No missing records
+            return {}
+        records = Attendance.objects.filter(
+            student__in=self.students.filter(is_active=True), session__in=self.past_sessions
+        ).exclude(score=None)
+        students = self.members
+        ret = {}
+        for session in self.past_sessions:
+            for student in students:
+                if records.filter(student=student, session=session).count() == 0:
+                    ret[str(session)] = ret.get(str(session), [])
+                    ret[str(session)].append(student)
+        return ret
+
+    @property
     def recorded_sessions(self) -> float:
-        """Return the proportion of sessions that have attendance records."""
+        """Return the the average number of sessions recorded per member of the tutorial group currently active."""
         if self.numStudents == 0:
             return 1.0
         return (
-            Attendance.objects.filter(student__in=self.students.all(), session__in=self.past_sessions)
+            Attendance.objects.filter(student__in=self.students.filter(is_active=True), session__in=self.past_sessions)
             .exclude(score=None)
             .count()
             / self.numStudents

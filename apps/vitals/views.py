@@ -128,7 +128,7 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
         for entry in self.entries:
             record = {  # Standard student information entries
                 "student": entry.student,
-                "number": entry.student.number,
+                "number": entry.student.SID,
                 "programme": entry.student.programme.name,
                 "status": entry.status.code,
                 "Overall": {"passed": entry.passed_vitals},

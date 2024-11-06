@@ -2,6 +2,7 @@
 
 # Python imports
 from collections import namedtuple
+from pathlib import Path
 
 # Django imports
 from django.conf import settings
@@ -21,10 +22,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from dal import autocomplete
-from util.http import svg_data
+from util.http import buffer_to_base64, svg_data
 from util.spreadsheet import TutorReportSheet, save_virtual_workbook
 from util.views import (
     FormListView,
+    IsStaffViewMixin,
     IsStudentViewixin,
     IsSuperuserViewMixin,
     MultiFormMixin,
@@ -298,22 +300,40 @@ class CohortFilterActivityScoresExportView(CohortFilterActivityScoresView):
         return response
 
 
-class CohortScoresOverview(IsSuperuserViewMixin, TemplateView):
+class CohortScoresOverview(IsStaffViewMixin, TemplateView):
     """A Template view that makes some plots."""
 
     template_name = "accounts/admin/summary_plots.html"
 
     def get_context_data(self, **kwargs):
         """Get data for the student view."""
-        context = super().get_context_data(**kwargs)
-        context["plot"] = ImageData(data=svg_data(self.mod_cdf(), base64=True), alt="Summary Student Scores")
-        return context
+        return self._load_gif_data(super().get_context_data(**kwargs))
 
     def _prepare_plot(self):
         """Get aset of axes ready for plotting."""
         fig = plt.figure()
         ax = fig.add_subplot(111)
         return fig, ax
+
+    def _load_gif_data(self, context):
+        """Load pre-prepared gif data."""
+        attrs = {
+            "activity_score": "Overall Activity",
+            "tests_score": "Homework Assignments",
+            "labs_score": "Lab Activities",
+            "coding_score": "Code Tasks",
+            "vitals_score": "VITALs Progress",
+            "engagement": "Tutorial Enghagement",
+        }
+
+        for attr, label in attrs.items():
+            if (data := (Path(settings.MEDIA_ROOT) / "data" / f"{attr}.gif")).exists():
+                with open(data, "rb") as buffer:
+                    context[f"{attr}_plot"] = ImageData(data=buffer_to_base64(buffer, "image/gif"), alt=label)
+            else:
+                context[f"{attr}_plot"] = data
+        context["plot"] = ImageData(data=svg_data(self.mod_cdf(), base64=True), alt="Summary Student Scores")
+        return context
 
     def mod_cdf(self, figure=None, ax=None):
         """Make a cumulative distribution plot."""
@@ -348,6 +368,51 @@ class CohortScoresOverview(IsSuperuserViewMixin, TemplateView):
         ax.set_ylabel("% students getting this mark or better")
         ax.set_title("Scores Cumulative Distribution")
         return figure
+
+
+class CohortProgressionOverview(IsStaffViewMixin, TemplateView):
+    """A Template view that makes some plots."""
+
+    template_name = "accounts/admin/summary_progression_plots.html"
+
+    def get_context_data(self, **kwargs):
+        """Get data for the student view."""
+        sids = [x.number for x in Account.students.filter(tutorial_group__tutor=self.request.user)]
+        return self._load_gif_data(super().get_context_data(**kwargs), sids)
+
+    def _load_gif_data(self, context, sids=None):
+        """Load pre-prepared gif data."""
+        attrs = {
+            "activity_score": "Overall Activity",
+            "tests_score": "Homework Assignments",
+            "labs_score": "Lab Activities",
+            "coding_score": "Code Tasks",
+            "vitals_score": "VITALs Progress",
+            "engagement": "Tutorial Enghagement",
+        }
+
+        for attr, label in attrs.items():
+            if (data := (Path(settings.MEDIA_ROOT) / "data" / f"time_series_{attr}.xlsx")).exists():
+                df = pd.read_excel(data).set_index("Date")
+                inactive = set([x[0] for x in Account.objects.filter(is_active=False).values_list("number")])
+                ignore = list(set(df.columns) & inactive)
+                df = df.drop(labels=ignore, axis="columns")
+                ax = df.plot(kind="line", c=(0, 0, 0, 0.05), linewidth=10)
+                ax.set_title(f"{label} Progression")
+                ax.set_ylabel("% score")
+                ax.set_xlabel("Date")
+                ax.get_legend().remove()
+                ax.set_ylim(-5, 105)
+                if sids:  # Highlight my students
+                    for line in ax.lines:
+                        if int(line.get_label()) in sids:
+                            line.set_color((1.0, 0, 0, 0.25))
+                            line.set_zorder(len(ax.lines) + 1)
+                context[f"{attr}_plot"] = ImageData(data=svg_data(None, base64=True), alt=f"{label} Scores")
+                plt.close()
+            else:
+                context[f"{attr}_plot"] = data
+        return context
 
 
 class DeactivateStudentView(IsSuperuserViewMixin, MultiFormMixin, TemplateResponseMixin, ProcessMultipleFormsView):

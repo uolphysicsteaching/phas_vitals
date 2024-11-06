@@ -14,6 +14,7 @@ from django.forms import ValidationError
 from django.utils import timezone as tz
 
 # external imports
+import numpy as np
 import pytz
 from accounts.models import Account
 from constance import config
@@ -58,6 +59,18 @@ def module_validator(value):
     pattern = re.compile(rf"{config.SUBJECT_PREFIX}[0123589][0-9]{{3}}M?")
     if not isinstance(value, str) or not pattern.match(value):
         raise ValidationError(f"Module code must be {config.SUBJECT_PREFIX} module code")
+
+
+def match_name(name):
+    """Match the name to column naming patterns."""
+    lab_pattern = re.compile(config.LAB_PATTERN)
+    homework_pattern = re.compile(config.HOMEWORK_PATTERN)
+    code_pattern = re.compile(config.CODE_PATTERN)
+    for pattern in (homework_pattern, code_pattern, lab_pattern):
+        if match := pattern.match(name):
+            name = match.groupdict()["name"]
+            break
+    return name
 
 
 class ModuleManager(models.Manager):
@@ -274,7 +287,6 @@ class StatusCode(models.Model):
 
 
 class ModuleEnrollmentManager(models.Manager):
-
     """Add an extra active field based on whether the student account is active."""
 
     def get_queryset(self):
@@ -365,6 +377,9 @@ class Test(models.Model):
     recommended_date = models.DateTimeField(blank=True, null=True, verbose_name="Recomemnded Attempt Date")
     grading_attemptsAllowed = models.IntegerField(blank=True, null=True, verbose_name="Number of allowed attempts")
     students = models.ManyToManyField("accounts.Account", through="Test_Score", related_name="tests")
+    ignore_zero = models.BooleanField(
+        default=False, blank=True, null=True, verbose_name="Zoer grades are not attempts"
+    )
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["module", "name"], name="Singleton name of a test per module")]
@@ -454,6 +469,26 @@ class Test(models.Model):
         attempt.modified = tz.now()
         attempt.save()
 
+    @property
+    def stats(self):
+        """Return a dictionary of numbers who have attempted or not and passed or not."""
+        potential = self.module.student_enrollments.filter(student__is_active=True).distinct().count()
+        passed = self.results.filter(user__is_active=True, passed=True).count()
+        waiting = self.results.filter(user__is_active=True, score=None).count()
+        failed = self.results.filter(user__is_active=True, passed=False).exclude(score=None).count()
+        return {
+            "Passed": passed,
+            "Failed": failed,
+            "Waiting": waiting,
+            "Not Attempted": potential - passed - waiting - failed,
+        }
+
+    @property
+    def scores(self):
+        """Return a numpy array of all of the test scores for the test."""
+        scores = self.results.all().exclude(score=None).values_list("score")
+        return np.array(scores).ravel()
+
     @classmethod
     def create_or_update_from_dict(cls, data, module):
         """Create or update a test using dictionary data from Minerva."""
@@ -482,13 +517,7 @@ class Test(models.Model):
         code_pattern = re.compile(config.CODE_PATTERN)
         new_data = {}
         for json_name, dictionary in data.items():
-            name = dictionary["name"]  # get the column name
-            for pattern in (homework_pattern, code_pattern, lab_pattern):
-                if match := pattern.match(name):
-                    name = match.groupdict()["name"]
-                    break
-            else:  # Not a lab or a quizz, so we're going to ignore it for now # TODO other tests?
-                continue
+            name = match_name(dictionary["name"])  # get the column name
             new_data[name] = new_data.get(name, []) + [dictionary]  # Can have more than one JSON file per test
         data_ids = set(new_data.keys())
         for k in list(data_ids):  # Run through the keys that match tests
@@ -504,6 +533,18 @@ class Test(models.Model):
                 column.name = dictionary["name"]
                 column.test = test
                 column.save()
+
+    @classmethod
+    def get_by_column_name(cls, name, module=None):
+        """Pattern match the name to see if we can locate a matching Test."""
+        name = match_name(name)
+        search = {"name": name}
+        if module:
+            search["m odule"] = module
+        try:
+            return cls.objewcts.get(**search)
+        except cls.DoesNotExist:
+            return None
 
 
 class GradebookColumn(models.Model):
@@ -535,18 +576,23 @@ class GradebookColumn(models.Model):
         if json_data is None:
             raise IOError(f"No json blob {self.attemps_json}")
         json_data = {x["userId"]: x for x in json_data}
-        attempts = Test_Attempt.objects.filter(test_entry__test=self.test)
         qs = self.test.module.student_enrollments.filter(user_id__in=set(json_data.keys())).prefetch_related("student")
         for enrollment in qs.all():
             data = json_data.get(enrollment.user_id, None)
+            if self.test.ignore_zero and data.get("score", None) == 0:  # By pass zero scores if we're ignoring them
+                continue
             if data is None:  # No data for this enrollment for some reason
                 continue
+            if (
+                data.get("score", None) is not None and data["score"] > self.test.score_possible
+            ):  # Looks like core>max score
+                continue  # so bypass this attempt
             result, _ = Test_Score.objects.get_or_create(user=enrollment.student, test=self.test)
             attempt, _ = Test_Attempt.objects.get_or_create(
                 test_entry=result, attempt_id=f'{self.test.test_id}+{data["id"]}'
             )
-            attempt.status = data.get("status", "")
             attempt.score = data.get("score", None)
+            attempt.status = data.get("status", "NeedsGrading" if attempt.score is None else "Completed")
             attempt.created = pytz.utc.localize(data["created"])
             attempt.attempted = pytz.utc.localize(data["attemptDate"])
             attempt.modified = pytz.utc.localize(data["modified"])
@@ -560,6 +606,7 @@ class GradebookColumn(models.Model):
             raise IOError(f"No JSON file for {module}")
         for column_data in json_data:
             column, _ = cls.objects.get_or_create(gradebook_id=column_data["id"], name=column_data["name"])
+            column.test = Test.get_by_name(column.name, module)  # Attempt to assign column to a Terst
             column.save()
 
 
@@ -587,7 +634,9 @@ class TestScoreManager(models.Manager):
             )
             .annotate(
                 standing=models.Case(
-                    models.When(passed=False, then=models.F("test_status")), default=models.Value("Ok")
+                    models.When(passed=False, score=None, then=models.Value("Waiting for Mark")),
+                    models.When(passed=False, then=models.F("test_status")),
+                    default=models.Value("Ok"),
                 )
             )
         )
@@ -623,6 +672,8 @@ class Test_Score(models.Model):
         status = self.manual_test_satus
         if self.passed:
             status = "Ok"  # A pass is always ok
+        elif self.score is None and self.pk is not None:
+            status = "Waiting for Mark"
         elif status in ["Finished", "Overdue"] and (not self.pk or self.attempts.count() == 0):
             status = "Missing"
         return status
@@ -637,6 +688,7 @@ class Test_Score(models.Model):
             "Finished": "bg-dark text-ligh",  # Overdue passing
             "Released": "bg-warning text-dark",  # Underway, not passed yet
             "Not Started": "text-dark",  # In the future, no worries yet
+            "Waiting for Mark": "bg-secondary text-light",  # Submitted but no mark yet
         }
         return mapping.get(self.manual_standing, "")
 
@@ -649,6 +701,7 @@ class Test_Score(models.Model):
             "Missing": "bi bi-dash-square-dotted",  # No attempt at overdue test
             "Finished": "bi bi-x",  # Overdue passing
             "Released": "bi bi-smartwatch",  # Underway, not passed yet
+            "Waiting for Mark": "bi bi-hourglass-split",  # Waiting for a mark
         }
         return mapping.get(self.manual_standing, "")
 
@@ -665,17 +718,22 @@ class Test_Score(models.Model):
             "Finished": "You would have passed:",  # Overdue passing
             "Released": "You will pass:",  # Underway, not passed yet
             "Not Started": "This will let you pass",
+            "Waiting for Mark": "This will let you pass",
         }
         return mapping.get(self.manual_standing, "")
 
     def check_passed(self, orig=None):
         """Check whether the user has passed the test."""
-        best_score = self.attempts.aggregate(models.Max("score", default=0)).get("score__max", 0.0)
+        if self.attempts.exclude(status="NeedsGrading").count() == 0:  # Nothing to mark yet
+            self.status = "NeedsGrading"
+            return None, False, False
+        best_score = np.round(self.attempts.aggregate(models.Max("score", default=0)).get("score__max", 0.0), 2)
         numerically_passed = bool(best_score and (best_score >= self.test.passing_score))
         if orig:
             pass_changed = numerically_passed ^ orig.passed
         else:
             pass_changed = None
+        self.status = "Graded"
         return best_score, numerically_passed, pass_changed
 
     def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
@@ -740,7 +798,9 @@ def passed_tests(self):
 @patch_model(Account, prep=property)
 def failed_tests(self):
     """Return the set of vitals passed by the current user."""
-    return Test.homework.filter(results__passed=False, results__user=self, status__in=["Finished", "Overdue"])
+    return Test.homework.filter(results__passed=False, results__user=self, status__in=["Finished", "Overdue"]).exclude(
+        results__score=None
+    )
 
 
 @patch_model(Account, prep=property)
@@ -758,7 +818,9 @@ def passed_labs(self):
 @patch_model(Account, prep=property)
 def failed_labs(self):
     """Return the set of vitals passed by the current user."""
-    return Test.labs.filter(results__passed=False, results__user=self, status__in=["Finished", "Overdue"])
+    return Test.labs.filter(results__passed=False, results__user=self, status__in=["Finished", "Overdue"]).exclude(
+        results__score=None
+    )
 
 
 @patch_model(Account, prep=property)
@@ -776,7 +838,9 @@ def passed_coding(self):
 @patch_model(Account, prep=property)
 def failed_coding(self):
     """Return the set of vitals passed by the current user."""
-    return Test.code_tasks.filter(results__passed=False, results__user=self, status__in=["Finished", "Overdue"])
+    return Test.code_tasks.filter(
+        results__passed=False, results__user=self, status__in=["Finished", "Overdue"]
+    ).exclude(results__score=None)
 
 
 @patch_model(Account, prep=property)

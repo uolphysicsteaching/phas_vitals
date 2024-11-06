@@ -64,7 +64,7 @@ $(document).ready( function() {
 <p>Minerva data last updated: {{ config.LAST_MINERVA_UPDATE|date:"r"}}</p>
 <div class="col-sm-12">
     <div class="row text-sm-center fs-2" style="background-color: {{ user.activity_colour }}; display: block; width:100%; color: {{ user.activity_colour|comp_colour }};">
-        <span>{{ user.first_name }} {{ user.last_name }} ({{ user.number }})</span>
+        <span>{{ user.friendly_name }} ({{ user.SID }})</span>
     </div>
     <div class="row fs-3">
         <div class="col-sm-4"><span>Tutor:</span></div>
@@ -110,7 +110,9 @@ $(document).ready( function() {
                           {% if test_score.passed %}
                             Passed in {{ test_score.attempts.count }}attempt{% if test_score.attempts.count > 1%}s{% endif %}
                           {% elif test_score.score is None %}
-                               {% if test_score.test_status != "Not Started" %}
+                               {% if test_score.status == "NeedsGrading" %}
+                                   Waiting for Mark
+                               {% elif test_score.test_status != "Not Started" %}
                                     Not Attempted
                                {% endif %}
                           {% else %}
@@ -160,7 +162,9 @@ $(document).ready( function() {
                           {% if lab_score.passed %}
                             Passed in {{ lab_score.attempts.count }}attempt{% if lab_score.attempts.count > 1%}s{% endif %}
                           {% elif lab_score.score is None %}
-                               {% if lab_score.test_status != "Not Started" %}
+                               {% if lab_score.status == "NeedsGrading" %}
+                                   Waiting for Mark
+                               {% elif lab_score.test_status != "Not Started" %}
                                     Not Attempted
                                {% endif %}
                           {% else %}
@@ -210,7 +214,9 @@ $(document).ready( function() {
                           {% if code_score.passed %}
                             Passed in {{ code_score.attempts.count }}attempt{% if code_score.attempts.count > 1%}s{% endif %}
                           {% elif code_score.score is None %}
-                               {% if code_score.test_status != "Not Started" %}
+                               {% if code_score.status == "NeedsGrading" %}
+                                   Waiting for Mark
+                               {% elif code_score.test_status != "Not Started" %}
                                     Not Attempted
                                {% endif %}
                           {% else %}
