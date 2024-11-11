@@ -1,6 +1,7 @@
 """Views for the VITALS and similar models from the vitals app."""
 
 # Python imports
+from collections import namedtuple
 
 # Django imports
 # Create your views here.
@@ -14,8 +15,10 @@ from accounts.views import StudentSummaryView
 from dal import autocomplete
 from django_tables2 import SingleTableMixin
 from django_tables2.columns import Column
+from matplotlib import pyplot as plt
 from minerva.forms import ModuleSelectForm
 from minerva.models import ModuleEnrollment
+from util.http import svg_data
 from util.tables import BaseTable
 from util.views import (
     IsStaffViewMixin,
@@ -26,6 +29,8 @@ from util.views import (
 
 # app imports
 from .models import VITAL
+
+ImageData = namedtuple("ImageData", ["data", "alt"], defaults=["", ""])
 
 
 class VITALResultColumn(Column):
@@ -195,6 +200,25 @@ class VitalDetailView(IsStudentViewixin, DetailView):
     slug_url_kwarg = "pk"
     model = VITAL
     context_object_name = "vital"
+
+    def get_context_data(self, **kwargs):
+        """Get plots as extra context data."""
+        context = super().get_context_data(**kwargs)
+        context["plot1"] = self._make_plots(context["vital"])
+        return context
+
+    def _make_plots(self, vital):
+        """Make the figure for a Test's plots."""
+        fig1, pie = plt.subplots(figsize=(3.5, 3.5))
+        data = vital.stats
+        colours = ["green", "red", "blue"]
+        _, texts = pie.pie(list(data.values()), labels=list(data.keys()), colors=colours, labeldistance=0.3)
+        for text in texts:
+            text.set_bbox({"facecolor": (1, 1, 1, 0.75), "edgecolor": (1, 1, 1, 0.25)})
+        plt.tight_layout()
+        alt1 = f"{vital.name} Pass/Faile" + " ".join([f"{label}:{count}" for label, count in data.items()])
+        plt.close("all")
+        return ImageData(svg_data(fig1, base64=True), alt1)
 
 
 class VITALAutocomplete(autocomplete.Select2QuerySetView):

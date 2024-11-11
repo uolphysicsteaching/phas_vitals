@@ -116,13 +116,17 @@ def absence(student, semester, cohort, typ):
 @register.filter
 def score_display(score):
     """Build an entry for a score."""
+    score_imgs = [
+        {"src": "/static/admin/img/icon-yes.svg", "alt": "Authorised Absence"},
+        {"akt": "/static/admin/img/icon-no.svg", "alt": "Unauthorised Absence"},
+        {"alt:": "/static/img/bronze_start.svg", "alt": "Limited Engagement"},
+        {"alt:": "/static/img/silver_start.svg", "alt": "Good Engagement"},
+        {"alt:": "/static/img/gold_start.svg", "alt": "Outstanding Engagement"},
+    ]
     if score is None or score == "":
         ret = " - "
-    elif int(score) < 0:
-        ret = '<img src="/static/admin/img/icon-yes.svg" Alt="Authorised "Absence"/>'
-    elif int(score) == 0:
-        ret = '<img src="/static/admin/img/icon-no.svg" Alt="Unauthorised Absence"/>'
     else:
-        ret = f"{int(score)}"
-
+        score = int(score) + 1
+        attrs = " ".join([f'{k}="{val}' for k, val in score_imgs[score].items()])
+        ret = f"<img {attrs} />"
     return format_html(ret)

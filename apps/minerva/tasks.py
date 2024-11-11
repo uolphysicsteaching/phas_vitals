@@ -42,7 +42,10 @@ def import_gradebook():
     imported_modules = []
     for module in Module.objects.all():
         logger.debug(f"Attempting to import {module.key}")
-        GradebookColumn.create_or_update_from_json(module)
+        try:
+            GradebookColumn.create_or_update_from_json(module)
+        except OSError:  # Probably no JSON File
+            continue
         if module.update_from_json() is None:
             logger.info(f"Failed import for {module.name}")
         else:

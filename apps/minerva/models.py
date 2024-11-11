@@ -30,7 +30,7 @@ from . import json
 update_vitals = celery_app.signature("minerva.tasks.update_vitals")
 update_tests_score = celery_app.signature("accounts.tasks.update_tests_score")
 update_labs_score = celery_app.signature("accounts.tasks.update_labs_score")
-update_code_score = celery_app.signature("accounts.tasks.update_code_score")
+update_code_score = celery_app.signature("accounts.tasks.update_coding_score")
 
 
 logger = logging.getLogger(__name__)
@@ -476,12 +476,13 @@ class Test(models.Model):
         passed = self.results.filter(user__is_active=True, passed=True).count()
         waiting = self.results.filter(user__is_active=True, score=None).count()
         failed = self.results.filter(user__is_active=True, passed=False).exclude(score=None).count()
-        return {
+        ret = {
             "Passed": passed,
             "Failed": failed,
             "Waiting": waiting,
             "Not Attempted": potential - passed - waiting - failed,
         }
+        return {k if v > 0 else "": v for k, v in ret.items()}
 
     @property
     def scores(self):
@@ -540,9 +541,9 @@ class Test(models.Model):
         name = match_name(name)
         search = {"name": name}
         if module:
-            search["m odule"] = module
+            search["module"] = module
         try:
-            return cls.objewcts.get(**search)
+            return cls.objects.get(**search)
         except cls.DoesNotExist:
             return None
 
@@ -606,7 +607,8 @@ class GradebookColumn(models.Model):
             raise IOError(f"No JSON file for {module}")
         for column_data in json_data:
             column, _ = cls.objects.get_or_create(gradebook_id=column_data["id"], name=column_data["name"])
-            column.test = Test.get_by_name(column.name, module)  # Attempt to assign column to a Terst
+            if column.test is None:
+                column.test = Test.get_by_column_name(column.name, module)  # Attempt to assign column to a Terst
             column.save()
 
 

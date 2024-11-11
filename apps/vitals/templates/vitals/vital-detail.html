@@ -39,6 +39,14 @@
         {% if forloop.last %}</ul>{% endif %}
     {% endfor %}</div>
 </div>
+{% if request.user.is_staff %}
+    <div class="row">
+        <div class="col-md-12">
+            <img class="text-center" src="{{ plot1.data }}" alt="{{ plot1.alt }}"/>
+        </div>
+    <M/div>
+{% endif %}
+
 <br/>
 <div class="col-md-2">
  <a onclick="window.history.back();" class="btn btn-lg btn-secondary"><span class="bi bi-arrow-left-circle">Back</span></a>

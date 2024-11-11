@@ -49,8 +49,11 @@
 </div>
 {% if request.user.is_staff %}
     <div class="row">
-        <div class="col-md-12">
-            <img class="text-center" src="{{ plot.data }}" alt="{{ plot.alt }}"/>
+        <div class="col-md-6">
+            <img class="text-center" src="{{ plot1.data }}" alt="{{ plot1.alt }}"/>
+        </div>
+        <div class="col-md-6">
+            <img class="text-center" src="{{ plot2.data }}" alt="{{ plot2.alt }}"/>
         </div>
     <M/div>
 {% endif %}

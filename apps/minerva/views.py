@@ -483,29 +483,36 @@ class TestDetailView(IsStudentViewixin, DetailView):
     def get_context_data(self, **kwargs):
         """Get plots as extra context data."""
         context = super().get_context_data(**kwargs)
-        context["plot"] = self._make_plots(context["test"])
+        context["plot1"], context["plot2"] = self._make_plots(context["test"])
         return context
 
     def _make_plots(self, test):
         """Make the figure for a Test's plots."""
-        fig, (pie, hist) = plt.subplots(ncols=2, figsize=(10, 5))
+        fig1, pie = plt.subplots(figsize=(3.5, 3.5))
+        fig2, hist = plt.subplots(figsize=(4, 3.5))
         data = test.stats
         colours = ["green", "red", "dimgrey", "black"]
         _, texts = pie.pie(list(data.values()), labels=list(data.keys()), colors=colours, labeldistance=0.3)
         for text in texts:
             text.set_bbox({"facecolor": (1, 1, 1, 0.75), "edgecolor": (1, 1, 1, 0.25)})
         with plot_context("seaborn-v0_8-bright"):
-            hist.hist(test.scores, bins=np.linspace(0.0, test.score_possible, int(min(test.score_possible, 21))))
-            ymin, ymax = plt.ylim()
+            counts, _, _ = hist.hist(
+                test.scores, bins=np.linspace(0.0, test.score_possible, int(min(test.score_possible, 21)))
+            )
+            if counts.size > 0:
+                ymin, ymax = 0, counts.max() + 1
+            else:
+                ymin, ymax = 0, 1
             hist.add_patch(Rectangle((0, ymin), test.passing_score, ymax, facecolor=(0, 0, 0, 0.25)))
             plt.ylim(ymin, ymax)
             hist.set_xlabel("Score")
             hist.set_ylabel("Number of students")
             plt.xlim(0, test.score_possible)
         plt.tight_layout()
-        alt = f"{test.name} results" + " ".join([f"{label}:{count}" for label, count in data.items()])
-        plt.close()
-        return ImageData(svg_data(fig, base64=True), alt)
+        alt1 = f"{test.name} Pass/Faile" + " ".join([f"{label}:{count}" for label, count in data.items()])
+        alt2 = f"{test.name} Results" + " ".join([f"{label}:{count}" for label, count in data.items()])
+        plt.close("all")
+        return ImageData(svg_data(fig1, base64=True), alt1), ImageData(svg_data(fig2, base64=True), alt2)
 
 
 class ModuleAutocomplete(autocomplete.Select2QuerySetView):
@@ -540,3 +547,55 @@ class TestAutocomplete(autocomplete.Select2QuerySetView):
             qs = qs.filter(Q(name__icontains=self.q) | Q(description__icontains=self.q))
 
         return qs.order_by("module__code", "release_date")
+
+
+class TestResultsBarChartView(IsStaffViewMixin, FormView):
+    """Most of the machinery to show a table of student test results."""
+
+    form_class = ModuleSelectPlusForm
+    template_name = "minerva/test_barchart.html"
+
+    def __init__(self, *args, **kargs):
+        """Construct instance variables."""
+        self.module = None
+        self.mode = "scor3e"
+        self.type = "homework"
+        self.tests = []
+        super().__init__(*args, **kargs)
+
+    def form_valid(self, form):
+        """Update self.module with the module selected in the form."""
+        self.module = form.cleaned_data["module"]
+        self.mode = form.cleaned_data.get("mode", "score")
+        self.type = form.cleaned_data.get("type", "homework")
+        if self.module is not None:
+            self.tests = self.module.tests.filter(type=self.type).order_by("release_date", "name")
+        return self.render_to_response(self.get_context_data())
+
+    def get_context_data(self, **kwargs):
+        """Get the cohort into context from the slug."""
+        context = super().get_context_data(**kwargs)
+        context["module"] = self.module
+        if self.tests:
+            context["plot"] = self._make_plot()
+        return context
+
+    def _make_plot(self):
+        """Make a barchart from the stats for each test in the module."""
+        rows = []
+        for test in self.tests:
+            row = test.stats
+            row["name"] = shorten(test.name, width=30)
+            rows.append(row)
+        df = pd.DataFrame(rows).set_index("name")
+        ax = df.plot(
+            kind="bar",
+            stacked=True,
+            color={"Passed": "g", "Failed": "r", "Waiting": "dimgrey", "Not Attempted": "black", "": "white"},
+        )
+        ax.set_xlabel = ""
+        ax.set_ylabel("# Students")
+        ax.legend(ncol=5)
+        fig = ax.figure
+        plt.close("all")
+        return ImageData(svg_data(fig, base64=True), alt=f"Summary pass/fail for all {self.type}")

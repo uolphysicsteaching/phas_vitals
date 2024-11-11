@@ -427,6 +427,7 @@ BATON = {
             "models": (
                 {"name": "module", "label": "Modules"},
                 {"name": "moduleenrollment", "label": "Module Enroillments"},
+                {"name": "gradebookcolumn", "label": "Gradebook Columns"},
                 {"name": "test", "label": "Tests"},
                 {"name": "test_score", "label": "Test Scores"},
                 {"name": "test_attempt", "label": "Test Attempts"},
@@ -442,6 +443,17 @@ BATON = {
                 {"name": "vital", "label": "VITALs"},
                 {"name": "vital_result", "label": "VITAL Awards"},
                 {"name": "vital_test_map", "label": "VITAL Test Maps"},
+            ),
+        },
+        {
+            "type": "free",
+            "label": "Background Tasks",
+            "icon": "fa fa-solid fa-list-check",
+            "default_open": False,
+            "children": (
+                {"type": "model", "label": "Periodic Tasks", "name": "periodictask", "app": "django_celery_beat"},
+                {"type": "model", "label": "Schedules", "name": "crontabschedule", "app": "django_celery_beat"},
+                {"type": "model", "label": "Task Result", "name": "taskresult", "app": "django_celery_results"},
             ),
         },
         {

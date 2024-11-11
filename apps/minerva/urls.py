@@ -17,6 +17,7 @@ urlpatterns = [
     path("import_history/", views.ImportTestHistoryView.as_view()),
     path("import_history_stream/", views.StreamingImportTestsHistoryView.as_view()),
     path("test_view/", views.ShowTestResults.as_view()),
+    path("test_barchart/", views.TestResultsBarChartView.as_view(), name="test-barchart"),
     path("generate_marksheet/", views.GenerateModuleMarksheetView.as_view()),
     path("detail/<pk>/", views.TestDetailView.as_view()),
     path("dal_modules/", views.ModuleAutocomplete.as_view(), name="Module_lookup"),

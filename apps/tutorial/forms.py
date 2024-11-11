@@ -31,9 +31,12 @@ class ReadOnlySelect(Select):
         display = "None"
         for option_value, option_label in chain(self.choices, choices):
             if str(option_value) == str(value):
-                display = option_label
+                if isinstance(option_value.instance, Student):
+                    display = option_value.instance.friendly_name
+                else:
+                    display = option_label
         output = format_html(
-            '<h3 style="margin-top: 10px;">{display}</h3><input type="hidden" value="{value}"  {attrs}> ',
+            '<h5 style="margin-top: 10px;">{display}</h5><input type="hidden" value="{value}"  {attrs}> ',
             display=display,
             value=value,
             attrs=flatatt(final_attrs),

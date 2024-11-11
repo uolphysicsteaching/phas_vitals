@@ -431,12 +431,17 @@ def engagement_session(self, cohort=None, semester=None) -> dict:
         session = attendance.session
         if attendance.score is None:
             base[session.pk] = format_html(" - ")
-        elif attendance.score < 0:
-            base[session.pk] = format_html('<img src="/static/admin/img/icon-yes.svg" Alt="Authorised "Absence"/>')
-        elif attendance.score == 0:
-            base[session.pk] = format_html('<img src="/static/admin/img/icon-no.svg" Alt="Unauthorised Absence"/>')
         else:
-            base[session.pk] = format_html("{val}", val=int(attendance.score))
+            score_imgs = [
+                {"src": "/static/admin/img/icon-yes.svg", "alt": "Authorised Absence"},
+                {"src": "/static/admin/img/icon-no.svg", "alt": "Unauthorised Absence"},
+                {"src": "/static/img/bronze_star.svg", "alt": "Limited Engagement", "width": 20},
+                {"src": "/static/img/silver_star.svg", "alt": "Good Engagement", "width": 20},
+                {"src": "/static/img/gold_star.svg", "alt": "Outstanding Engagement", "width": 20},
+            ]
+            score = int(attendance.score) + 1
+            attrs = " ".join([f'{k}="{val}"' for k, val in score_imgs[score].items()])
+            base[session.pk] = format_html(f"<img {attrs} />")
     return base
 
 

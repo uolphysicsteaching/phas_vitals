@@ -211,6 +211,19 @@ class VITAL(models.Model):
         """Return a url for the detail page for this vital."""
         return f"/vitals/detail/{self.pk}/"
 
+    @property
+    def stats(self):
+        """Return a dictionary of numbers who have attempted or not and passed or not."""
+        potential = self.module.student_enrollments.filter(student__is_active=True).distinct().count()
+        passed = self.student_results.filter(user__is_active=True, passed=True).count()
+        failed = self.student_results.filter(user__is_active=True, passed=False).count()
+        ret = {
+            "Passed": passed,
+            "Failed": failed,
+            "Not Attempted": potential - passed - failed,
+        }
+        return {k if v > 0 else "": v for k, v in ret.items()}
+
     def passed(self, user, passed=True, date_passed=None):
         """Record the user as having passed this vital."""
         if not date_passed:
