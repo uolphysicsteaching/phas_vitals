@@ -330,7 +330,9 @@ class Attendance(models.Model):
         else:
             return self.score
 
-    def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
+    def save(
+        self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None
+    ):  # pylint: disable=arguments-differ
         """Save the model and then signal to update the student's attendance reocrd."""
         super().save(force_insert, force_update, using, update_fields)
         task_logger.debug(f"Posting update user task for {self}")
@@ -466,7 +468,8 @@ def engagement_session(self, cohort=None, semester=None) -> dict:
             ]
             score = int(attendance.score) + 1
             attrs = " ".join([f'{k}="{val}"' for k, val in score_imgs[score].items()])
-            base[session.pk] = format_html("<img {attrs} />", attrs=attrs)
+            img_str = f"<img {attrs} />"
+            base[session.pk] = format_html(img_str)
     return base
 
 

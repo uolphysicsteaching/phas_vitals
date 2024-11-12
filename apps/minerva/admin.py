@@ -421,7 +421,7 @@ class TinyMCEFlatPageAdmin(FlatPageAdmin):
     list_filters = ["url", "title", "enable_comments"]
     suit_list_filter_horizontal = ["url", "title", "enable_comments"]
 
-    def formfield_for_dbfield(self, db_field, **kwargs):
+    def formfield_for_dbfield(self, db_field, **kwargs):  #  pylint: disable=arguments-differ
         """Create the form fields for the content text area."""
         if db_field.name == "content":
             ret = db_field.formfield(

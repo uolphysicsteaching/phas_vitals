@@ -37,7 +37,8 @@ class Migration(migrations.Migration):
                     "alias",
                     models.CharField(
                         db_index=True,
-                        help_text="Short name to address site tree from templates.<br /><b>Note:</b> change with care.",
+                        help_text="Short name to address site tree from templates.<br /><b>Note:</b> change with"
+                        + " care.",
                         max_length=80,
                         unique=True,
                         verbose_name="Alias",

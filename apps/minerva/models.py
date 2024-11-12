@@ -434,7 +434,9 @@ class Test(models.Model):
         """Return string representation a natural key."""
         return str(self)
 
-    def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
+    def save(
+        self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None
+    ):  #  pylint: disable=arguments-differ
         """Check whether we need to update test_score passing fields."""
         if self.pk and self.results.count() > 0:
             orig = Test.objects.get(pk=self.pk)
@@ -519,7 +521,7 @@ class Test(models.Model):
         data = {x["id"]: x for x in json_data}
 
         new_data = {}
-        for json_name, dictionary in data.items():
+        for _, dictionary in data.items():
             name = match_name(dictionary["name"])  # get the column name
             new_data[name] = new_data.get(name, []) + [dictionary]  # Can have more than one JSON file per test
         data_ids = set(new_data.keys())
