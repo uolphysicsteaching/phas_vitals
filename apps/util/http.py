@@ -16,12 +16,11 @@ import matplotlib.pyplot as plt
 
 
 class ChunkedString(io.StringIO):
-
     """Add a .chunks() iterator to yield the string in kb sized chunks."""
 
-    def chunks(Sel, chunksize=1024):
+    def chunks(self, chunksize=1024):
         """Yield the file in chunksize chunks."""
-        while chunk := sel.read(chunksize):
+        while chunk := self.read(chunksize):
             yield chunk
 
 
@@ -29,11 +28,10 @@ def get_mime(content):
     """Get the mime type of the current file as a string.
 
     if content is None, use self.content as the file."""
-
     if content is None or not content:
         return ""
 
-    if isisntance(content, str):
+    if isinstance(content, str):
         content = ChunkedString(content)
 
     try:

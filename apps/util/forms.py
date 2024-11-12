@@ -68,8 +68,7 @@ class MultipleFileField(forms.FileField):
 
 
 class ExtFileField(MultipleFileField):
-    """
-    Same as forms.FileField, but you can specify a file extension whitelist.
+    """Same as forms.FileField, but you can specify a file extension whitelist.
 
     >>> from django.core.files.uploadedfile import SimpleUploadedFile
     >>>
@@ -147,7 +146,6 @@ class FileSelectForm(forms.Form):
 
 
 class UploadGradecentreForm(forms.Form):
-
     """Provide a form for uploading a zip file and a spreadsheet excel file."""
 
     module = forms.ModelChoiceField(Module.objects.annotate(ntests=Count("tests")).exclude(ntests=0))

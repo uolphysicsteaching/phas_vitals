@@ -26,7 +26,6 @@ from sitetree.admin import (
 
 # And our custom tree item admin model.
 class CustomTreeItemAdmin(TreeItemAdmin):
-
     """Custom sitetree item admin to add ability to control display groups."""
 
     fieldsets = (
@@ -77,7 +76,6 @@ class CustomTreeItemAdmin(TreeItemAdmin):
 
 
 class CustomTreeAdmin(TreeAdmin):
-
     """Simple duplicate."""
 
 

@@ -43,6 +43,11 @@ class HomeView(RedirectView):
 class ErrorView(TemplateView):
     """Ensure we return an error code in our responses."""
 
+    def __init__(self, *args, **kargs):
+        """Log creation of ErrorView and continue."""
+        logger.error(f"Entered Error view as {self.__class__.__name__} with {args} and {kargs}")
+        super().__init__(*args, **kargs)
+
     @classmethod
     def get_error_code(cls):
         """Crazy little hack !."""
@@ -71,10 +76,6 @@ class ErrorView(TemplateView):
         response = super().render_to_response(context, **response_kwargs)
         response.status_code = self.get_error_code()
         return response
-
-    def __init__(self, *args, **kargs):
-        logger.error(f"Entered Error view as {self.__class__.__name__} with {args} and {kargs}")
-        super().__init__(*args, **kargs)
 
 
 class E400View(ErrorView):

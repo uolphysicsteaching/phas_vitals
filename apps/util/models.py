@@ -85,12 +85,10 @@ def contrast(colour: str) -> str:
 
 
 class GroupedTree(TreeBase):
-
     """Just a placeholder."""
 
 
 class GroupedTreeItem(TreeItemBase):
-
     """Add many to many field for reference to groups to control access."""
 
     TRISTATE = [(0, "--"), (1, "Grant"), (2, "Block")]

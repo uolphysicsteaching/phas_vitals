@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Import-Export Admin Resources for accounts"""
+"""Import-Export Admin Resources for accounts."""
 
 # Python imports
 import re
@@ -16,7 +16,7 @@ from .models import Account, Cohort, Programme, Section
 
 
 def _none(value):
-    """Simple pass through."""
+    """Do nothing but pass through."""
     return value
 
 
@@ -67,7 +67,7 @@ class ProgrammeWidget(widgets.ForeignKeyWidget):
 
 
 class ProgrammesWidget(widgets.ManyToManyWidget):
-    """Import Export Wdiget that understands lists of programmes"""
+    """Import Export Wdiget that understands lists of programmes."""
 
     def clean(self, value, row=None, **kwargs):
         """Do a lookup attempting to match code or name."""
