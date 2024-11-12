@@ -85,7 +85,6 @@ def get_blob_by_name(name, smart_dates=True):
             data = loads(container_client.download_blob(blob.name).read())
         except Exception as ex:
             logger.error(f"Failed to download nlob {blob.name}  -error {ex}")
-            assert False
             return None
         data = data["results"]
         return data

@@ -466,7 +466,7 @@ def engagement_session(self, cohort=None, semester=None) -> dict:
             ]
             score = int(attendance.score) + 1
             attrs = " ".join([f'{k}="{val}"' for k, val in score_imgs[score].items()])
-            base[session.pk] = format_html(f"<img {attrs} />")
+            base[session.pk] = format_html("<img {attrs} />", attrs=attrs)
     return base
 
 

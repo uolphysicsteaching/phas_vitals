@@ -8,7 +8,6 @@ from io import StringIO
 from django.contrib.admin import (
     SimpleListFilter,
     action,
-    display,
     register,
     site,
     sites,

@@ -89,52 +89,71 @@ class AccountWidget(widgets.ForeignKeyWidget):
     """Try to match a user account."""
 
     display_name_pattern = re.compile(r"(?P<last_name>[^\,]+)\,(?P<first_name>[^\(]+)$")
-    given_name__pattern = re.compile(r"(?P<last_name>[^\,]+)\,(?P<givenName>[^\(]+)\((?P<first_name>]^\)]+)\)")
+    given_name_pattern = re.compile(r"(?P<last_name>[^\,]+)\,(?P<givenName>[^\(]+)\((?P<first_name>[^)]+)\)")
 
-    def clean(self, value, row=None, *args, **kargs):
+    def clean(self, value, row=None, *args, **kwargs):
         """Attempt to match to a user account."""
-        if value is None:
+        if not value:
             return None
+
+        # Try matching by number or username
+        account = self._match_by_number_or_username(value)
+        if account:
+            return account
+
+        # Build initials and formal names lookup
+        initials, formal_names = self._build_initials_and_formal_names()
+
+        # Try matching by initials or formal names
+        account = self._match_by_initials_or_formal_names(value, initials, formal_names)
+        if account:
+            return account
+
+        # Try matching by display name or given name
+        account = self._match_by_name_pattern(value)
+        if account:
+            return account
+
+        # Try matching by first and last name
+        return self._match_by_first_last_name(value)
+
+    def _match_by_number_or_username(self, value):
+        """See if value can be interpreted as a SID or usnername."""
         try:
             value = int(value)
             qs = Account.objects.filter(number=value)
         except (TypeError, ValueError):
             qs = Account.objects.filter(username=value)
-        if qs.count() > 0:
-            return qs.first()
+        return qs.first() if qs.exists() else None
 
+    def _build_initials_and_formal_names(self):
+        """Builtables of staff initials and formal names."""
         initials = {}
         formal_names = {}
         for staff in Account.objects.filter(is_staff=True):
             initials[staff.initials] = staff
             formal_names[staff.formal_name] = staff
+        return initials, formal_names
 
-        try:
-            return initials[value]
-        except KeyError:
-            pass
-        try:
-            return formal_names[value]
-        except KeyError:
-            pass
+    def _match_by_initials_or_formal_names(self, value, initials, formal_names):
+        """Lookup tables of initials or formal names for a match."""
+        return initials.get(value) or formal_names.get(value)
 
-        if "," in value:
-            if "(" in value:
-                pattern = self.given_name__pattern
-            else:
-                pattern = self.display_name_pattern
-            if match := pattern.match(value):
-                qs = Account.objects.filter(**match.groupdict())
-                if qs.count() > 0:
-                    return qs.first()
+    def _match_by_name_pattern(self, value):
+        """Match user by given name regexp."""
+        pattern = self.given_name_pattern if "(" in value else self.display_name_pattern
+        match = pattern.match(value)
+        if match:
+            qs = Account.objects.filter(**match.groupdict())
+            return qs.first() if qs.exists() else None
+        return None
 
-        elif " " in value:
-            values = [x for x in value.split(" ") if x != ""]
-            if values:
-                first_name, last_name = values[0], values[-1]
-                qs = Account.objects.filter(last_name=last_name, first_name=first_name)
-                if qs.count() > 0:
-                    return qs.first()
+    def _match_by_first_last_name(self, value):
+        """Match by first and las names."""
+        if " " in value:
+            first_name, last_name = value.split(" ")[0], value.split(" ")[-1]
+            qs = Account.objects.filter(first_name=first_name, last_name=last_name)
+            return qs.first() if qs.exists() else None
         return None
 
 
@@ -142,55 +161,78 @@ class AccountsWidget(widgets.ManyToManyWidget):
     """An import-export widget that understands lists of user names."""
 
     def clean(self, value, row=None, **kwargs):
-        """Do a lookup attempting to match code or name."""
-        if not value:  # Early exit
+        """Perform lookups to match lists of user names or IDs."""
+        if not value:
             return Account.objects.none()
-        if isinstance(value, (float, int)):  # Single int/float id
-            ids = [int(value)]
-        else:  # Assume a string that we can split on separator
-            ids = value.split(self.separator)
-            ids = filter(None, [i.strip() for i in ids])
 
-        try:  # try as a list of student numbers
-            qs = Account.objects.filter(number__in=[int(i) for i in ids])
-        except (TypeError, ValueError):  # not a list of numbers, try as a list of usernames
-            qs = Account.objects.filter(username__in=ids)
-        if qs.count() > 0:
-            return qs.all()
-        # At this point we are going to have to mangle for a name
-        # First build tables of initials and formal names
+        ids = self._parse_ids(value)
+        accounts = self._get_accounts_by_number(ids) or self._get_accounts_by_username(ids)
+
+        if accounts.exists():
+            return accounts
+        return self._get_accounts_by_name(ids)
+
+    def _parse_ids(self, value):
+        """Parse and clean the input value into a list of IDs."""
+        if isinstance(value, (float, int)):
+            return [int(value)]
+        return filter(None, [i.strip() for i in value.split(self.separator)])
+
+    def _get_accounts_by_number(self, ids):
+        """Attempt to retrieve accounts by student number."""
+        try:
+            return Account.objects.filter(number__in=[int(i) for i in ids])
+        except (TypeError, ValueError):
+            return None
+
+    def _get_accounts_by_username(self, ids):
+        """Attempt to retrieve accounts by username."""
+        return Account.objects.filter(username__in=ids)
+
+    def _get_accounts_by_name(self, ids):
+        """Retrieve accounts by parsing names."""
+        pks = self._match_names_to_pks(ids)
+        return Account.objects.filter(pk__in=pks)
+
+    def _match_names_to_pks(self, ids):
+        """Match names to primary keys."""
         pks = []
+        initials, formal_names = self._build_name_lookup()
+
+        for value in ids:
+            if "," in value:  # last_name, first_name
+                pks.extend(self._match_last_first_name(value))
+            elif value in initials:  # Staff member initials
+                pks.append(initials[value])
+            elif value in formal_names:  # Staff member formal names
+                pks.append(formal_names[value])
+            else:  # first_name initials last_name
+                pks.extend(self._match_first_last_name(value))
+        return pks
+
+    def _build_name_lookup(self):
+        """Build lookup dictionaries for initials and formal names."""
         initials = {}
         formal_names = {}
         for staff in Account.objects.filter(is_staff=True):
             initials[staff.initials] = staff.pk
             formal_names[staff.formal_name] = staff.pk
+        return initials, formal_names
 
-        for value in ids:  # recast from display name
-            if "," in value:  # last_name, first_name
-                last_name, first_name = value.split(",")
-                qs = Account.objects.filter(last_name=last_name, first_name=first_name)
-                if qs.count() > 0:
-                    pks.append(qs.first().pk)
+    def _match_last_first_name(self, value):
+        """Match accounts by last name, first name."""
+        last_name, first_name = value.split(",")
+        return Account.objects.filter(last_name=last_name.strip(), first_name=first_name.strip()).values_list(
+            "pk", flat=True
+        )
 
-            elif value in initials:  # Staff member initials
-                pks.append(initials[value])
-
-            elif value in formal_names:  # Staff member formal names
-                pks.append(formal_names[value])
-
-            elif " " in value:  # first_name initials last_name
-                values = [x for x in value.split(" ") if x != ""]
-                if values:
-                    first_name, last_name = values[0], values[-1]
-                    qs = Account.objects.filter(last_name=last_name, first_name=first_name)
-                    if qs.count() > 0:
-                        pks.append(qs.first().pk)
-        # pks is a list of matching primary keys, need to lookup again to get correct queryset
-        qs = Account.objects.filter(pk__in=pks)
-        if qs.count() > 0:
-            return qs.all()
-        return None
+    def _match_first_last_name(self, value):
+        """Match accounts by first name, last name."""
+        values = [x for x in value.split(" ") if x]
+        if values:
+            first_name, last_name = values[0], values[-1]
+            return Account.objects.filter(last_name=last_name, first_name=first_name).values_list("pk", flat=True)
+        return []
 
 
 class UserResource(resources.ModelResource):

@@ -10,7 +10,6 @@ from django.db import transaction
 # external imports
 import numpy as np
 from celery import shared_task
-from celery_batches import Batches
 from constance import config
 from django_auth_adfs.config import provider_config
 

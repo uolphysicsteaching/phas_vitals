@@ -20,7 +20,6 @@ from accounts.models import Account
 from celery import shared_task
 from constance import config
 from minerva.models import Module, Test_Score
-from pytz import UTC
 
 # app imports
 from phas_vitals import celery_app
@@ -85,7 +84,6 @@ def take_time_series(module_code="PHAS1000"):
     data = module.students.all()
     date = datetime.combine(tz.now().date(), time(0, 0, 0))
     for attr in attrs:
-        filename = "data_{attr}.xlsx"
         if (filepath := (datapath / f"time_series_{attr}.xlsx")).exists():
             df = pd.read_excel(filepath).set_index("Date")
         else:

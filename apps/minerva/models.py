@@ -205,7 +205,7 @@ class Module(models.Model):
             homework_pattern = re.compile(config.HOMEWORK_PATTERN)
             code_pattern = re.compile(config.CODE_PATTERN)
             new_data = {}
-            for json_name, dictionary in data.items():
+            for _, dictionary in data.items():
                 name = dictionary["name"]  # get the column name
                 for pattern in (homework_pattern, code_pattern, lab_pattern):
                     if match := pattern.match(name):

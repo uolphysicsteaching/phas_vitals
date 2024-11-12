@@ -3,7 +3,7 @@
 # external imports
 import numpy as np
 from accounts.models import Account
-from accounts.resource import AccountsWidget, AccountWidget, ProgrammesWidget
+from accounts.resource import AccountsWidget, AccountWidget
 from import_export import fields, resources, widgets
 
 # app imports

@@ -169,7 +169,6 @@ class ModuleAdmin(ImportExportModelAdmin):
         module = queryset.first()
         tests = module.tests.all().order_by("release_date")
         vitals = module.VITALS.model.objects.filter(module__in=Module.objects.filter(VITALS__tests__module=module))
-        cols = [t.name for t in tests.all()]
         data = []
         for v in vitals.all():
             row = {"VITAL": f"{v.VITAL_ID}\n{v.name}"}
@@ -416,11 +415,14 @@ admin.site.unregister(FlatPage)
 
 @admin.register(FlatPage)
 class TinyMCEFlatPageAdmin(FlatPageAdmin):
+    """Admin for Flatpages that uses TinyMCE for the content."""
+
     list_display = ["url", "title", "enable_comments"]
     list_filters = ["url", "title", "enable_comments"]
     suit_list_filter_horizontal = ["url", "title", "enable_comments"]
 
     def formfield_for_dbfield(self, db_field, **kwargs):
+        """Create the form fields for the content text area."""
         if db_field.name == "content":
             ret = db_field.formfield(
                 widget=TinyMCE(
