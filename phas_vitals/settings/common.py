@@ -1,3 +1,4 @@
+"""Main settings file for application."""
 # Python imports
 import re
 import socket
@@ -91,7 +92,7 @@ DEFAULT_APPS = (
         "django.contrib.sites",
         "django.contrib.messages",
         "django.contrib.staticfiles",
-        ### General 3rd party apps
+        # ## General 3rd party apps
         "adminsortable2",
         "ajax_select",
         "colorful",  # django-colorful package
@@ -178,7 +179,7 @@ SECRET_FILE = (PROJECT_ROOT_PATH / "run" / "SECRET.key").absolute()
 ADMINS = (("Gavin  Burnell", "G.Burnell@leeds.ac.uk"),)
 MANAGERS = ADMINS
 
-####### User model and Authentication #####################
+# ###### User model and Authentication #####################
 
 ##########################################################################
 AUTH_USER_MODEL = "accounts.Account"
@@ -341,7 +342,7 @@ LOGGING = {
     },
 }
 
-####### EMAIL SETTINGS ####################################
+# ###### EMAIL SETTINGS ####################################
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.leeds.ac.uk"
@@ -349,7 +350,7 @@ EMAIL_PORT = 25
 EMAIL_USE_TLS = False
 DEFAULT_FROM_EMAIL = f"no-reply@{SITE_NAME}.leeds.ac.uk"
 
-###### Constance Settings ##################################
+# ##### Constance Settings ##################################
 
 CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
 
@@ -370,15 +371,15 @@ CONSTANCE_ADDITIONAL_FIELDS = {
     ]
 }
 
-###### BATON Configuration ###############################
+# ##### BATON Configuration ###############################
 
 BATON = {
     "SITE_HEADER": "Physics VITALS tracking",
     "SITE_TITLE": "Physics VITALS",
     "INDEX_TITLE": "Site administration",
-    #'SUPPORT_HREF': 'https://github.com/otto-torino/django-baton/issues',
+    # 'SUPPORT_HREF': 'https://github.com/otto-torino/django-baton/issues',
     "COPYRIGHT": "copyright © 2023-24 University of Leeds",
-    #'POWERED_BY': '<a href="https://www.otto.to.it">Otto srl</a>',
+    # 'POWERED_BY': '<a href="https://www.otto.to.it">Otto srl</a>',
     "CONFIRM_UNSAVED_CHANGES": True,
     "SHOW_MULTIPART_UPLOADING": True,
     "ENABLE_IMAGES_PREVIEW": True,
@@ -392,7 +393,7 @@ BATON = {
     "GRAVATAR_DEFAULT_IMG": "retro",
     "GRAVATAR_ENABLED": True,
     "FORCE_THEME": "dark",
-    #'LOGIN_SPLASH': '/static/core/img/login-splash.png',
+    # 'LOGIN_SPLASH': '/static/core/img/login-splash.png',
     # 'SEARCH_FIELD': {
     #     'label': 'Search contents...',
     #     'url': '/search/',
@@ -476,7 +477,7 @@ BATON = {
     # }
 }
 
-###### Django-extensions #################################
+# ##### Django-extensions #################################
 
 GRAPH_MODELS = {
     "all_applications": True,
@@ -504,7 +505,7 @@ TINYMCE_DEFAULT_CONFIG = {
 
 DJANGO_TABLES2_TEMPLATE = "django_tables2/bootstrap5-responsive.html"
 
-###### Django REST Framework Settings #####################
+# ##### Django REST Framework Settings #####################
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
@@ -522,7 +523,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {"anon": "100/hour", "user": "1000/hour"},
 }
 
-##### Celery Config settings ##############################
+# #### Celery Config settings ##############################
 
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
@@ -530,13 +531,13 @@ CELERY_RESULT_BACKEND = "django-db"
 CELERY_RESULT_EXTENDED = True
 
 
-#### SITETREE Customisation ##############################
+# ### SITETREE Customisation ##############################
 
 SITETREE_CLS = "util.tree.CustomSiteTree"
 SITETREE_MODEL_TREE = "util.GroupedTree"
 SITETREE_MODEL_TREE_ITEM = "util.GroupedTreeItem"
 
-###### Import config from apps ############################
+# ##### Import config from apps ############################
 
 _setting_pattern = re.compile("[A-Z][A-Z0-9_]+")
 _app_pattern = re.compile("[a-z][a-z0-9_]+")

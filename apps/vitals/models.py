@@ -10,12 +10,10 @@ from django.db import models
 from django.utils import timezone as tz
 
 # external imports
-import numpy as np
 from accounts.models import Account
-from constance import config
 
 # Create your models here.
-from util.models import colour, patch_model
+from util.models import patch_model
 
 
 class VITAL_Test_Map(models.Model):
@@ -223,6 +221,11 @@ class VITAL(models.Model):
             "Not Attempted": potential - passed - failed,
         }
         return {k if v > 0 else "": v for k, v in ret.items()}
+
+    @property
+    def stats_legend(self):
+        """Return a dictionary of items to use for the legend of a stats plot."""
+        return {"Passed": "green", "Failed": "red", "Not Attempted": "black", "": "white"}
 
     def passed(self, user, passed=True, date_passed=None):
         """Record the user as having passed this vital."""

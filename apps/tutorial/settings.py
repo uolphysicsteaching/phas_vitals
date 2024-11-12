@@ -7,11 +7,12 @@ CONSTANCE_CONFIG = {
 }
 
 TUTORIAL_MARKS = [
-    (-1.0, "Allowed\nAbsence"),
-    (0.0, "Unexplained\nAbsence"),
-    (1.0, "Present\nlimited engagement"),
-    (2.0, "Present\ngood engagement"),
-    (3.0, "Present\noutstanding\nengagement"),
+    (-1.0, "Allowed\nAbsence", "green"),
+    (0.0, "Unexplained\nAbsence", "red"),
+    (1.0, "Present\nlimited engagement", "goldenrod"),
+    (2.0, "Present\ngood engagement", "silver"),
+    (3.0, "Present\noutstanding\nengagement", "gold"),
 ]
+
 
 SEMESTERS = [(0, "Out of Semester"), (1, "Semester 1"), (2, "Semester 2"), (3, "Semesters 1+2")]

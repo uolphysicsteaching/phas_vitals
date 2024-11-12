@@ -117,6 +117,21 @@ class ModuleSelectPlusForm(forms.Form):
     )
 
 
+class ModuleSelectPlotForm(forms.Form):
+    """Form that selects a module and view type and then updates."""
+
+    module = forms.ModelChoiceField(
+        required=False,
+        queryset=Module.objects.annotate(tests_count=Count("tests")).filter(tests_count__gt=0),
+        widget=Select(attrs={"onChange": "this.form.submit();"}),
+    )
+
+    type = forms.ChoiceField(
+        choices=Test.TEST_TYPES + [("vitals", "VITALs"), ("engagement", "Tutorial Attendance")],
+        widget=Select(attrs={"onChange": "this.form.submit();"}),
+    )
+
+
 class Test_ScoreForm(forms.ModelForm):
     """Form with lookup for Test and student fields."""
 

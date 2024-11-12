@@ -61,6 +61,8 @@ def pie_chart(data, colours):
 
 
 class ChangePasswordView(PasswordChangeView):
+    """Implement a minimal change password for admin user accounts."""
+
     form_class = PasswordChangeForm
     success_url = reverse_lazy("home")
     template_name = "change_password.html"
@@ -170,7 +172,7 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
         data = {}
         colours = []
         scores = student.engagement_scores()
-        for (score, label), col in zip(
+        for (score, label, _), col in zip(
             settings.TUTORIAL_MARKS, ["silver", "tomato", "springgreen", "mediumseagreen", "forestgreen"]
         ):
             if count := scores[np.isclose(scores, score)].size:
@@ -220,6 +222,7 @@ class StudentAutocomplete(autocomplete.Select2QuerySetView):
     """Autocomplete lookup for VITALs."""
 
     def get_queryset(self):
+        """Filter the returned objects based on the query parameter."""
         # Don't forget to filter out results depending on the visitor !
         if not self.request.user.is_authenticated:
             return Account.objects.none()
@@ -237,6 +240,7 @@ class StaffAutocomplete(autocomplete.Select2QuerySetView):
     """Autocomplete lookup for VITALs."""
 
     def get_queryset(self):
+        """Filter the returned objects based on the query parameter."""
         # Don't forget to filter out results depending on the visitor !
         if not self.request.user.is_authenticated:
             return Account.objects.none()
@@ -360,7 +364,6 @@ class CohortScoresOverview(IsStaffViewMixin, TemplateView):
             entries = data[k].loc[~np.isnan(data[k])]  # Remove bad marks
             if len(entries) < 4:  # Insufficient entries to compute a cdf
                 continue
-            span = (entries.min(), entries.max())
             y = np.array([100 * len(entries[entries >= ix]) / len(entries) for ix in x])
             plt.step(x, y, linewidth=2, label=f"{label}")
         ax.legend(fontsize="small", loc="upper right")
@@ -428,18 +431,6 @@ class DeactivateStudentView(IsSuperuserViewMixin, MultiFormMixin, TemplateRespon
         self.user = form.cleaned_data["user"]
         return self.render_to_response(self.get_context_data(forms=self._forms))
 
-    def search_form_invalid(self, form):
-        data = form.data
-        errs = form.errors
-        inst = self.__dict__
-        assert False
-
-    def update_form_invalid(self, form):
-        data = form.data
-        errs = form.errors
-        inst = self.__dict__
-        assert False
-
     def update_form_valid(self, form):
         """Save the updated user instance."""
         try:
@@ -447,8 +438,6 @@ class DeactivateStudentView(IsSuperuserViewMixin, MultiFormMixin, TemplateRespon
         except ObjectDoesNotExist:
             form.errors.add(f"{form.cleaned_data['username']} not a valid username.")
             return self.form_invalid(form)
-        xx = self.user
-        yy = form.cleaned_data
         self.user.is_active = form.cleaned_data["is_active"]
         self.user.save()
         return self.render_to_response(self.get_context_data(forms=self._forms))

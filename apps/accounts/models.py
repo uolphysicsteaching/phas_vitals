@@ -6,12 +6,13 @@ from __future__ import unicode_literals
 import string
 
 # Django imports
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser, Group, UserManager
 from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
-from django.utils.functional import cached_property, classproperty
+from django.utils.functional import classproperty
 
 # external imports
 import numpy as np
@@ -44,7 +45,7 @@ LEVEL_OF_STUDY = [
 ]
 
 
-#### Model Classes #####################################################################################
+# ### Model Classes #####################################################################################
 
 
 class Cohort(models.Model):
@@ -222,6 +223,7 @@ class Account(AbstractUser):
 
     @property
     def nice_email(self):
+        """Return an email address with a name."""
         return f"{self.formal_name}<{self.email}>"
 
     @property
@@ -235,13 +237,7 @@ class Account(AbstractUser):
     @property
     def activity_label(self) -> str:
         """Monkey patched property for attendance ranking to a string."""
-        translation = {
-            "Excellent ": (90.0, 100.0),
-            "Good": (60.0, 90.0),
-            "Could be better": (40.0, 60.0),
-            "Must Improve": (20.0, 40.0),
-            "Unsatisfactory": (0, 20.0),
-        }
+        translation = settings.ACTIVITY_LABELS
 
         score = self.activity_score
         if not isinstance(score, (float, int)):
@@ -307,6 +303,7 @@ class Section(models.Model):
         ordering = ["name"]
 
     def __str__(self):
+        """Ensure string reporesentation is the name."""
         return self.name
 
 

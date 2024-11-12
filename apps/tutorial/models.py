@@ -197,6 +197,10 @@ class Session(models.Model):
     cohort: "models.ForeignKey[Session,Cohort]" = models.ForeignKey(
         Cohort, on_delete=models.CASCADE, related_name="sessions"
     )
+    module: "models.ForeignKey[minerva.Module]" = models.ForeignKey(
+        "minerva.Module", on_delete=models.SET_NULL, related_name="tutorial_sessions", null=True, blank=True
+    )
+
     week: "models.IntegerField" = models.IntegerField(default=0)
     start: "models.DateField" = models.DateField()
     end: "models.DateField" = models.DateField()
@@ -236,6 +240,25 @@ class Session(models.Model):
             sessions = cls.objects.all()
         return sessions.filter(start__lte=tz.now(), end__gte=tz.now())
 
+    @property
+    def stats(self):
+        """Get some attendance set for this session."""
+        attenances = self.attended_by.filter(student__is_active=True)
+        potential = self.module.student_enrollments.filter(student__is_active=True).distinct().count()
+        ret = {}
+        for score, string, _ in settings.TUTORIAL_MARKS[1:]:
+            ret[string] = attenances.filter(score=score).count()
+        ret[settings.TUTORIAL_MARKS[0][1]] = attenances.filter(score__lt=0).count()
+        ret["No Record"] = potential - sum([v for v in ret.values()])
+        return ret
+
+    @property
+    def stats_legend(self):
+        """Return a dictionary of items to use for the legend of a stats plot."""
+        ret = {k: v for _, k, v in settings.TUTORIAL_MARKS}
+        ret["No Record"] = "black"
+        return ret
+
 
 class SessionType(models.Model):
     """describes the type of attendance that a student might have at a session - e.g. tutorial or lab."""
@@ -271,7 +294,9 @@ class Attendance(models.Model):
         SessionType, on_delete=models.CASCADE, related_name="attended_by", null=True
     )
 
-    score: "models.FloatField" = models.FloatField(choices=settings.TUTORIAL_MARKS, null=True, blank=True)
+    score: "models.FloatField" = models.FloatField(
+        choices=[(x, y) for x, y, _ in settings.TUTORIAL_MARKS], null=True, blank=True
+    )
 
     class Meta:
         unique_together: Tuple = ("student", "session", "type")
@@ -288,7 +313,7 @@ class Attendance(models.Model):
             return " - "
         if self.score < 0:  # needs special handling
             return settings.TUTORIAL_MARKS[0][1]
-        for score, string in settings.TUTORIAL_MARKS[1:]:
+        for score, string, _ in settings.TUTORIAL_MARKS[1:]:
             if np.isclose(self.score, score):  # fp equality checks!
                 return string
         return "Unknown !"

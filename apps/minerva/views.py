@@ -20,7 +20,7 @@ from django.views.generic import DetailView, FormView
 # external imports
 import numpy as np
 import pandas as pd
-from accounts.models import Account, Cohort
+from accounts.models import Account
 from accounts.views import StudentSummaryView
 from dal import autocomplete
 from django_tables2 import SingleTableMixin
@@ -29,7 +29,7 @@ from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.style import context as plot_context
 from pytz import timezone
-from util.http import buffer_to_base64, svg_data
+from util.http import svg_data
 from util.tables import BaseTable
 from util.views import (
     IsStaffViewMixin,
@@ -41,6 +41,7 @@ from util.views import (
 # app imports
 from .forms import (
     ModuleSelectForm,
+    ModuleSelectPlotForm,
     ModuleSelectPlusForm,
     TestHistoryImportForm,
     TestImportForm,
@@ -322,7 +323,7 @@ class TestResultColumn(Column):
         if passed:
             return f'<div class="badge rounded-pil" style="background-color: {bg_color};">{score:.1f}</div>'
         if score is None or np.isnan(score):
-            return f'<div class="badge rounded-pil" style="background-color: dimgrey;">&nbsp;!&nbsp;</div>'
+            return '<div class="badge rounded-pil" style="background-color: dimgrey;">&nbsp;!&nbsp;</div>'
         return f'<div class="badge rounded-pil"  style="background-color: {bg_color};">{score:.1f}</div>'
 
     def format_attempts(self, test_score):
@@ -552,7 +553,7 @@ class TestAutocomplete(autocomplete.Select2QuerySetView):
 class TestResultsBarChartView(IsStaffViewMixin, FormView):
     """Most of the machinery to show a table of student test results."""
 
-    form_class = ModuleSelectPlusForm
+    form_class = ModuleSelectPlotForm
     template_name = "minerva/test_barchart.html"
 
     def __init__(self, *args, **kargs):
@@ -566,10 +567,20 @@ class TestResultsBarChartView(IsStaffViewMixin, FormView):
     def form_valid(self, form):
         """Update self.module with the module selected in the form."""
         self.module = form.cleaned_data["module"]
-        self.mode = form.cleaned_data.get("mode", "score")
         self.type = form.cleaned_data.get("type", "homework")
         if self.module is not None:
-            self.tests = self.module.tests.filter(type=self.type).order_by("release_date", "name")
+            if self.type in ["homework", "lab_exp", "code_task"]:
+                self.tests = self.module.tests.filter(type=self.type).order_by("release_date", "name")
+            elif self.type == "vitals":
+                m = self.module
+                ids = [x.student.pk for x in m.student_enrollments.all()]
+                self.tests = (
+                    m.VITALS.model.objects.filter(module__student_enrollments__student__pk__in=ids)
+                    .distinct()
+                    .order_by("start_date")
+                )
+            elif self.type == "engagement":
+                self.tests = self.module.tutorial_sessions.distinct().order_by("semester", "week")
         return self.render_to_response(self.get_context_data())
 
     def get_context_data(self, **kwargs):
@@ -591,11 +602,12 @@ class TestResultsBarChartView(IsStaffViewMixin, FormView):
         ax = df.plot(
             kind="bar",
             stacked=True,
-            color={"Passed": "g", "Failed": "r", "Waiting": "dimgrey", "Not Attempted": "black", "": "white"},
+            color=test.stats_legend,
+            figsize=(max(6, self.tests.count() / 5), 6),
         )
-        ax.set_xlabel = ""
+        ax.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left", mode="expand", borderaxespad=0, ncol=3)
+        ax.set_xlabel(None)
         ax.set_ylabel("# Students")
-        ax.legend(ncol=5)
         fig = ax.figure
         plt.close("all")
         return ImageData(svg_data(fig, base64=True), alt=f"Summary pass/fail for all {self.type}")

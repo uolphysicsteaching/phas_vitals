@@ -427,7 +427,7 @@ class Test(models.Model):
 
     @property
     def attempts_json(self):
-        """MAtch the filename for the test attempts."""
+        """Match the filename for the test attempts."""
         return [x.json_file for x in self.columns.all()]
 
     def natural_key(self):
@@ -485,6 +485,11 @@ class Test(models.Model):
         return {k if v > 0 else "": v for k, v in ret.items()}
 
     @property
+    def stats_legend(self):
+        """Return a dictionary of items to use for the legend of a stats plot."""
+        return {"Passed": "green", "Failed": "red", "Waiting": "dimgrey", "Not Attempted": "black", "": "white"}
+
+    @property
     def scores(self):
         """Return a numpy array of all of the test scores for the test."""
         scores = self.results.all().exclude(score=None).values_list("score")
@@ -513,9 +518,6 @@ class Test(models.Model):
             raise IOError(f"No JSON file for {module}")
         data = {x["id"]: x for x in json_data}
 
-        lab_pattern = re.compile(config.LAB_PATTERN)
-        homework_pattern = re.compile(config.HOMEWORK_PATTERN)
-        code_pattern = re.compile(config.CODE_PATTERN)
         new_data = {}
         for json_name, dictionary in data.items():
             name = match_name(dictionary["name"])  # get the column name
@@ -650,7 +652,7 @@ class Test_Score(models.Model):
     """The model that links a particular student to a particular test."""
 
     objects = TestScoreManager()
-    ### Fields ###########################################################
+    # ## Fields ###########################################################
     user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="test_results")
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="results")
     status = models.CharField(choices=SCORE_STATUS.items(), max_length=50, blank=True, null=True)
