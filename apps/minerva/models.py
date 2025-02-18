@@ -312,7 +312,10 @@ class ModuleEnrollment(models.Model):
     def passed_vitals(self):
         """Determine if the the user has passed all the vitals on this module."""
         vitals = self.module.VITALS.all()
-        passed = self.student.vital_results.filter(vital__in=vitals, passed=True)
+        attempted = self.student.vital_results.filter(vital__in=vitals)
+        passed = attempted.filter(passed=True)
+        if attempted.count() < vitals.count():
+            return None
         return vitals.count() == passed.count()
 
 
@@ -475,7 +478,7 @@ class Test(models.Model):
     def stats(self):
         """Return a dictionary of numbers who have attempted or not and passed or not."""
         potential = self.module.student_enrollments.filter(student__is_active=True).distinct().count()
-        passed = self.results.filter(user__is_active=True, passed=True).count()
+        passed = self.results.filter(user__is_active=True, passed=True).exclude(score=None).count()
         waiting = self.results.filter(user__is_active=True, score=None).count()
         failed = self.results.filter(user__is_active=True, passed=False).exclude(score=None).count()
         ret = {
@@ -571,19 +574,40 @@ class GradebookColumn(models.Model):
         """Return the name of the JSON column file."""
         return self.test.module.key + f"_Grade_Columns_Attempt_{self.gradebook_id}.json"
 
+    @property
+    def json_properties(self):
+        """Get the Blob storage properties."""
+        return json.get_blob_client(self.json_file).get_blob_properties()
+
+    @property
+    def json_updated(self):
+        """Get the last modified timestamp for the course_json file."""
+        return self.json_properties["last_modified"]
+
+    @property
+    def current_json_entries(self):
+        """Get the current entries in the JSON file and match to users."""
+        json_data = json.get_blob_by_name(self.json_file)
+        if json_data is None:
+            raise IOError(f"No json blob {self.attemps_json}")
+        json_data = {x["userId"]: x for x in json_data}
+        qs = (
+            self.test.module.student_enrollments.filter(user_id__in=set(json_data.keys()))
+            .prefetch_related("student")
+            .order_by("student__last_name", "student__first_name")
+        )
+        for enrollment in qs.all():
+            data = json_data.get(enrollment.user_id, None)
+            data["student"] = enrollment.student
+            yield data
+
     def natural_key(self):
         """Return string representation a natural key."""
         return str(self)
 
     def update_attempts(self):
         """Update the TestAttempts from this Gradebook column."""
-        json_data = json.get_blob_by_name(self.json_file)
-        if json_data is None:
-            raise IOError(f"No json blob {self.attemps_json}")
-        json_data = {x["userId"]: x for x in json_data}
-        qs = self.test.module.student_enrollments.filter(user_id__in=set(json_data.keys())).prefetch_related("student")
-        for enrollment in qs.all():
-            data = json_data.get(enrollment.user_id, None)
+        for data in self.current_json_entries:
             if self.test.ignore_zero and data.get("score", None) == 0:  # By pass zero scores if we're ignoring them
                 continue
             if data is None:  # No data for this enrollment for some reason
@@ -592,7 +616,7 @@ class GradebookColumn(models.Model):
                 data.get("score", None) is not None and data["score"] > self.test.score_possible
             ):  # Looks like core>max score
                 continue  # so bypass this attempt
-            result, _ = Test_Score.objects.get_or_create(user=enrollment.student, test=self.test)
+            result, _ = Test_Score.objects.get_or_create(user=data["student"], test=self.test)
             attempt, _ = Test_Attempt.objects.get_or_create(
                 test_entry=result, attempt_id=f'{self.test.test_id}+{data["id"]}'
             )
@@ -732,8 +756,14 @@ class Test_Score(models.Model):
         """Check whether the user has passed the test."""
         if self.attempts.exclude(status="NeedsGrading").count() == 0:  # Nothing to mark yet
             self.status = "NeedsGrading"
+            if np.isnan(self.test.passing_score):
+                return None, True, not self.passed
             return None, False, False
-        best_score = np.round(self.attempts.aggregate(models.Max("score", default=0)).get("score__max", 0.0), 2)
+        scores = np.round(self.attempts.exclude(score=None).values_list("score"), 2)
+        if scores.size > 0:
+            best_score = np.nanmax(scores)
+        else:
+            best_score = False
         numerically_passed = bool(best_score and (best_score >= self.test.passing_score))
         if orig:
             pass_changed = numerically_passed ^ orig.passed

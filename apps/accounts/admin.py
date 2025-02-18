@@ -230,7 +230,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
         "section",
     ]
     list_editable = ["number", "programme", "is_staff", "is_superuser"]
-    list_filter = ("groups", CohortListFilter, "programme", "is_staff", "is_superuser", "section")
+    list_filter = ("groups", CohortListFilter, "programme", "is_staff", "is_superuser", "is_active", "section")
     search_fields = (
         "username",
         "first_name",
@@ -265,7 +265,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
                 csvfile.truncate()
                 return data
 
-            csvwriter.writerow(["First Name", "Last Name", "SID", "Email", "Role", "Section"])
+            csvwriter.writerow(["First Name", "Last Name", "SID", "Email", "Role", "Section", "Section 2"])
             yield read_and_flush()
 
             queryset = queryset.annotate(group=F("groups__name"), sect=F("section__name"))
@@ -273,7 +273,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
                 csvwriter.writerow(
                     [
                         getattr(row, attr, "")
-                        for attr in ["first_name", "last_name", "number", "email", "group", "sect"]
+                        for attr in ["first_name", "last_name", "number", "email", "group", "sect", "tutorial_code"]
                     ]
                 )
                 yield read_and_flush()

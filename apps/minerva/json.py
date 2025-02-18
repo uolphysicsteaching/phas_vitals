@@ -74,7 +74,7 @@ def get_blob_list(container_client=None):
     return ret
 
 
-def get_blob_by_name(name, smart_dates=True):
+def get_blob_by_name(name, smart_dates=True, raw=False):
     """Read a blob name and convert it to a json data structure."""
     container_client = get_container_client()
     blobs = get_blob_list(container_client)
@@ -82,7 +82,10 @@ def get_blob_by_name(name, smart_dates=True):
     if name in blobs:
         blob = blobs[name]
         try:
-            data = loads(container_client.download_blob(blob.name).read())
+            raw_data = container_client.download_blob(blob.name).read()
+            if raw:
+                return raw_data
+            data = loads(raw_data)
         except Exception as ex:
             logger.error(f"Failed to download nlob {blob.name}  -error {ex}")
             return None

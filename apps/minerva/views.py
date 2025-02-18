@@ -181,10 +181,9 @@ class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
 class StreamingImportTestsHistoryView(ImportTestHistoryView):
     """Streaming version of the ImportTestHistoryView."""
 
-    data = []
-
     def post(self, request, *args, **kwargs):
         """Handle form posting with cutsom work around exceptions."""
+        self.data = []
         form_class = self.get_form_class()
         form = self.get_form(form_class)
         files = request.FILES.getlist("upload_file")
@@ -192,6 +191,7 @@ class StreamingImportTestsHistoryView(ImportTestHistoryView):
             if len(files) < 1:
                 raise ValidationError("Expecting one or more files.")
             try:
+                self.data = []
                 for f in files:
                     try:
                         df = pd.read_excel(f.temporary_file_path())
@@ -227,48 +227,75 @@ class StreamingImportTestsHistoryView(ImportTestHistoryView):
         module = self.form.cleaned_data["module"]
         alt = False
         for df in self.data:
-            df.Date = pd.to_datetime(df.Date)
-            df["AttemptDate"] = pd.to_datetime(df["Attempt Activity"])
-            df["AttemptDate"] = df.AttemptDate.apply(TZ.localize)
-            if df["Date"][0].tzinfo is None:
-                df["Date"] = df.Date.apply(TZ.localize)
             for _, row in df.iterrows():
                 try:
-                    student = Account.objects.get(username=row.Username)
-                except ObjectDoesNotExist:
-                    print("Yield")
-                    yield f"<tr class='tb-warning'><td>Unknown User {row.Username}</td></tr>"
-                    continue
-                try:
-                    test = Test.objects.get(name=row.Column, module=module)
-                except ObjectDoesNotExist:
-                    print("Yield")
-                    yield "<tr class='tb-warning'><td>Unknown test {row.Column}</td></tr>"
-                    continue
-                test_score, new = Test_Score.objects.get_or_create(user=student, test=test)
-                new_id = f"{row.Column}:{row.Username}:{row.AttemptDate}"
-                test_attempt, new = Test_Attempt.objects.get_or_create(attempt_id=new_id, test_entry=test_score)
-                if (
-                    not new
-                    and test_attempt.score is not None
-                    and not np.isnan(test_attempt.score)
-                    and np.isnan(row.Value)
-                ):
-                    continue  # Skip over duplicate attempts where the score is NaN
-                test_attempt.score = row.Value
-                test_attempt.modified = row.Date
-                test_attempt.attempted = row.AttemptDate
-                try:
-                    test_attempt.save()
-                except IntegrityError:
-                    yield f"<r class='bg tb-danger'><td>Database error for {test_attempt}</td></tr>"
-                    continue
-                cls = "light" if not alt else "secondary"
-                alt = not alt
-                yield (
-                    f"<tr class='tb-{cls}'><td>Attempt {row.Column} for {row.Username} at {row.AttemptDate}"
-                    + f" saved with score {row.Value}</td></tr>"
-                )
+                    try:
+                        row.Date = pd.to_datetime(row.Date)
+                        if row.Date.tzinfo is None:
+                            row.Date = TZ.localize(row.Date)
+                        row.AttemptDate = pd.to_datetime(row["Attempt Activity"])
+
+                    except Exception as err:
+                        yield f"<tr><td>Time Conversion Error 1{err}</td></tr>"
+                        continue
+                    try:
+                        row.AttemptDate = TZ.localize(row.AttemptDate)
+                    except Exception as err:
+                        row.AttemptDate = row.Date
+
+                    try:
+                        student = Account.objects.get(username=row.Username)
+                    except ObjectDoesNotExist:
+                        print("Yield")
+                        yield f"<tr class='tb-warning'><td>Unknown User {row.Username}</td></tr>"
+                        continue
+                    try:
+                        test = Test.get_by_column_name(row.Column, module=module)
+                    except ObjectDoesNotExist:
+                        print("Yield")
+                        yield f"<tr class='tb-warning'><td>Unknown test {row.Column}</td></tr>"
+                        continue
+
+                    test_score, new = Test_Score.objects.get_or_create(user=student, test=test)
+
+                    if (
+                        not new
+                        and test_score.score is not None
+                        and (np.isnan(row.Value) or test_score.score >= row.Value)
+                    ):
+                        yield (
+                            f"<tr class='tb-info'><td>Skipping {student.display_name} for {row.Value} as not "
+                            + "substantive change</td></tr>"
+                        )
+                    new_id = f"{row.Column}:{row.Username}:{row.AttemptDate}"
+                    test_attempt, new = Test_Attempt.objects.get_or_create(attempt_id=new_id, test_entry=test_score)
+                    if (
+                        not new
+                        and test_attempt.score is not None
+                        and not np.isnan(test_attempt.score)
+                        and np.isnan(row.Value)
+                    ):
+                        yield (
+                            f"<tr cl;ass='tb tb-info'><td>Skipping {student.display_name} for existing"
+                            + f" score {test_attempt.score} and new score {row.Value}</td></tr>"
+                        )
+                        continue  # Skip over duplicate attempts where the score is NaN
+                    test_attempt.score = row.Value
+                    test_attempt.modified = row.Date
+                    test_attempt.attempted = row.AttemptDate
+                    try:
+                        test_attempt.save()
+                    except IntegrityError:
+                        yield f"<r class='bg tb-danger'><td>Database error for {test_attempt}</td></tr>"
+                        continue
+                    cls = "light" if not alt else "secondary"
+                    alt = not alt
+                    yield (
+                        f"<tr class='tb-{cls}'><td>Attempt {row.Column} for {student.display_name} at {row.AttemptDate}"
+                        + f" saved with score {row.Value}</td></tr>"
+                    )
+                except Exception as e:
+                    yield (f"<r class='bg tb-danger'><td>{ e }<br/><pre>{ format_exc() }</pre></td></tr>\n")
 
 
 class TestResultColumn(Column):
@@ -321,6 +348,8 @@ class TestResultColumn(Column):
         else:
             bg_color = "white"
         if passed:
+            if score is None:
+                return f'<div class="badge rounded-pil" style="background-color: {bg_color};">&nbsp;!&nbsp;</div>'
             return f'<div class="badge rounded-pil" style="background-color: {bg_color};">{score:.1f}</div>'
         if score is None or np.isnan(score):
             return '<div class="badge rounded-pil" style="background-color: dimgrey;">&nbsp;!&nbsp;</div>'

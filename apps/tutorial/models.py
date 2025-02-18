@@ -440,6 +440,15 @@ def cohort(self) -> Optional[Cohort]:
 
 
 @patch_model(Account, prep=property)
+def tutorial_code(self) -> Optional[str]:
+    """Return the cohort object of the students tutorial module."""
+    try:
+        return self.tutorial_group.last().code
+    except (ObjectDoesNotExist, AttributeError):
+        return None
+
+
+@patch_model(Account, prep=property)
 def engagement_colour(self) -> str:
     """Monkeypatch a routine to convert engagement scaore into a hex colour."""
     return colour(self.engagement)

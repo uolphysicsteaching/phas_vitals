@@ -161,7 +161,9 @@ class VITAL(models.Model):
     name = models.CharField(max_length=255, blank=True, null=True)
     VITAL_ID = models.CharField(max_length=20, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
-    module = models.ForeignKey("minerva.Module", on_delete=models.CASCADE, related_name="VITALS")
+    module = models.ForeignKey(
+        "minerva.Module", on_delete=models.CASCADE, related_name="VITALS", blank=True, null=True
+    )
     tests = models.ManyToManyField("minerva.Test", related_name="VITALS", through=VITAL_Test_Map)
     students = models.ManyToManyField("accounts.Account", through=VITAL_Result, related_name="VITALS")
 
@@ -255,7 +257,7 @@ class VITAL(models.Model):
 
     def __str__(self):
         """Use name and code as a string representation."""
-        return f"{self.VITAL_ID}:{self.name} ({self.module.code}"
+        return f"{self.VITAL_ID}:{self.name} ({getattr(self.module, 'code', 'unassigned')}"
 
 
 @patch_model(Account, prep=property)

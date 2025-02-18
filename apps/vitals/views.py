@@ -66,7 +66,9 @@ class VITALResultColumn(Column):
             case None:
                 ret = ""
             case {"passed": passed}:
-                if passed:
+                if passed is None:
+                    ret = '<span class="badge bg-secondary">!</span>'
+                elif passed:
                     ret = '<span class="badge bg-success">P</span>'
                 else:
                     ret = '<span class="badge bg-danger">F</span>'
