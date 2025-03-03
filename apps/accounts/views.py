@@ -120,6 +120,15 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
                 new_tr.standing = "Missing"
                 test_scores[test] = new_tr
         lab_scores = {}
+        required = {}
+        for test in user.required_tests.all():
+            try:
+                required[test] = user.test_results.get(test=test)
+            except ObjectDoesNotExist:
+                new_tr = user.test_results.model(user=user, test=test, passed=False, score=None)
+                new_tr.test_status = new_tr.manual_test_satus
+                new_tr.standing = "Missing"
+                required[test] = new_tr
         for lab in Labs:
             try:
                 lab_scores[lab] = user.test_results.get(test=lab)
@@ -154,6 +163,7 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
             "Tests": Tests,
             "Labs": Labs,
             "Code_tasks": Code_tasks,
+            "required": required,
             "scores": test_scores,
             "lab_scores": lab_scores,
             "code_scores": code_scores,

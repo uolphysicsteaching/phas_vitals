@@ -2,13 +2,16 @@
 """Celery tasks for the accounts app."""
 # Python imports
 import logging
+from pathlib import Path
 
 # Django imports
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.db import transaction
 
 # external imports
 import numpy as np
+import pandas as pd
 from celery import shared_task
 from constance import config
 from django_auth_adfs.config import provider_config
@@ -278,3 +281,40 @@ def update_user_from_graph(user_pk, obo_access_token):
         user.last_name = payload["surname"]
         user.givenName = payload["givenName"]
         user.save()
+
+
+@celery_app.task
+def find_unjustified_vitals():
+    """Check all accounts for unexpected VITALs and note in a spreadsheet."""
+    missing = []
+    for account in Account.objects.all():
+        logger.debug(f"Checking VITAL results match tests {account.display_name}")
+        for vital_r in account.vital_results.filter(passed=True):
+            possible_tests = vital_r.vital.tests.all()
+            test_attempts = account.test_results.filter(test__in=possible_tests.all())
+            if (
+                possible_tests.count() > 0
+                and test_attempts.count() > 0
+                and test_attempts.filter(passed=True).count() > 0
+            ):  # passed at least one qualifying test
+                continue
+            logger.debug(f"Issues with VITAL {vital_r.vital} for {account.display_name}")
+            missing.append(
+                {
+                    "Student": account.display_name,
+                    "VITAL": vital_r.vital,
+                    "Possible Tests": "\n".join([x.name for x in possible_tests.all()]),
+                    "Attempts": "\n".join([str(x) for x in test_attempts.all()]),
+                }
+            )
+    logger.debug(f"Toal of {len(missing)} unexpected VITAL passes.")
+    if not missing:
+        return
+    datapath = Path(settings.MEDIA_ROOT) / "data" / "Excess_VITALS.xlsx"
+    if not datapath.exists():
+        df = pd.DataFrame(missing)
+        df.to_excel(datapath)
+    else:
+        df = pd.from_excel(datapath)
+        df = pd.concat([df, pd.DataFrame(missing)])
+        df.to_excel(datapath)

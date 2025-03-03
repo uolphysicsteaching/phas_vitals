@@ -14,6 +14,9 @@ from tinymce.widgets import TinyMCE
 from util.admin import add_inlines
 
 # app imports
+from phas_vitals import celery_app
+
+# app imports
 from .forms import GradebookColumnForm, Test_ScoreForm
 from .models import (
     GradebookColumn,
@@ -35,6 +38,7 @@ from .resource import (
 )
 
 # Register your models here.
+update_vitals = celery_app.signature("minerva.tasks.update_vitals")
 
 
 class ModuleFilter(AutocompleteFilter):
@@ -260,6 +264,14 @@ class TestAdmin(ImportExportModelAdmin):
             },
         ),
     )
+    actions = ["refresh_vitals"]
+
+    @admin.action(description="Refresh VITALs from test results")
+    def refresh_vitals(self, request, queryset):
+        """Fire off async tasks to update vital results for all the test results from a column."""
+        for test in queryset.all():
+            for test_score in test.results.all():
+                update_vitals.delay(test_score.pk)
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""

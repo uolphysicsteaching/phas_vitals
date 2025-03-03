@@ -3,6 +3,7 @@
 # Python imports
 import re
 from datetime import timedelta
+from itertools import chain
 
 # Django imports
 from django.core.exceptions import ObjectDoesNotExist
@@ -10,6 +11,7 @@ from django.db import models
 from django.utils import timezone as tz
 
 # external imports
+import pandas as pd
 from accounts.models import Account
 
 # Create your models here.
@@ -276,3 +278,38 @@ def failed_vitals(self):
 def untested_vitals(self):
     """Return the set of vitals that the student doesn't have a result and that have finished."""
     return VITAL.objects.exclude(student_results__user=self).filter(status="Finished")
+
+
+@patch_model(Account, prep=property)
+def forthcoming_vitals(self):
+    """Return the set of vitals that the student doesn't have a result and that have finished."""
+    return VITAL.objects.exclude(student_results__user=self).filter(status="Not Started")
+
+
+@patch_model(Account, prep=property)
+def required_tests(self):
+    """Calculate the minimum required tests to pass all failed VITALs."""
+    data = []
+
+    for vital in chain(self.failed_vitals.all(), self.untested_vitals.all(), self.forthcoming_vitals.all()):
+        row = {"VITAL": vital.VITAL_ID}
+        for test in vital.tests.all():
+            row[test.test_id] = 1
+        data.append(row)
+    if not len(data):
+        return Test.objects.none()
+    data = pd.DataFrame(data).transpose().fillna(0.0)
+    data.columns = data.loc["VITAL"]
+    data = data.drop("VITAL")
+    tests = []
+    while True:
+        best_test = data.index[data.sum(axis=1).argmax()]
+        if data.loc[best_test].sum() == 0:
+            break
+
+        tests.append(best_test)
+        data.loc[:, data.loc[best_test] == 1.0] = 0.0
+
+    tests = vital.tests.model.objects.filter(test_id__in=tests).distinct().order_by("type", "release_date")
+
+    return tests
