@@ -101,7 +101,7 @@ def take_time_series(module_code="PHAS1000"):
 
 
 def _prepare(data, label):
-    """Perpare the plot for animation."""
+    """Prepare the plot for animation."""
     row = data.iloc[0]
     axes = row.hist(bins=np.linspace(0, 100, 21), label=row.name.strftime("%Y/%m/%d"))
     fig = plt.gcf()

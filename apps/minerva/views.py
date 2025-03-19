@@ -10,7 +10,8 @@ from traceback import format_exc
 # Django imports
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Q
+from django.core.paginator import Paginator
+from django.db.models import OuterRef, Q, Subquery
 from django.db.utils import IntegrityError
 from django.forms import ValidationError
 from django.http import StreamingHttpResponse
@@ -25,6 +26,8 @@ from accounts.views import StudentSummaryView
 from dal import autocomplete
 from django_tables2 import SingleTableMixin
 from django_tables2.columns import Column
+from django_tables2.paginators import LazyPaginator
+from htmx_views.views import HTMXProcessMixin
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.style import context as plot_context
@@ -65,6 +68,10 @@ def _delimiter(filename):
                 return dialect.delimiter, enc
         except UnicodeError:
             continue
+
+
+def set_name(name):
+    return shorten(name, width=30, placeholder="[-]").replace(".", "")
 
 
 # Create your views here.
@@ -370,14 +377,16 @@ class TestResultColumn(Column):
         )
 
 
-class BaseShowTestResultsView(SingleTableMixin, FormView):
+class BaseShowTestResultsView(SingleTableMixin, HTMXProcessMixin, FormView):
     """Most of the machinery to show a table of student test results."""
 
     form_class = ModuleSelectPlusForm
     table_class = BaseTable
+    paginator_class = LazyPaginator
     template_name = "minerva/test_results.html"
+    template_name_next_batch = "minerva/parts/test_results_next_batch.html"
     context_table_name = "test_results"
-    table_pagination = False
+    table_pagination = {"per_page": 10}
 
     def __init__(self, *args, **kargs):
         """Construct instance variables."""
@@ -395,6 +404,32 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
             self._entries = self.get_entries()
         return self._entries
 
+    def get_form_kwargs(self):
+        """Return the keyword arguments for instantiating the form."""
+        kwargs = {
+            "initial": self.get_initial(),
+            "prefix": self.get_prefix(),
+        }
+        match self.request.method:
+            case "POST" | "PUT":
+                kwargs.update(
+                    {
+                        "data": self.request.POST,
+                        "files": self.request.FILES,
+                    }
+                )
+            case "GET" if "module" in self.request.GET:
+                kwargs.update(
+                    {
+                        "data": self.request.GET,
+                        "files": self.request.FILES,
+                    }
+                )
+            case _:
+                pass
+
+        return kwargs
+
     def form_valid(self, form):
         """Update self.module with the module selected in the form."""
         self.module = form.cleaned_data["module"]
@@ -402,15 +437,17 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
         self.type = form.cleaned_data.get("type", "homework")
         if self.module is not None:
             self.tests = self.module.tests.filter(type=self.type).order_by("release_date", "name")
+        self.page = int(self.request.GET.get("page", 1))
         return self.render_to_response(self.get_context_data())
 
     def get_table_class(self):
         """Construct the django-tables2 table class for this view."""
         attrs = {}
         for test in self.tests:
-            attrs[shorten(test.name, width=30)] = TestResultColumn(orderable=False, mode=self.mode, test=test)
+            attrs[set_name(test.name)] = TestResultColumn(orderable=False, mode=self.mode, test=test)
         klass = type("DynamicTable", (self.table_class,), attrs)
         setattr(klass._meta, "row_attrs", {"class": "student_link"})
+        setattr(klass._meta, "template_name", "util/table.html")
         return klass
 
     def get_context_data(self, **kwargs):
@@ -419,25 +456,30 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
         context["module"] = self.module
         return context
 
+    def get_context_data_next_batch(self, **kwargs):
+        ret = self.get_context_data(**kwargs)
+        return ret
+
     def get_entries(self):
         """Override to return the data required."""
         raise NotImplementedError("Need to override the get_entries method.")
 
     def get_table_data(self):
         """Fill out the table with data, creating the entries for the MarkType columns to interpret."""
-        table = []
+        table = [Row_Dict(student, self.tests) for student in self.entries]
+        return table
 
-        for entry in self.entries:
+        for student in self.entries:
             record = {  # Standard student information entries
-                "student": entry.student,
-                "number": entry.student.SID,
-                "programme": entry.student.programme.name,
-                "status": entry.status.code,
+                "student": student,
+                "number": student.SID,
+                "programme": student.programme.name,
+                "status": student.status,
             }
             for test in self.tests:  # Add columns for the tests
                 try:
-                    ent = entry.student.test_results.get(test=test)
-                    record[shorten(test.name, width=30)] = ent
+                    ent = student.test_results.get(test=test)
+                    record[set_nameen(test.name)] = ent
                 except ObjectDoesNotExist:
                     record[test.name] = None
 
@@ -449,16 +491,50 @@ class BaseShowTestResultsView(SingleTableMixin, FormView):
         return self.get_table_data()
 
 
+class Row_Dict:
+    """Proxy for a dictionary that delays evaluating the test results."""
+
+    def __init__(self, student, tests):
+        self.student = student
+        self.test_results = student.test_results.all()
+        self.tests = {set_name(test.name): test.pk for test in tests}
+
+    def __getitem__(self, index):
+        match index:
+            case "student":
+                return self.student
+            case "SID":
+                return self.student.number
+            case "programme":
+                return self.student.programme.name
+            case "status":
+                return self.student.status
+            case test if test in self.tests:
+                try:
+                    return self.test_results.get(test__pk=self.tests[test])
+                except ObjectDoesNotExist:
+                    return None
+            case _:
+                return False
+
+
 class ShowAllTestResultsViiew(IsSuperuserViewMixin, BaseShowTestResultsView):
     """Show a table of all student test results."""
 
     def get_entries(self):
         """Get the students to include in the table."""
-        return (
-            ModuleEnrollment.objects.filter(active=True, module=self.module)
-            .prefetch_related("student", "student__test_results", "student__programme", "status")
-            .order_by("student__last_name", "student__first_name")
+        if not getattr(self, "page", False):
+            return Account.objects.none()
+        enroillments = ModuleEnrollment.objects.filter(module=self.module, active=True).values("id")
+        status = enroillments.filter(student=OuterRef("pk")).values("status__code")
+        qs = (
+            Account.objects.filter(module_enrollments__in=enroillments)
+            .annotate(status=Subquery(status))
+            .select_related("programme")
+            .prefetch_related("test_results")
+            .order_by("last_name", "first_name")
         )
+        return qs
 
 
 class ShowTutorTestResultsViiew(IsStaffViewMixin, BaseShowTestResultsView):
@@ -466,13 +542,16 @@ class ShowTutorTestResultsViiew(IsStaffViewMixin, BaseShowTestResultsView):
 
     def get_entries(self):
         """Get the students to include in the table."""
-        return (
-            ModuleEnrollment.objects.filter(
-                active=True, module=self.module, student__tutorial_group__tutor=self.request.user
-            )
-            .prefetch_related("student", "student__test_results", "student__programme", "status")
-            .order_by("student__last_name", "student__first_name")
+        enroillments = ModuleEnrollment.objects.filter(module=self.module, active=True).values("id")
+        status = enroillments.filter(student=OuterRef("pk")).values("status__code")
+        qs = (
+            Account.objects.filter(module_enrollments__in=enroillments, tutorial_group__tutor=self.request.user)
+            .annotate(status=Subquery(status))
+            .select_related("programme")
+            .prefetch_related("test_results")
+            .order_by("last_name", "first_name")
         )
+        return qs
 
 
 class ShowTestResults(RedirectView):
@@ -625,7 +704,7 @@ class TestResultsBarChartView(IsStaffViewMixin, FormView):
         rows = []
         for test in self.tests:
             row = test.stats
-            row["name"] = shorten(test.name, width=30)
+            row["name"] = set_name(test.name)
             rows.append(row)
         df = pd.DataFrame(rows).set_index("name")
         ax = df.plot(

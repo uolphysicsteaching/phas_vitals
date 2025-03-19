@@ -133,17 +133,6 @@ $(document).ready( function() {
                   </div>
                   <div class="col-md-3">
                       {{ test_score.vitals_text }}
-                      <ul>
-                      {% for vm in test_score.test.vitals_mappings.all %}
-                            {% if vm.vital in  user.passed_vitals %}
-                          <li class="vital_passed"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
-                            {% elif vm.vital in user.failed_vitals %}
-                          <li class="vital_failed"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
-                            {% else %}
-                          <li class="vital_unknown"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
-                            {% endif %}
-                      {% endfor %}
-                      </ul>
                   </div>
               </div>
               {% endfor %}
@@ -185,17 +174,6 @@ $(document).ready( function() {
                   </div>
                   <div class="col-md-3">
                       {{ lab_score.vitals_text }}
-                      <ul>
-                      {% for vm in lab_score.test.vitals_mappings.all %}
-                            {% if vm.vital in  user.passed_vitals %}
-                          <li class="vital_passed"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
-                            {% elif vm.vital in user.failed_vitals %}
-                          <li class="vital_failed"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
-                            {% else %}
-                          <li class="vital_unknown"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
-                            {% endif %}
-                      {% endfor %}
-                      </ul>
                   </div>
               </div>
           {% endfor %}
@@ -237,17 +215,6 @@ $(document).ready( function() {
                   </div>
                   <div class="col-md-3">
                       {{ code_score.vitals_text }}
-                      <ul>
-                      {% for vm in code_score.test.vitals_mappings.all %}
-                            {% if vm.vital in  user.passed_vitals %}
-                          <li class="vital_passed"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
-                            {% elif vm.vital in user.failed_vitals %}
-                          <li class="vital_failed"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
-                            {% else %}
-                          <li class="vital_unknown"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
-                            {% endif %}
-                      {% endfor %}
-                      </ul>
                   </div>
               </div>
           {% endfor %}
@@ -294,12 +261,6 @@ $(document).ready( function() {
                                 </div>
                                 <div class="col-md-5">
                                     {{ vital_result.tests_text }}
-                                    <ul>
-                                        {% for vm in vital_result.vital.tests_mappings.all %}
-                                        <li><a class="vital_link" href="{{ vm.test.url }}">
-                                            {{ vm.test.name  }} ({{ vm.test.module.code }})</a></li>
-                                        {% endfor %}
-                                    </ul>
                                 </div>
                             </div>
                         {% endfor %}
@@ -350,17 +311,6 @@ $(document).ready( function() {
                   </div>
                   <div class="col-md-3">
                       {{ test_score.vitals_text }}
-                      <ul>
-                      {% for vm in test_score.test.vitals_mappings.all %}
-                            {% if vm.vital in  user.passed_vitals %}
-                          <li class="vital_passed"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
-                            {% elif vm.vital in user.failed_vitals %}
-                          <li class="vital_failed"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
-                            {% else %}
-                          <li class="vital_unknown"><a class="vital_link"  href="{{ vm.vital.url }}">{{ vm.vital.name  }} ({{ vm.vital.module.code }})</a></li>
-                            {% endif %}
-                      {% endfor %}
-                      </ul>
                   </div>
               </div>
               {% endfor %}

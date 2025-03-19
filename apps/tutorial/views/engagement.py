@@ -154,9 +154,9 @@ class AdminSubmitStudentEngagementView(IsSuperuserViewMixin, UpdateView):
     def get_context_data(self, **kwargs):
         """Ensure the context data includes a list of marktypes and also the current cohort."""
         context = super().get_context_data(**kwargs)
-        context[
-            "url"
-        ] = f"/tutorial/engagement/admin_submit/session_{self.kwargs.get('student')}_{self.kwargs.get('session')}"
+        context["url"] = (
+            f"/tutorial/engagement/admin_submit/session_{self.kwargs.get('student')}_{self.kwargs.get('session')}"
+        )
         return context
 
     def form_valid(self, form):

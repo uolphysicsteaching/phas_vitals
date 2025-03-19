@@ -105,7 +105,7 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
         """Update self.module with the module selected in the form."""
         self.module = form.cleaned_data["module"]
         if self.module is not None:
-            self.vitals = self.module.VITALS.all().order_by("start_date", "name")
+            self.vitals = self.module.VITALS.all().order_by("tests__type", "start_date", "name")
         return self.render_to_response(self.get_context_data())
 
     def get_table_class(self):

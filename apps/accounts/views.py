@@ -306,9 +306,9 @@ class CohortFilterActivityScoresExportView(CohortFilterActivityScoresView):
         df.rename(columns=fields, inplace=True)
         df.set_index("SID", inplace=True)
         response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        response[
-            "Content-Disposition"
-        ] = f"attachment; filename=Output_{form['what']}_{form['how']}_{form['value']:.1f}.xlsx"
+        response["Content-Disposition"] = (
+            f"attachment; filename=Output_{form['what']}_{form['how']}_{form['value']:.1f}.xlsx"
+        )
 
         df.to_excel(response)
         return response

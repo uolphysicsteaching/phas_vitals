@@ -9,6 +9,7 @@ from itertools import chain
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone as tz
+from django.utils.html import format_html
 
 # external imports
 import pandas as pd
@@ -18,13 +19,29 @@ from accounts.models import Account
 from util.models import patch_model
 
 
+def test_qs_to_html(queryset):
+    """Produce an html list from a queryset."""
+    if queryset.count() == 0:
+        return ""
+    ret = "<ul>\n"
+    for test in queryset.all():
+        ret += f"""<li><a class="vital_link" href="{test.url}">
+            {test.name} ({test.module.code})</a></li>\n"""
+    ret += "</ul>\n"
+    return format_html(ret)
+
+
 class VITAL_Test_Map(models.Model):
     """The object that provides the mapping between minerva.Tests and vitals.VITAL."""
+
+    PASS_OPTIONS = [("pass", "Pass the test"), ("attempt", "Attempt the test")]
 
     test = models.ForeignKey("minerva.Test", on_delete=models.CASCADE, related_name="vitals_mappings")
     vital = models.ForeignKey("VITAL", on_delete=models.CASCADE, related_name="tests_mappings")
     necessary = models.BooleanField(default=False)
     sufficient = models.BooleanField(default=True)
+    condition = models.CharField(max_length=10, choices=PASS_OPTIONS, default="pass")
+    required_fractrion = models.FloatField(default=1.0)
 
 
 class VITAL_ResultManager(models.Manager):
@@ -99,27 +116,40 @@ class VITAL_Result(models.Model):
     def tests_text(self):
         """Get text for advise about tests."""
         if self.vital.tests_mappings.count() == 0:
-            mapping = {
+            return {
                 "Ok": "Requirements to be confirmed.",  # PAssed
                 "Finished": "Requirements to be confirmed.",  # Overdue passing
                 "Started": "Requirements to be confirmed.",  # Underway, not passed yet
                 "Not Started": "Requirements to be confirmed.",  # In the future, no worries yet
-            }
-        elif self.vital.tests_mappings.count() == 1:
-            mapping = {
-                "Ok": "You passed:",  # PAssed
-                "Finished": "You need to pass:",  # Overdue passing
-                "Started": "Pass:",  # Underway, not passed yet
-                "Not Started": "You will need to pass:",  # In the future, no worries yet
-            }
-        else:
-            mapping = {
-                "Ok": "You passed at least one of:",  # PAssed
-                "Finished": "You need to pass at least one of:",  # Overdue passing
-                "Started": "Pass one of these:",  # Underway, not passed yet
-                "Not Started": "You will need to pass one of:",  # In the future, no worries yet
-            }
-        return mapping.get(self.status, "")
+            }.get(self.status, "")
+
+        sufficient, sufficient_txt = self.vital.sufficient_pass_tests
+        necessary, necessary_txt = self.vital.neccessary_attempt_tests
+        ret = ""
+        match self.status:
+            case "Ok":  # passed
+                if sufficient.count() >= 1:
+                    ret += f"You passed {sufficient_txt}:\n{test_qs_to_html(sufficient)}"
+                if necessary.count() >= 1:
+                    ret += f"You attempted {necessary_txt}:\n{test_qs_to_html(necessary)}"
+            case "Finished":
+                if sufficient.count() >= 1:
+                    ret += f"You still need to pass {sufficient_txt}:\n{test_qs_to_html(sufficient)}"
+                if necessary.count() >= 1:
+                    ret += f"You still need to attempt {necessary_txt}:\n{test_qs_to_html(necessary)}"
+            case "Started":
+                if sufficient.count() >= 1:
+                    ret += f"You need to pass {sufficient_txt}:\n{test_qs_to_html(sufficient)}"
+                if necessary.count() >= 1:
+                    ret += f"You need to attempt {necessary_txt}:\n{test_qs_to_html(necessary)}"
+            case "Not Started":
+                if sufficient.count() >= 1:
+                    ret += f"You will need to pass {sufficient_txt}:\n{test_qs_to_html(sufficient)}"
+                if necessary.count() >= 1:
+                    ret += f"You will need to attempt {necessary_txt}:\n{test_qs_to_html(necessary)}"
+            case _:
+                pass
+        return format_html(ret)
 
 
 class VITAL_Manager(models.Manager):
@@ -231,6 +261,28 @@ class VITAL(models.Model):
         """Return a dictionary of items to use for the legend of a stats plot."""
         return {"Passed": "green", "Failed": "red", "Not Attempted": "black", "": "white"}
 
+    @property
+    def sufficient_pass_tests(self):
+        """Return a queryset of the tests that are sufficient to pass this VITAL."""
+        qs = self.tests.model.objects.filter(
+            vitals_mappings__in=self.tests_mappings.filter(condition="pass", sufficient=True)
+        ).distinct()
+        if qs.count() == 1:
+            return qs, ""
+        return qs, "at least one of"
+
+    @property
+    def neccessary_attempt_tests(self):
+        """Return a queryset and string label of number of necessary tests to attempt."""
+        mappings = self.tests_mappings.filter(condition="attempt", necessary=True).distinct()
+        number = mappings.aggregate(number=models.Sum("required_fractrion"))["number"]
+        if number == mappings.count():
+            output = "all of"
+        else:
+            number = round(number) if number else ""
+            output = f"{number} of"
+        return self.tests.model.objects.filter(vitals_mappings__in=mappings).distinct(), output
+
     def passed(self, user, passed=True, date_passed=None):
         """Record the user as having passed this vital."""
         if not date_passed:
@@ -248,11 +300,18 @@ class VITAL(models.Model):
         if user.test_results.filter(test__vitals_mappings__in=sufficient, passed=True).count() > 0:
             return self.passed(user)
         # Check all necessary tests are passed.
-        necessary = self.tests_mappings.filter(necessary=True).distinct()
+        necessary = self.tests_mappings.filter(necessary=True, condition="pass").distinct()
         if (
             necessary.count() > 0
             and user.test_results.filter(test__vitals_mappings_in=necessary, passed=True).distinct().count()
             == necessary.count()
+        ):
+            return self.passed(user)
+        necessary = self.tests_mappings.filter(necessary=True, condition="attempt").distinct()
+        needed = necessary.aggregate(needed=models.Sum("required_fractrion"))["needed"]
+        if (
+            necessary.count() > 0
+            and user.test_results.filter(test__vitals_mappings__in=necessary).distinct().count() >= needed
         ):
             return self.passed(user)
         return self.passed(user, False)

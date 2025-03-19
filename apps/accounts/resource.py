@@ -252,7 +252,6 @@ class UserResource(resources.ModelResource):
         widget=AccountWidget(Account, "display_name"),
     )
     username = fields.Field(column_name="username", attribute="username", widget=StrippedCharWidget())
-    cohort = fields.Field(column_name="cohort", attribute="cohort", widget=widgets.ForeignKeyWidget(Cohort, "name"))
     section = fields.Field(
         column_name="section", attribute="section", widget=widgets.ForeignKeyWidget(Section, "name")
     )

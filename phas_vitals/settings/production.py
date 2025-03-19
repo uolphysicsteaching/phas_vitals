@@ -1,4 +1,5 @@
 """Production mode settings."""
+
 # for now fetch the development settings only
 # app imports
 from .development import *

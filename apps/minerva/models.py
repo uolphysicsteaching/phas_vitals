@@ -12,6 +12,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import DEFAULT_DB_ALIAS, models
 from django.forms import ValidationError
 from django.utils import timezone as tz
+from django.utils.html import format_html
 
 # external imports
 import numpy as np
@@ -71,6 +72,24 @@ def match_name(name):
             name = match.groupdict()["name"]
             break
     return name
+
+
+def vital_qs_to_html(queryset, user):
+    """Produce an html list from a queryset."""
+    if queryset.count() == 0:
+        return ""
+    ret = "<ul>\n"
+    for vital in queryset.all():
+        if vital in user.passed_vitals:
+            klass = "vital_passed"
+        elif vital in user.failed_vitals:
+            klass = "vital_failed"
+        else:
+            klass = "vital_unknown"
+        ret += f"""<li class="{klass}"><a class="vital_link" href="{vital.url}">
+            {vital.name} ({vital.module.code})</a></li>\n"""
+    ret += "</ul>\n"
+    return format_html(ret)
 
 
 class ModuleManager(models.Manager):
@@ -741,16 +760,42 @@ class Test_Score(models.Model):
         vitals_count = self.test.vitals_mappings.count()
         if vitals_count == 0:
             return "Possible VITALs to be confirmed:"
-        mapping = {
-            "Ok": "You passed:",  # PAssed
-            "Overdue": "You can still pass:",  # Past the recomemneded time
-            "Missing": "You can still pass:",  # No attempt at overdue test
-            "Finished": "You would have passed:",  # Overdue passing
-            "Released": "You will pass:",  # Underway, not passed yet
-            "Not Started": "This will let you pass",
-            "Waiting for Mark": "This will let you pass",
-        }
-        return mapping.get(self.manual_standing, "")
+        sufficient = self.test.VITALS.model.objects.filter(
+            tests_mappings__in=self.test.vitals_mappings.filter(sufficient=True, condition="pass")
+        )
+        necessary = self.test.VITALS.model.objects.filter(
+            tests_mappings__in=self.test.vitals_mappings.filter(necessary=True, condition="attempt")
+        )
+        ret = ""
+        match self.manual_standing:
+            case "Ok":
+                if sufficient.count() > 0:
+                    ret += f"You passed:\n{vital_qs_to_html(sufficient,self.user)}"
+                if necessary.count() > 0:
+                    ret += f"Contributed to passing:\n{vital_qs_to_html(necessary,self.user)}"
+            case "Overdue" | "Missing":
+                if sufficient.count() > 0:
+                    ret += f"You would still pass:\n{vital_qs_to_html(sufficient,self.user)}"
+                if necessary.count() > 0:
+                    ret += f"Would contribute to passing:\n{vital_qs_to_html(necessary,self.user)}"
+            case "Finished":
+                if sufficient.count() > 0:
+                    ret += f"You would have passed:\n{vital_qs_to_html(sufficient,self.user)}"
+                if necessary.count() > 0:
+                    ret += f"Would have contributed to passing:\n{vital_qs_to_html(necessary,self.user)}"
+            case "Released" | "Not Started":
+                if sufficient.count() > 0:
+                    ret += f"You will pass:\n{vital_qs_to_html(sufficient,self.user)}"
+                if necessary.count() > 0:
+                    ret += f"Will contribute to passing:\n{vital_qs_to_html(necessary,self.user)}"
+            case "Waiting for Mark":
+                if sufficient.count() > 0:
+                    ret += f"This will let you pass:\n{vital_qs_to_html(sufficient,self.user)}"
+                if necessary.count() > 0:
+                    ret += f"This will contribute to you passing:\n{vital_qs_to_html(necessary,self.user)}"
+            case _:
+                ret = ""
+        return format_html(ret)
 
     def check_passed(self, orig=None):
         """Check whether the user has passed the test."""

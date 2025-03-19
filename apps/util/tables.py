@@ -13,7 +13,7 @@ class StudentColumn(Column):
 
     def __init__(self, **kargs):
         """Mark the header table to user vertical oriented text."""
-        attrs = {"td": {"class": "student"}}
+        attrs = {"td": {"class": "student sticky-col"}, "th": {"class": "sticky-col"}}
         attrs.update(kargs.pop("attrs", {}))
         kargs["attrs"] = attrs
         kargs["orderable"] = kargs.get("orderable", False)

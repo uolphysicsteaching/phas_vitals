@@ -1,4 +1,5 @@
 """Main settings file for application."""
+
 # Python imports
 import re
 import socket
@@ -94,6 +95,7 @@ DEFAULT_APPS = (
         "django.contrib.staticfiles",
         # ## General 3rd party apps
         "adminsortable2",
+        "django_htmx",
         "ajax_select",
         "colorful",  # django-colorful package
         "constance",
@@ -128,6 +130,7 @@ DEFAULT_APPS = (
 # Middlewares
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "django_htmx.middleware.HtmxMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",

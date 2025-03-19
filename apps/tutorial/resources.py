@@ -188,7 +188,7 @@ class TutorialAssignmentResource(resources.ModelResource):
 
     class Meta:
         model = TutorialAssignment
-        fields = ("id", "tutorial", "studet")
+        fields = ("id", "tutorial", "student")
         import_id_fields = ["id"]
 
     tutorial = fields.Field(

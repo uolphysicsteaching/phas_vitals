@@ -1,4 +1,5 @@
 """Admin interface classes for util app."""
+
 # Django imports
 from django.contrib import admin, messages
 from django.contrib.flatpages.admin import FlatPageAdmin

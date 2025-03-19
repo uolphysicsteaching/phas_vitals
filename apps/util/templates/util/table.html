@@ -1,13 +1,54 @@
-{% extends 'django_tables2/bootstrap5.html' %}
-
-{% block table-wrapper %}
-<div class="table-container table-responsive" tabindex="0">
-    {% block table %}
-        {{ block.super }}
-    {% endblock table %}
-
-    {% block pagination %}
-        {{ block.super }}
-    {% endblock pagination %}
+{% load util %}
+{% load django_tables2 %}
+{% load django_htmx %}
+{% load i18n l10n %}
+<div class="table-container table-responsive">
+        <table {% render_attrs table.attrs class="table" %}>
+            {% if table.show_header %}
+                <thead {{ table.attrs.thead.as_html }}>
+                <tr>
+                {% for column in table.columns %}
+                    <th {{ column.attrs.th.as_html }} scope="col">
+                        {% if column.orderable %}
+                            <a href="{% querystring table.prefixed_order_by_field=column.order_by_alias.next %}">{{ column.header }}</a>
+                        {% else %}
+                            {{ column.header }}
+                        {% endif %}
+                    </th>
+                {% endfor %}
+                </tr>
+                </thead>
+            {% endif %}
+                <tbody {{ table.attrs.tbody.as_html }}>
+                {% for row in table.paginated_rows %}
+                    <tr {{ row.attrs.as_html }}>
+                        {% for column, cell in row.items %}
+                            <td {{ column.attrs.td.as_html }}>{% if column.localize == None %}{{ cell }}{% else %}{% if column.localize %}{{ cell|localize }}{% else %}{{ cell|unlocalize }}{% endif %}{% endif %}</td>
+                        {% endfor %}
+                    </tr>
+                {% empty %}
+                    {% if table.empty_text %}
+                        <tr><td colspan="{{ table.columns|length }}">{{ table.empty_text }}</td></tr>
+                    {% endif %}
+                {% endfor %}
+                {% if table.page and table.paginator.num_pages > 1 and table.page.number < table.paginator.num_pages %}
+                        <tr id="next_batch" hx-post="{{ request.path }}?page={{ table.page.number|add:1 }}"
+                            hx-trigger="revealed" hx-include="form"
+                            hx-swap="outerHTML" hx-target="#next_batch">
+    <td class="text-center" colspan="{{ table.columns|length }}"><div class="spinner-border text-primary" role="status">
+  <span class="visually-hidden">Loading...</span>
+</div></td></tr>
+{% endif %}
+                </tbody>
+            {% if table.has_footer %}
+            <tfoot {{ table.attrs.tfoot.as_html }}>
+                <tr>
+                {% for column in table.columns %}
+                    <td {{ column.attrs.tf.as_html }}>{{ column.footer }}</td>
+                {% endfor %}
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+<hr/>
 </div>
-{% endblock table-wrapper %}

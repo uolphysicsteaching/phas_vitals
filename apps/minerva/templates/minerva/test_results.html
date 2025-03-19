@@ -14,12 +14,20 @@
     }
     .test_link:hover {
         box-shadow: inset 0px 0px 4px 4px #48abe0;
+        z-index: 2;
     }
     .student_link td:first-child {
             cursor: pointer;
         }
     .student_link:hover {
             box-shadow: inset 0px 0px 4px 4px #48abe0;
+    }
+    th.sticky-col,
+    td.sticky-col {
+        position: sticky;
+        left: 0;
+        background-color: background: rgba(255, 255, 255, 1.0);
+        z-index: 1; /* Ensure it stays above other table content */
     }
 </style>
 {% endblock css%}
@@ -36,8 +44,13 @@ $(document).ready(function () {
     $(".student").click(function () {
         var id=$(this).children(":first").attr("id");
         window.location.href = "/accounts/detail/"+id+"/#tests";
-
     });
+    htmx.on("htmx:afterSwap", function() {
+        $(".student").click(function () {
+            var id=$(this).children(":first").attr("id");
+            window.location.href = "/accounts/detail/"+id+"/#tests";
+        });
+    })
 
 });
 </script>
