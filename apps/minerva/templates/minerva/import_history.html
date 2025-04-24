@@ -2,58 +2,58 @@
 {% load django_bootstrap5 %}
 {% block title %}{{ block.super }}Import Gradebook Hisotry{% endblock title %}
 {% block javascript %}
-{{ block.super }}
-{{ form.media }}
-<script>
-$(document).ready(function() {
-    $('#selectform').submit(function(event) {
-        event.preventDefault();
-        var formData = new FormData(this);
-        var last_response_len = false;
-        $.ajax({
-            url: '/minerva/import_history_stream/',
-            type: 'POST',
-            data: formData,
-            enctype: 'multipart/form-data',
-            processData: false,
-            contentType: false,
-            xhrFields: {
-                onprogress: function(e) {
-                    var this_response, response = e.currentTarget.response;
-                    if(last_response_len === false) {
-                        this_response = response;
-                        last_response_len = response.length;
-                    } else {
-                        this_response = response.substring(last_response_len);
-                        last_response_len = response.length;
+    {{ block.super }}
+    {{ form.media }}
+    <script>
+        $(document).ready(function() {
+            $('#selectform').submit(function(event) {
+                event.preventDefault();
+                var formData = new FormData(this);
+                var last_response_len = false;
+                $.ajax({
+                    url: '/minerva/import_history_stream/',
+                    type: 'POST',
+                    data: formData,
+                    enctype: 'multipart/form-data',
+                    processData: false,
+                    contentType: false,
+                    xhrFields: {
+                        onprogress: function(e) {
+                            var this_response, response = e.currentTarget.response;
+                            if(last_response_len === false) {
+                                this_response = response;
+                                last_response_len = response.length;
+                            } else {
+                                this_response = response.substring(last_response_len);
+                                last_response_len = response.length;
+                            }
+                            $("#response").append(this_response);
+                        }
                     }
-                    $("#response").append(this_response);
-                }
-            }
-        })
-        .done(function(data)
-        {
-        })
-        .fail(function(data)
-        {
-            console.log('Error: ', data);
+                })
+                    .done(function(data)
+                        {
+                        })
+                    .fail(function(data)
+                        {
+                            console.log('Error: ', data);
+                        });
+            });
         });
-    });
-});
-</script>
+    </script>
 {% endblock %}
 
 {% block content %}
 
-<form id="selectform" action="{{ request.url }}" method="post" enctype="multipart/form-data" >
-    {% csrf_token %}
-    {% bootstrap_form form %}
-    <br/>
-{% bootstrap_button "Upload" button_type="submit" button_class="btn-primary" %}
-</form>
+    <form id="selectform" action="{{ request.url }}" method="post" enctype="multipart/form-data" >
+        {% csrf_token %}
+        {% bootstrap_form form %}
+        <br/>
+        {% bootstrap_button "Upload" button_type="submit" button_class="btn-primary" %}
+    </form>
 
-<table id="response" class="table">
-</table>
+    <table id="response" class="table">
+    </table>
 
 
 {% endblock content %}

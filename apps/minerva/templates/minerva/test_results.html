@@ -3,67 +3,67 @@
 {% load render_table from django_tables2 %}
 {% block title %}{{ block.super }} Test Results{% endblock title %}
 {% block css %}
-{{ block.super }}
-<style>
-    .vertical {
-        writing-mode: vertical-rl;
-        text-orientation: mixed;
-    }
-    .test_link {
-        cursor: pointer;
-    }
-    .test_link:hover {
-        box-shadow: inset 0px 0px 4px 4px #48abe0;
-        z-index: 2;
-    }
-    .student_link td:first-child {
+    {{ block.super }}
+    <style>
+        .vertical {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+        .test_link {
             cursor: pointer;
         }
-    .student_link:hover {
+        .test_link:hover {
             box-shadow: inset 0px 0px 4px 4px #48abe0;
-    }
-    th.sticky-col,
-    td.sticky-col {
-        position: sticky;
-        left: 0;
-        background-color: background: rgba(255, 255, 255, 1.0);
-        z-index: 1; /* Ensure it stays above other table content */
-    }
-</style>
+            z-index: 2;
+        }
+        .student_link td:first-child {
+            cursor: pointer;
+        }
+        .student_link:hover {
+            box-shadow: inset 0px 0px 4px 4px #48abe0;
+        }
+        th.sticky-col,
+        td.sticky-col {
+            position: sticky;
+            left: 0;
+            background-color: background: rgba(255, 255, 255, 1.0);
+            z-index: 1; /* Ensure it stays above other table content */
+        }
+    </style>
 {% endblock css%}
 {% block javascript %}
-{{ block.super }}
-{{ form.media }}
-<script>
-$(document).ready(function () {
-    $(".test_link").click(function () {
-        var id=$(this).attr("id");
-        window.location.href = "/minerva/detail/"+id+"/";
+    {{ block.super }}
+    {{ form.media }}
+    <script>
+        $(document).ready(function () {
+            $(".test_link").click(function () {
+                var id=$(this).attr("id");
+                window.location.href = "/minerva/detail/"+id+"/";
 
-    });
-    $(".student").click(function () {
-        var id=$(this).children(":first").attr("id");
-        window.location.href = "/accounts/detail/"+id+"/#tests";
-    });
-    htmx.on("htmx:afterSwap", function() {
-        $(".student").click(function () {
-            var id=$(this).children(":first").attr("id");
-            window.location.href = "/accounts/detail/"+id+"/#tests";
+            });
+            $(".student").click(function () {
+                var id=$(this).children(":first").attr("id");
+                window.location.href = "/accounts/detail/"+id+"/#tests";
+            });
+            htmx.on("htmx:afterSwap", function() {
+                $(".student").click(function () {
+                    var id=$(this).children(":first").attr("id");
+                    window.location.href = "/accounts/detail/"+id+"/#tests";
+                });
+            })
+
         });
-    })
-
-});
-</script>
+    </script>
 {% endblock %}
 
 {% block content %}
 
-<form id="selectform" action="{{ request.url }}" method="post" enctype="multipart/form-data" >
-    {% csrf_token %}
-    {% bootstrap_form form %}
-</form>
+    <form id="selectform" action="{{ request.url }}" method="post" enctype="multipart/form-data" >
+        {% csrf_token %}
+        {% bootstrap_form form %}
+    </form>
 
-{% if module %}
- {% render_table test_results %}
-{% endif %}
+    {% if module %}
+        {% render_table test_results %}
+    {% endif %}
 {% endblock content %}

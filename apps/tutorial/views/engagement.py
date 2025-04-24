@@ -1,12 +1,22 @@
 # -*- coding: utf-8 -*-
 """Views to do with managing Student engagement with the tutorials."""
 # Django imports
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import (
+    ObjectDoesNotExist,
+    PermissionDenied,
+    ValidationError,
+)
 from django.db import transaction
 from django.db.models import Count
 from django.http import JsonResponse
 from django.utils import timezone as tz
-from django.views.generic import DetailView, FormView, ListView, UpdateView
+from django.views.generic import (
+    DetailView,
+    FormView,
+    ListView,
+    TemplateView,
+    UpdateView,
+)
 from django.views.generic.edit import FormMixin
 
 # external imports
@@ -16,6 +26,7 @@ from accounts.forms import CohortSelectForm
 from accounts.models import Account, Cohort
 from accounts.views import StudentSummaryView
 from extra_views import ModelFormSetView
+from htmx_views.views import HTMXProcessMixin
 from util.forms import FileSelectForm
 from util.views import IsStaffViewMixin, IsSuperuserViewMixin, RedirectView
 
@@ -24,12 +35,13 @@ from ..forms import EngagementEntryForm
 from ..models import Attendance, Session, SessionType, Tutorial
 
 
-class TutorStudentEngagementSummary(IsStaffViewMixin, FormMixin, ListView):
+class TutorStudentEngagementSummary(IsStaffViewMixin, HTMXProcessMixin, FormMixin, TemplateView):
     """Produce a table of students in tutorial groups with attendance data."""
 
     context_object_name = "groups"
     model = Tutorial
     template_name = "tutorial/engagement_summary.html"
+    template_name_table_part = "tutorial/parts/engagement_summary_table.html"
     form_class = CohortSelectForm
 
     def get_initial(self):
@@ -45,21 +57,41 @@ class TutorStudentEngagementSummary(IsStaffViewMixin, FormMixin, ListView):
         """Get the Tutorial queryset, filtered as needed."""
         cohort = self.get_initial()["cohort"]
         ret = Tutorial.objects.filter(cohort=cohort).order_by("tutor__last_name")
-        if self.kwargs.get("code", "") != "":
-            ret = ret.filter(code__iexact=self.kwargs["code"])
-        else:
-            ret = ret.filter(tutor=self.request.user)
+        ret = ret.filter(tutor=self.request.user)
         return ret
 
     def get_context_data(self, **kwargs):
         """Ensure the context data includes a list of marktypes and also the current cohort."""
         context = super().get_context_data(**kwargs)
         cohort = self.kwargs["cohort"]
+        if cohort and not isinstance(cohort, Cohort):
+            cohort = Cohort.objects.get(name=cohort)
+        elif not isinstance(cohort, Cohort):
+            cohort = Cohort.current
         semester = int(self.kwargs.get("semester", 1 if tz.now().month >= 8 else 2))
         context["cohorts"] = Cohort.objects.all()
         context["semester"] = semester
         context["cohort"] = cohort
         context["sessions"] = Session.objects.filter(cohort=cohort, semester=semester)
+        if codes := self.request.GET.get("codes", False):
+            codes = codes.split(",")
+        elif "codes" not in self.request.GET:
+            codes = [x.code for x in self.get_queryset()]
+        else:
+            codes = None
+        if code := self.kwargs.get("code", False):
+            ret = self.get_queryset().get(code=code)
+            context["group"] = ret
+            if not self.request.user.is_superuser and self.request.user != ret.tutor:
+                raise PermissionDenied("Must be either the tutopr or a superuser to see this group.")
+        else:
+            context["group"] = None
+        if codes:
+            context["next_code"] = codes.pop(0)
+            context["codes"] = ",".join(codes)
+        else:
+            context["next_code"] = None
+            context["coides"] = ""
         return context
 
     def post(self, request, *args, **kargs):
@@ -129,6 +161,7 @@ class AdminEngagementSummaryView(TutorStudentEngagementSummary):
     """Produce a view of a cohort of student engagement."""
 
     template_name = "tutorial/admin/engagement_summary.html"
+    template_name_table_part = "tutorial/parts/admin_engagement_table_row.html"
 
     def get_queryset(self):
         """Get a qyeryset fir the tutorial objects."""

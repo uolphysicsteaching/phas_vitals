@@ -1,353 +1,188 @@
 {% extends "base.html" %}
 {% load tutorial_tags %}
 {% block title %}
-{{ block.super }} Current Status fr {{ user.display_name }}
+    {{ block.super }} Current Status fr {{ user.display_name }}
 {% endblock title %}
 {% block css %}
-{{ block.super }}
-<style>
-a.vital_link {
-    color: inherit;
-    text-decoration: inherit;
+    {{ block.super }}
+    <style>
+        a.vital_link {
+            color: inherit;
+            text-decoration: inherit;
 
-}
-a.vital_link:hover {
-    text-decoration: underline;
-}
-.bg-secondary {
-    background-color: #5c656d!important;
-}
-.bg-success {
-    background-color: #157040!important;
-}
-.bg-primary {
-    background-color: #0b40cd!important;
-}
-.bg-danger {
-    background-color: #cc1525!important;
-}
+        }
+        a.vital_link:hover {
+            text-decoration: underline;
+        }
+        .bg-secondary {
+            background-color: #5c656d!important;
+        }
+        .bg-success {
+            background-color: #157040!important;
+        }
+        .bg-primary {
+            background-color: #0b40cd!important;
+        }
+        .bg-danger {
+            background-color: #cc1525!important;
+        }
 
-img.pie {
-    max-width: 100%;
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-}
-@media screen and (max-width: 900px) {
-    img.pie {
-        max-width: 360px;
-    }
-}
+        img.pie {
+            max-width: 100%;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        @media screen and (max-width: 900px) {
+            img.pie {
+                max-width: 360px;
+            }
+        }
 
-li.vital_passed {
-    list-style-type: "\2713";
-}
-li.vital_failed {
-    list-style-type: "\2A2F";
-}
+        li.vital_passed {
+            list-style-type: "\2713";
+        }
+        li.vital_failed {
+            list-style-type: "\2A2F";
+        }
 
-</style>
+    </style>
 {% endblock css %}
 {% block javascript %}
-{{ block.super }}
-<script>
-$(document).ready( function() {
-    if (window.location.hash ){
-    $('.nav-tabs a[href="'+window.location.hash+'"]').tab('show')
-    }
-})
-</script>
+    {{ block.super }}
+    <script>
+        $(document).ready( function() {
+            if (window.location.hash ){
+                link=window.location.hash+"_link";
+                htmx.trigger(link, "click");
+            }
+        })
+    </script>
 {% endblock javascript %}
 {% load django_bootstrap5 %}
 }
 {% block content %}
-<p>Minerva data last updated: {{ config.LAST_MINERVA_UPDATE|date:"r"}}</p>
-<div class="col-sm-12">
-    <div class="row text-sm-center fs-2" style="background-color: {{ user.activity_colour }}; display: block; width:100%; color: {{ user.activity_colour|comp_colour }};">
-        <span>{{ user.friendly_name }} ({{ user.SID }})</span>
-    </div>
-    <div class="row fs-3">
-        <div class="col-sm-4"><span>Tutor:</span></div>
-        <div class="col-sm-8"><span><a href="mailto:{{ user.apt.email }}">{{ user.apt.formal_name }}</a></span></div>
-    </div>
-    <div class="row fs-3">
-        <div class="col-sm-4"><span>Degree Programme:</span></div>
-        <div class="col-sm-8"><span>{{ user.programme.name }} ({{ user.programme.code }})</span></div>
-    </div>
-    <ul class="nav nav-tabs" id="results_tab" role="tablist">
-        <li class="nav-item" role="tab" id="dashboard-tab">
-            <a href="#dashboard" class="nav-link{% if tab == '#dashboard' %} active{% endif %}" data-bs-toggle="tab"><span class="fs-3">Dashboard</span></a>
-        </li>
-        <li class="nav-item" role="tab" id="test-tab">
-            <a href="#tests" class="nav-link{% if tab == '#tests' %} active{% endif %}" data-bs-toggle="tab"><span class="fs-3">Homework</span></a>
-        </li>
-        <li class="nav-item" role="tab" id="labs-tab">
-            <a href="#labs" class="nav-link{% if tab == '#labs' %} active{% endif %}" data-bs-toggle="tab"><span class="fs-3">Labs</span></a>
-        </li>
-        <li class="nav-item" role="tab" id="code-tab">
-            <a href="#code" class="nav-link{% if tab == '#code' %} active{% endif %}" data-bs-toggle="tab"><span class="fs-3">Code Tasks</span></a>
-        </li>
-        <li class="nav-item" role="tab" id="vitals-tab">
-            <a href="#VITALS" class="nav-link{% if tab == '#VITALS' %} active{% endif %}" data-bs-toggle="tab"><span class="fs-3">VITALS status</span></a>
-        </li>
-        <li class="nav-item" role="tab" id="required-tab">
-            <a href="#required" class="nav-link{% if tab == '#required' %} active{% endif %}" data-bs-toggle="tab"><span class="fs-3">Required Work</span></a>
-        </li>
+    <p>Minerva data last updated: {{ config.LAST_MINERVA_UPDATE|date:"r"}}</p>
+    <div class="col-sm-12">
+        <div class="row text-sm-center fs-2" style="background-color: {{ user.activity_colour }}; display: block; width:100%; color: {{ user.activity_colour|comp_colour }};">
+            <span>{{ user.friendly_name }} ({{ user.SID }})</span>
+        </div>
+        <div class="row fs-3">
+            <div class="col-sm-4"><span>Tutor:</span></div>
+            <div class="col-sm-8"><span><a href="mailto:{{ user.apt.email }}">{{ user.apt.formal_name }}</a></span></div>
+        </div>
+        <div class="row fs-3">
+            <div class="col-sm-4"><span>Degree Programme:</span></div>
+            <div class="col-sm-8"><span>{{ user.programme.name }} ({{ user.programme.code }})</span></div>
+        </div>
+        <ul class="nav nav-tabs" id="results_tab" role="tablist">
+            <li class="nav-item" role="tab" id="dashboard-tab">
+                <a href="#dashboard" class="nav-link{% if tab == '#dashboard' %} active{% endif %}"
+                   data-bs-toggle="tab"
+                   hx-get = "{{ request.path }}"
+                   hx-target="#dashboard"
+                   id="dashboard_link"
+                   hx-swap="innerHtml">
+                    <span class="fs-3">Dashboard</span>
+                </a>
+            </li>
+            <li class="nav-item" role="tab" id="test-tab">
+                <a href="#tests" class="nav-link{% if tab == '#tests' %} active{% endif %}"
+                   data-bs-toggle="tab"
+                   hx-get = "{{ request.path }}"
+                   hx-target="#tests"
+                   id="tests_link"
+                   hx-swap="innerHtml">
+                    <span class="fs-3">Homework</span>
+                </a>
+            </li>
+            <li class="nav-item" role="tab" id="labs-tab">
+                <a href="#labs" class="nav-link{% if tab == '#labs' %} active{% endif %}"
+                   data-bs-toggle="tab"
+                   hx-get = "{{ request.path }}"
+                   hx-target="#labs"
+                   id="labs_link"
+                   hx-swap="innerHtml">
+                    <span class="fs-3">Labs</span>
+                </a>
+            </li>
+            <li class="nav-item" role="tab" id="code-tab">
+                <a href="#code" class="nav-link{% if tab == '#code' %} active{% endif %}"
+                   data-bs-toggle="tab"
+                   hx-get = "{{ request.path }}"
+                   hx-target="#code"
+                   id="code_link"
+                   hx-swap="innerHtml">
+                    <span class="fs-3">Code Tasks</span>
+                </a>
+            </li>
+            <li class="nav-item" role="tab" id="vitals-tab">
+                <a href="#VITALS" class="nav-link{% if tab == '#VITALS' %} active{% endif %}"
+                   data-bs-toggle="tab"
+                   hx-get = "{{ request.path }}"
+                   hx-target="#VITALS"
+                   id="VITALS_link"
+                   hx-swap="innerHtml">
+                    <span class="fs-3">VITALS status</span>
+                </a>
+            </li>
+            <li class="nav-item" role="tab" id="required-tab">
+                <a href="#required" class="nav-link{% if tab == '#required' %} active{% endif %}"
+                   data-bs-toggle="tab"
+                   hx-get = "{{ request.path }}"
+                   hx-target="#required"
+                   id="required_link"
+                   hx-swap="innerHtml">
+                    <span class="fs-3">Required Work</span>
+                </a>
+            </li>
 
-    </ul>
-    <div class="tab-content" id="results-tab-content">
-      <div class="tab-pane fade{% if tab == '#tests' %} show active{% endif %}" id="tests" role="tabpanel" aria-label="Tests and Homework Results tab">
-          <h3>Homework Results</h3>
-          {% for test_score in scores.values %}
-              <div class="border-top border-dark border-2 row {{ test_score.test.bootstrap5_class }}">
-                  <div class="col-md-3">
-                      <strong><a class="vital_link" href="{{ test_score.test.url }}">{{ test_score.test.name }}</a>
-                      ({{ test_score.test.score_possible }} marks)</strong><br/>
-                      Released: {{ test_score.test.release_date }}<br/>
-                      Recommended: {{ test_score.test.recommended_date }}
-                  </div>
-                    <div class="col-md-3  align-middle {{ test_score.bootstrap5_class }}">
-                        <div class="row">
-                            <span class="col-sm-2 fs-1 {{ test_score.icon }}">&nbsp;</span>
-                            <div class="col-sm-10 text-center align-middle fs-4">
-                          {% if test_score.passed %}
-                            Passed in {{ test_score.attempts.count }}attempt{% if test_score.attempts.count > 1%}s{% endif %}
-                          {% elif test_score.score is None %}
-                               {% if test_score.status == "NeedsGrading" %}
-                                   Waiting for Mark
-                               {% elif test_score.test_status != "Not Started" %}
-                                    Not Attempted
-                               {% endif %}
-                          {% else %}
-                               Not Passed ({{ test_score.attempts.count }}attempt{% if test_score.attempts.count > 1%}s{% endif %})
-                          {% endif %}
-                        </div>
-                    </div>
-                  </div>
-                  <div class="col-md-2 text-center align-middle">
-                      {% if test_score.attempts.count > 0 %}
-                      {{ test_score.score }} / {{ test_score.test.score_possible }} marks
-                      {% else %}
-                      {{ test_score.test.score_possible }} mark{% if test_score.test.score_possible > 1%}s{% endif %} possible
-                      {% endif %}
-                  </div>
-                  <div class="col-md-3">
-                      {{ test_score.vitals_text }}
-                  </div>
-              </div>
-              {% endfor %}
-      </div>
-      <div class="tab-pane fade{% if tab == '#labs' %} show active{% endif %}" id="labs" role="tabpanel" aria-label="Lab Results tab">
-          <h3>Lab Results</h3>
-          {% for lab_score in lab_scores.values %}
-              <div class="border-top border-dark border-2 row {{ lab_score.test.bootstrap5_class }}">
-                  <div class="col-md-3">
-                      <strong><a class="vital_link" href="{{ lab_score.test.url }}">{{ lab_score.test.name }}</a>
-                      ({{ lab_score.test.score_possible }} marks)</strong><br/>
-                      Released: {{ lab_score.test.release_date }}<br/>
-                      Recommended: {{ lab_score.test.recommended_date }}
-                  </div>
-                    <div class="col-md-3  align-middle {{ lab_score.bootstrap5_class }}">
-                        <div class="row">
-                            <span class="col-sm-2 fs-1 {{ lab_score.icon }}">&nbsp;</span>
-                            <div class="col-sm-10 text-center align-middle fs-4">
-                          {% if lab_score.passed %}
-                            Passed in {{ lab_score.attempts.count }}attempt{% if lab_score.attempts.count > 1%}s{% endif %}
-                          {% elif lab_score.score is None %}
-                               {% if lab_score.status == "NeedsGrading" %}
-                                   Waiting for Mark
-                               {% elif lab_score.test_status != "Not Started" %}
-                                    Not Attempted
-                               {% endif %}
-                          {% else %}
-                               Not Passed ({{ lab_score.attempts.count }}attempt{% if lab_score.attempts.count > 1%}s{% endif %})
-                          {% endif %}
-                        </div>
-                    </div>
-                  </div>
-                  <div class="col-md-2 text-center align-middle">
-                      {% if lab_score.attempts.count > 0 %}
-                      {{ lab_score.score }} / {{ lab_score.test.score_possible }} marks
-                      {% else %}
-                      {{ lab_score.test.score_possible }} mark{% if lab_score.test.score_possible > 1%}s{% endif %} possible
-                      {% endif %}
-                  </div>
-                  <div class="col-md-3">
-                      {{ lab_score.vitals_text }}
-                  </div>
-              </div>
-          {% endfor %}
-      </div>
-      <div class="tab-pane fade{% if tab == '#code' %} show active{% endif %}" id="code" role="tabpanel" aria-label="Code Tasks Results tab">
-          <h3>Code Tasks</h3>
-          {% for code_score in code_scores.values %}
-              <div class="border-top border-dark border-2 row {{ code_score.test.bootstrap5_class }}">
-                  <div class="col-md-3">
-                      <strong><a class="vital_link" href="{{ code_score.test.url }}">{{ code_score.test.name }}</a>
-                      ({{ code_score.test.score_possible }} marks)</strong><br/>
-                      Released: {{ code_score.test.release_date }}<br/>
-                      Recommended: {{ code_score.test.recommended_date }}
-                  </div>
-                    <div class="col-md-3  align-middle {{ code_score.bootstrap5_class }}">
-                        <div class="row">
-                            <span class="col-sm-2 fs-1 {{ code_score.icon }}">&nbsp;</span>
-                            <div class="col-sm-10 text-center align-middle fs-4">
-                          {% if code_score.passed %}
-                            Passed in {{ code_score.attempts.count }}attempt{% if code_score.attempts.count > 1%}s{% endif %}
-                          {% elif code_score.score is None %}
-                               {% if code_score.status == "NeedsGrading" %}
-                                   Waiting for Mark
-                               {% elif code_score.test_status != "Not Started" %}
-                                    Not Attempted
-                               {% endif %}
-                          {% else %}
-                               Not Passed ({{ code_score.attempts.count }}attempt{% if code_score.attempts.count > 1%}s{% endif %})
-                          {% endif %}
-                        </div>
-                    </div>
-                  </div>
-                  <div class="col-md-2 text-center align-middle">
-                      {% if code_score.attempts.count > 0 %}
-                      {{ code_score.score }} / {{ code_score.test.score_possible }} marks
-                      {% else %}
-                      {{ code_score.test.score_possible }} mark{% if code_score.test.score_possible > 1%}s{% endif %} possible
-                      {% endif %}
-                  </div>
-                  <div class="col-md-3">
-                      {{ code_score.vitals_text }}
-                  </div>
-              </div>
-          {% endfor %}
-      </div>
-      <div class="tab-pane fade{% if tab == '#VITALS' %} show active{% endif %}" id="VITALS" role="tabpanel" aria-label="VITALS Listing tab">
-          <h3>VITALS passed/not passed</h3>
-          <div class="accordion" id="accordianVITALs">
-          {% for module,vr in vitals_results.items %}
-              <div class="accordion-item">
-                  <div class="accordion-header" id="heading_{{ module.code }}" role="navigation">
-                        <button class="accordion-button" type="button"
-                            data-bs-toggle="collapse" data-bs-target="#collapse_{{ module.code }}"
-                            aria-expanded={% if forloop.first %}"true"{% else %}"false"{% endif %}
-                            aria-controls="collapse_{{ module.code }}">
-                        <span class="fs-3">{{ module.code }}:{{ module.name }}</span>
-                        </button>
-                  </div>
-                    <div id="collapse_{{ module.code }}"
-                        class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
-                        aria-labelledby="heading_{{ module.cond }}"
-                        data-bs-parent="#accordianVITALs">
-                        <div class="accordion-body">
-                        {% for vital_result in vr %}
-                            <div class="row border-top border-dark border-2 {{ vital_result.vital.bootstrap5_class }}">
-                                <div class="col-md-4">
-                                    <strong><a class="vital_link" href="{{ vital_result.vital.url }}">{{ vital_result.vital }}
-                                    ({{ vital_result.vital.module.code }})</a></strong><br/>
-                                    {% if vital_result.passed %}Passed: {{ vital_result.date_passed }}{% endif %}
-                                </div>
-                                <div class="col-md-3  align-middle {{ vital_result.bootstrap5_class }}">
-                                    <div class="row">
-                                        <span class="col-sm-2 fs-1 {{ vital_result.icon }}">&nbsp;</span>
-                                        <div class="col-sm-10 text-center align-middle fs-3">
-
-                                            {% if vital_result.passed %}
-                                              Passed
-                                            {% elif vital_result.status != "Not Started" %}
-                                              Not Passed
-                                            {% else %}
-                                              &nbsp;
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-5">
-                                    {{ vital_result.tests_text }}
-                                </div>
-                            </div>
-                        {% endfor %}
-                        </div>
+        </ul>
+        <div class="tab-content" id="results-tab-content">
+            <div class="tab-pane fade{% if tab == '#tests' %} show active{% endif %}"  id="tests" role="tabpanel" aria-label="Tests and Homework Results tab">
+                <div class="md-3 text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
-          {% endfor %}
-          </div>
-      </div>
-      <div class="tab-pane fade{% if tab == '#required' %} show active{% endif %}" id="required" role="tabpanel" aria-label="Required Tests and Homework Results tab">
-          <h3>Work Requird to pass VITALs</h3>
-          <p>This is the <strong>minimum</strong> set of coding tasks, homework, and labs that you will need to do
-          to pass all the VITALs for the year. You <strong>must pass all the VITALs</strong> to progress to the next
-          year of your degree. You may also be able to pass all these VITALs by passing other homework quizzes, code
-          tasks or lab activities.</p>
-          {% for test_score in required.values %}
-              <div class="border-top border-dark border-2 row {{ test_score.test.bootstrap5_class }}">
-                  <div class="col-md-3">
-                      <strong><a class="vital_link" href="{{ test_score.test.url }}">{{ test_score.test.name }}</a>
-                      ({{ test_score.test.score_possible }} marks)</strong><br/>
-                      Released: {{ test_score.test.release_date }}<br/>
-                      Recommended: {{ test_score.test.recommended_date }}
-                  </div>
-                    <div class="col-md-3  align-middle {{ test_score.bootstrap5_class }}">
-                        <div class="row">
-                            <span class="col-sm-2 fs-1 {{ test_score.icon }}">&nbsp;</span>
-                            <div class="col-sm-10 text-center align-middle fs-4">
-                          {% if test_score.passed %}
-                            Passed in {{ test_score.attempts.count }}attempt{% if test_score.attempts.count > 1%}s{% endif %}
-                          {% elif test_score.score is None %}
-                               {% if test_score.status == "NeedsGrading" %}
-                                   Waiting for Mark
-                               {% elif test_score.test_status != "Not Started" %}
-                                    Not Attempted
-                               {% endif %}
-                          {% else %}
-                               Not Passed ({{ test_score.attempts.count }}attempt{% if test_score.attempts.count > 1%}s{% endif %})
-                          {% endif %}
-                        </div>
+            </div>
+            <div class="tab-pane fade{% if tab == '#labs' %} show active{% endif %}" id="labs" role="tabpanel" aria-label="Lab Results tab">
+                <div class="md-3 text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
-                  </div>
-                  <div class="col-md-2 text-center align-middle">
-                      {% if test_score.attempts.count > 0 %}
-                      {{ test_score.score }} / {{ test_score.test.score_possible }} marks
-                      {% else %}
-                      {{ test_score.test.score_possible }} mark{% if test_score.test.score_possible > 1%}s{% endif %} possible
-                      {% endif %}
-                  </div>
-                  <div class="col-md-3">
-                      {{ test_score.vitals_text }}
-                  </div>
-              </div>
-              {% endfor %}
-          </div>
-      <div class="tab-pane fade{% if tab == '#dashboard' %} show active{% endif %}" id="dashboard" role="tabpanel" aria-label="Dashboard Tab">
-          <div class="row">
-            <div class="col-lg-4">
-                <h3 class="text-center">Homework {% if user.tests_score is not None %}{{ user.tests_score }}%{% endif %}</h3>
-                <img class="pie"  src='{{ homework_plot.data }}' alt="{{ homework_plot.alt }}" />
+                </div>
             </div>
-            <div class="col-lg-4">
-                <h3 class="text-center">Labs {% if user.labs_score is not None %}{{ user.labs_score }}%{% endif %}</h3>
-                <img class="pie"  src='{{ lab_plot.data }}' alt="{{ lab_plot.alt }}" />
+            <div class="tab-pane fade{% if tab == '#code' %} show active{% endif %}" id="code" role="tabpanel" aria-label="Code Tasks Results tab">
+                <div class="md-3 text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
             </div>
-            <div class="col-lg-4">
-                <h3 class="text-center">Coding {% if user.coding_score is not None %}{{ user.coding_score }}%{% endif %}</h3>
-                <img class="pie col-md-12"  src='{{ code_plot.data }}' alt="{{ code_plot.alt }}" />
+            <div class="tab-pane fade{% if tab == '#VITALS' %} show active{% endif %}" id="VITALS" role="tabpanel" aria-label="VITALS Listing tab">
+                <div class="md-3 text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
             </div>
-          </div>
-          <div class="row">
-
-            <div class="col-lg-4">
-                <h3 class="text-center">VITALs {% if user.vitals_score is not None %}{{ user.vitals_score }}%{% endif %}</h3>
-                <img class="pie" src='{{ vitals_plot.data }}' alt="{{ vitals_plot.alt }}" />
+            <div class="tab-pane fade{% if tab == '#required' %} show active{% endif %}" id="required" role="tabpanel" aria-label="Required Tests and Homework Results tab">
+                <div class="md-3 text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
             </div>
-            <div class="col-lg-4">
-            &nbsp;
+            <div class="tab-pane fade{% if tab == '#dashboard' %} show active{% endif %}" id="dashboard" role="tabpanel" aria-label="Dashboard Tab">
+                <div class="md-3 text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
             </div>
-            <div class="col-lg-4">
-                <h3 class="text-center">Tutorials {% if user.engagement is not None %}{{ user.engagement }}%{% endif %}</h3>
-                <img class="pie"  src='{{ tutorial_plot.data }}' alt="{{ tutorial_plot.alt }}" />
-            </div>
-          </div>
-      </div>
+        </div>
 
     </div>
-
-</div>
 
 {% endblock content %}

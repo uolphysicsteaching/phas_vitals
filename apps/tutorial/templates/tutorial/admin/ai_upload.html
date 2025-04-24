@@ -3,33 +3,33 @@
 {% block title %}{{ block.super }}Upload Academic Integrity Test Resuults{% endblock title %}
 
 {%block javascript  %}
-{{ block.super }}
-{{ formset.media }}
-<script type="text/javascript">
+  {{ block.super }}
+  {{ formset.media }}
+  <script type="text/javascript">
     $(function() {
-        $('tr.form-row').formset();
+      $('tr.form-row').formset();
     })
-</script>
+  </script>
 {% endblock %}
 
 {% block page %}
-<h2>Upload Academic Integrity Test results</h2>
+  <h2>Upload Academic Integrity Test results</h2>
 
-<p>Upload a csv file that has at least two columns as follows:</p>
-<ul>
-<li><strong>Student ID</strong><br/> The Banner ID of the student to assign to the tutorial group (Student accounts
-should already have been imported from Banner!)</li>
-<li><strong>Pass Date</strong><br/> The date on which the student passed the academic intergity test.</li>
-</ul>
-<br/>
-<form action="/tutorial/admin/ai_upload/" method="post" enctype="multipart/form-data">
+  <p>Upload a csv file that has at least two columns as follows:</p>
+  <ul>
+    <li><strong>Student ID</strong><br/> The Banner ID of the student to assign to the tutorial group (Student accounts
+      should already have been imported from Banner!)</li>
+    <li><strong>Pass Date</strong><br/> The date on which the student passed the academic intergity test.</li>
+  </ul>
+  <br/>
+  <form action="/tutorial/admin/ai_upload/" method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form }}
-  {% buttons %}
-    <button type="submit" class="btn btn-primary">
-      {% bootstrap_icon "star" %} Submit
-    </button>
-  {% endbuttons %}
+    {% buttons %}
+      <button type="submit" class="btn btn-primary">
+        {% bootstrap_icon "star" %} Submit
+      </button>
+    {% endbuttons %}
 
-</form>
+  </form>
 {% endblock page %}

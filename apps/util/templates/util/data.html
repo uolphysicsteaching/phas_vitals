@@ -2,42 +2,42 @@
 {% load django_bootstrap5 %}
 {% block title %}{{ block.super }}Student Data{% endblock title %}
 {%block css %}
-{{ block.super }}
-<style>
+    {{ block.super }}
+    <style>
 
-table.info {
-    width: 100%
-    margin: 0;
-}
+        table.info {
+            width: 100%
+                   margin: 0;
+        }
 
-table.info th {
-    padding-left: 15px;
-    width: 320px;
-}
-tr.section {
-    border-top: 1px solid;
-}
-td.info {
-    margin: 0;
-    padding-top: 5px;
-    padding-bottom: 5px;
-    padding-left: 15px;
-    font: 12pt Ariel,sans-serif;
-}
+        table.info th {
+            padding-left: 15px;
+            width: 320px;
+        }
+        tr.section {
+            border-top: 1px solid;
+        }
+        td.info {
+            margin: 0;
+            padding-top: 5px;
+            padding-bottom: 5px;
+            padding-left: 15px;
+            font: 12pt Ariel,sans-serif;
+        }
 
-</style>
+    </style>
 {% endblock %}
 
 {% block content %}
-<h2>Studetn Data</h2>
+    <h2>Studetn Data</h2>
 
-<table class="info">
-<tr class="section"><th rowspan=3>Data Analytics</th>
-    <td class="info"><a href="/accounts/tools/scores_summary/">Summary Plots of student scores</a></td>
-</tr>
-<tr><td class="info"><a href="/accounts/tools/scores_progression/">Summary of Progression of Student Scores</a></td></tr>
-<tr><td class="info"><a href="/minerva/test_barchart/">Summary of Homework/Lab/Code stats.</a></td></tr>
-</table>
+    <table class="info">
+        <tr class="section"><th rowspan=3>Data Analytics</th>
+            <td class="info"><a href="/accounts/tools/scores_summary/">Summary Plots of student scores</a></td>
+        </tr>
+        <tr><td class="info"><a href="/accounts/tools/scores_progression/">Summary of Progression of Student Scores</a></td></tr>
+        <tr><td class="info"><a href="/minerva/test_barchart/">Summary of Homework/Lab/Code stats.</a></td></tr>
+    </table>
 
 
 {% endblock content %}

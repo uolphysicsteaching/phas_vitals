@@ -1,0 +1,53 @@
+{% load humanize %}
+{% load flatpages %}
+{% load tutorial_tags %}
+<h2>Engagement Summary for Tutorial group {{ group.code }} {{ group.cohort }}
+    <a href=mailto:?to={{group.tutor.nice_email|urlencode }}&bcc={% for student in group.members %}{{ student.nice_email|urlencode }},{% endfor %}>Email Group</a></h2>
+<div class="table-container table-responsive" tabindex="0">
+    <table width=95% role="table" aria-label="Summary of student engagement: {{ group }}">
+        <tr>
+            <th id="students_{{ group.pk }}" colspan=2>Name of Student</th>
+            {% for session in sessions %}
+                <th id="session_{{ group.pk }}_{{ session.pk }}"><a href="/tutorial/engagement_view/" class="session" id="{{ group.pk }}:{{ session.pk }}">{{ session.name }}</a></th>
+            {% endfor %}
+            <th colspan=2 id="status_{{ group.pk }}">Status</th>
+        </tr>
+        {% for student in group.members %}
+            <tr>
+                <td headers="students_{{ group.pk }}">
+                    <a href="/accounts/detail/{{ student.number }}/#dashboard">{{ student.display_name }}</a>
+                </td>
+                <td>&nbsp;</td>
+                {% engagement student semester cohort %}
+                <td colspan=2 style="background-color: {{ student.activity_colour }}; color: {{ student.activity_colour|comp_colour }}" headers="status_{{ group.pk }}">{{ student.activity_label }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+    {% if group.recorded < 100 and not summary_view %}
+        <div class="col-md-12 h4 text-center" style="padding: 10px; background-color: {{ group.recorded_colour }};">
+            Tutorial attendance record for this group is {{ group.recorded|floatformat:0 }}% Complete.
+        </div>
+        <strong>Missing records for:</strong><br/>
+        {% for session,session_list in group.missing_records.items %}
+            <strong>{{ session }}</strong>
+            <ul>
+                {% for student in session_list %}
+                    <li>{{ student.display_name }}</li>
+                {% endfor %}
+            </ul>
+        {% endfor %}
+        <p>If the student was a no-show then please return them as unexplained absent. If the student is
+            on temporary leave, or joined the group late, please return them as allowed absence. This will
+            help ensure that their overal engagemnt level is being accurately reflected.</p>
+    {% endif %}
+</div>
+{% if next_code %}
+    <div id="table_part" hx-get="/tutorial/engagement_view/{{ semester }}/{{ cohort.name }}x/{{ next_code }}/?codes={{ codes|urlencode }}"
+         hx-swap="outerHTML"
+         hx-target="#table_part" hx-trigger="revealed"
+         hx-include="form">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+{% endif %}

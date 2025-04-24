@@ -4,39 +4,39 @@
 {% load humanize %}
 {% block title %}{{ block.super }}Upload Marks from csv file{% endblock title %}
 {% block javascript %}
-{{ block.super }}
-{{ wizard.form.media }}
+    {{ block.super }}
+    {{ wizard.form.media }}
 {% endblock %}
 {% block content %}
-<h2>Upload Marks from Minerva</h2>
-<ol style="margin: 2em;"!>
-<li>On Minerva, go to Gradebook on the top menu of your module.</li>
-<li>Select the Download icon from the icon group top right.</li>
-<li>On the side panel that pens, change the file type to "Comma Separated Values (csv)".</li>
-<li>Then click Download.</li>
-<li>On thois website, choose the file you just downloaded and click Next to move to the next page.</li>
-<li>On the second page you can select the columns to use to match to the Student ID and for each component.</li>
-<li>Click submit to send the form for processing. The filled in marksheet will be downloaded to your computer.</li>
-</ol>
-<form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
-<table>
-{{ wizard.management_form }}
-{% if wizard.form.forms %}
-    {{ wizard.form.management_form }}
-    {% for form in wizard.form.forms %}
-        {% bootstrap_form form %}
-    {{ form.non_field_errors }}
-    {% endfor %}
-{% else %}
-    {{ wizard.form.non_field_errors }}
-    {% bootstrap_form wizard.form %}
+    <h2>Upload Marks from Minerva</h2>
+    <ol style="margin: 2em;"!>
+        <li>On Minerva, go to Gradebook on the top menu of your module.</li>
+        <li>Select the Download icon from the icon group top right.</li>
+        <li>On the side panel that pens, change the file type to "Comma Separated Values (csv)".</li>
+        <li>Then click Download.</li>
+        <li>On thois website, choose the file you just downloaded and click Next to move to the next page.</li>
+        <li>On the second page you can select the columns to use to match to the Student ID and for each component.</li>
+        <li>Click submit to send the form for processing. The filled in marksheet will be downloaded to your computer.</li>
+    </ol>
+    <form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
+        <table>
+            {{ wizard.management_form }}
+            {% if wizard.form.forms %}
+                {{ wizard.form.management_form }}
+                {% for form in wizard.form.forms %}
+                    {% bootstrap_form form %}
+                    {{ form.non_field_errors }}
+                {% endfor %}
+            {% else %}
+                {{ wizard.form.non_field_errors }}
+                {% bootstrap_form wizard.form %}
 
-{% endif %}
-</table>
-{% if wizard.steps.prev %}
-<button name="wizard_goto_step" type="submit" value="{{ wizard.steps.first }}">{% trans "first step" %}</button>
-<button name="wizard_goto_step" type="submit" value="{{ wizard.steps.prev }}">{% trans "prev step" %}</button>
-{% endif %}
-<input type="submit" value="{% trans "submit" %}"/>
-</form>
+            {% endif %}
+        </table>
+        {% if wizard.steps.prev %}
+            <button name="wizard_goto_step" type="submit" value="{{ wizard.steps.first }}">{% trans "first step" %}</button>
+            <button name="wizard_goto_step" type="submit" value="{{ wizard.steps.prev }}">{% trans "prev step" %}</button>
+        {% endif %}
+        <input type="submit" value="{% trans "submit" %}"/>
+    </form>
 {% endblock content %}

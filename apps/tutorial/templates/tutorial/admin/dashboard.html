@@ -1,96 +1,96 @@
 {% extends "base.html" %}
 {%block css %}
-{{ block.super }}
-<style>
+    {{ block.super }}
+    <style>
 
-table.info {
-    width: 100%
-    margin: 0;
-}
+        table.info {
+            width: 100%
+                   margin: 0;
+        }
 
-table.info th {
-    padding-left: 15px;
-    width: 320px;
-}
+        table.info th {
+            padding-left: 15px;
+            width: 320px;
+        }
 
-td.info {
-    margin: 0;
-    padding-top: 5px;
-    padding-bottom: 5px;
-    padding-left: 15px;
-    font: 12pt Ariel,sans-serif;
-}
+        td.info {
+            margin: 0;
+            padding-top: 5px;
+            padding-bottom: 5px;
+            padding-left: 15px;
+            font: 12pt Ariel,sans-serif;
+        }
 
-</style>
+    </style>
 {% endblock %}
 
 {% block title %}{{ block.super }}Admin \Tools{% endblock title %}
 
 {% block page %}
-<h2>Admin Tools Summary</h2>
+    <h2>Admin Tools Summary</h2>
 
-<form action="/tutorial/admin/dashboard/" method="post">
-    {% csrf_token %}
-    {{ form }}
-</form>
+    <form action="/tutorial/admin/dashboard/" method="post">
+        {% csrf_token %}
+        {{ form }}
+    </form>
 
-<ul class="nav nav-tabs">
-  <li class="active"><a data-toggle="tab" href="#engagement">Engagement</a></li>
-  <li><a data-toggle="tab" href="#tools">Module Leader Tools</a></li>
-  <li><a data-toggle="tab" href="#marksheets">Marksheets</a></li>
-</ul>
-<div class="tab-content">
-  <div id="engagement" class="tab-pane fade in active">
-    <h3>Engagement</h3>
-        <table class="info">
-        <tr>
-            <th rowspan=7>Site Management</th><td class="info"><a href=/tutorial/admin/engagement/{{ semester }}/{{ cohort.name }}>Engagement Overview</a></td>
-        </tr>
-        <tr>
-            <td class="info"><a href="/tutorial/admin/lab_attendance/">Upload Lab Attendance</a></td>
-        <tr>
-            <td class="info"><a href=/tutorial/admin/meetings_summary/{{ cohort.name }}>Meeting Records Overview</a></td>
-        </tr>
-        <tr>
-            <td class="info"><a href=/tutorial/admin/summary/{{ cohort.name }}>Marks Overview</a></td>
-        </tr>
-        <tr>
-            <td class="info"><a href=/tutorial/admin/gradescope_import/{{ cohort.name }}>Upload Record of Integrity Declarations</a></td>
-        </tr>
-        <tr>
-            <td class="info"><a href=/tutorial/admin/bulk_import/{{ cohort.name }}>Upload Student Articles</a></td>
-        </tr>
-        <tr>
-            <td class="info"><a href=/tutorial/admin/ai_upload/>Upload Academic Integrity Test Results</a></td>
-        </tr>
-        </table>
-  </div>
-  <div id="tools" class="tab-pane fade">
-    <h3>Module Leader Tools</h3>
-        <table class="info">
-        <tr>
-            <th rowspan=2>Site Management</th><td class="info"><a href=/tutorial/admin/assign/{{ cohort.name }}>View and Assign Tutees</a</td>
-        </tr>
-        <tr>
-            <td class="info"><a href=/phys_utils/admin/spreadsheet>Upload Module Marksheet</a></td>
-        </tr>
-        <tr><th>Advanced Tools</th><td class="info"><a href=/admin/>Site Admin</a></td></tr>
-        </table>
-  </div>
-  <div id="marksheets" class="tab-pane fade">
-    <h3>Marksheets</h3>
-        <table class="info">
-        {% for type in marktypes %}
-        <tr>
-        {% if forloop.first %}
-            <th rowspan={{ marktypes.count }}>Generate Blank Marksheets as HTML</th>
-        {% endif %}
-            <td class="info"><a href="/tutorial/admin/marksheet/{{ type.name }}"/>{{ type.name }}</a></td>
-        </tr>
-        {% endfor %}
-        </table>
-  </div>
-</div>
-<br/>
+    <ul class="nav nav-tabs">
+        <li class="active"><a data-toggle="tab" href="#engagement">Engagement</a></li>
+        <li><a data-toggle="tab" href="#tools">Module Leader Tools</a></li>
+        <li><a data-toggle="tab" href="#marksheets">Marksheets</a></li>
+    </ul>
+    <div class="tab-content">
+        <div id="engagement" class="tab-pane fade in active">
+            <h3>Engagement</h3>
+            <table class="info">
+                <tr>
+                    <th rowspan=7>Site Management</th><td class="info"><a href=/tutorial/admin/engagement/{{ semester }}/{{ cohort.name }}>Engagement Overview</a></td>
+                </tr>
+                <tr>
+                    <td class="info"><a href="/tutorial/admin/lab_attendance/">Upload Lab Attendance</a></td>
+                    <tr>
+                        <td class="info"><a href=/tutorial/admin/meetings_summary/{{ cohort.name }}>Meeting Records Overview</a></td>
+                    </tr>
+                    <tr>
+                        <td class="info"><a href=/tutorial/admin/summary/{{ cohort.name }}>Marks Overview</a></td>
+                    </tr>
+                    <tr>
+                        <td class="info"><a href=/tutorial/admin/gradescope_import/{{ cohort.name }}>Upload Record of Integrity Declarations</a></td>
+                    </tr>
+                    <tr>
+                        <td class="info"><a href=/tutorial/admin/bulk_import/{{ cohort.name }}>Upload Student Articles</a></td>
+                    </tr>
+                    <tr>
+                        <td class="info"><a href=/tutorial/admin/ai_upload/>Upload Academic Integrity Test Results</a></td>
+                </tr>
+            </table>
+        </div>
+        <div id="tools" class="tab-pane fade">
+            <h3>Module Leader Tools</h3>
+            <table class="info">
+                <tr>
+                    <th rowspan=2>Site Management</th><td class="info"><a href=/tutorial/admin/assign/{{ cohort.name }}>View and Assign Tutees</a</td>
+                    </tr>
+                    <tr>
+                        <td class="info"><a href=/phys_utils/admin/spreadsheet>Upload Module Marksheet</a></td>
+                    </tr>
+                    <tr><th>Advanced Tools</th><td class="info"><a href=/admin/>Site Admin</a></td></tr>
+            </table>
+        </div>
+        <div id="marksheets" class="tab-pane fade">
+            <h3>Marksheets</h3>
+            <table class="info">
+                {% for type in marktypes %}
+                    <tr>
+                        {% if forloop.first %}
+                            <th rowspan={{ marktypes.count }}>Generate Blank Marksheets as HTML</th>
+                        {% endif %}
+                        <td class="info"><a href="/tutorial/admin/marksheet/{{ type.name }}"/>{{ type.name }}</a></td>
+                    </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+    <br/>
 
 {% endblock page %}

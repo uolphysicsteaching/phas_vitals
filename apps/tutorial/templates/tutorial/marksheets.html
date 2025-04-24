@@ -4,9 +4,9 @@
 {% block page %}
 <h2>Upload Marksheets</h2>
 <ul>
-{% for command in command_list %}
-    <ul>{{ command.command }}</ul>
-{% endfor %}
+    {% for command in command_list %}
+        <ul>{{ command.command }}</ul>
+    {% endfor %}
 </ul>
 <form action="{{ action }}" method="POST">
     {% csrf_token %}

@@ -2,138 +2,138 @@
 
 {% block extra_style %}
     <style type="text/css">
-    
-@page {
-    margin: 2cm 2cm; padding-left: 0.5cm;
-    }
-    
-body {
-    background-color: white;
-    font-size: 11pt;
-    font-family: "Times New Roman", serif;
 
-}
+        @page {
+            margin: 2cm 2cm; padding-left: 0.5cm;
+        }
 
-h1 {
-    margin: 0 0 0 0.5cm;
-    padding 0;
-    text-align: center;
-    font: 16pt "Times New Roman",serif;
+        body {
+            background-color: white;
+            font-size: 11pt;
+            font-family: "Times New Roman", serif;
 
-}
+        }
 
-table.scale_class {
-    width: 17cm;
-    margin-left: 0;
-    margin-top: -0.5cm;
-    margin-bottom: 0;
-    margin-right: 0;
-}
+        h1 {
+            margin: 0 0 0 0.5cm;
+            padding 0;
+            text-align: center;
+            font: 16pt "Times New Roman",serif;
 
-td.scale-spacer {
-    width: 7cm;
-}
+        }
 
-table.scale_none {
-    width: 17cm;
-    margin-top: -0.5cm;
-}
+        table.scale_class {
+            width: 17cm;
+            margin-left: 0;
+            margin-top: -0.5cm;
+            margin-bottom: 0;
+            margin-right: 0;
+        }
 
-table.scale_class tr td {
-    border: none;
-    font-weight: normal;
-    text-align: center;
-    border-collapse: collapse;
-}
+        td.scale-spacer {
+            width: 7cm;
+        }
 
-table.scale_class tr td.selected {
-    border-bottom: 1px solid red;
-    font-weight: bold;
-    color: red;
-    text-align: center;
-}
+        table.scale_none {
+            width: 17cm;
+            margin-top: -0.5cm;
+        }
 
-table.head_table {
-    width: 17cm;
-    border-collapse: collapse;
-    border: 1px solid black;
-    padding-left: -1cm;
-}
+        table.scale_class tr td {
+            border: none;
+            font-weight: normal;
+            text-align: center;
+            border-collapse: collapse;
+        }
 
-table.head_table td {
-    font: 12pt "Ariel",sans-serif;
-    padding-left: 1cm;
-    padding-top: 0.1cm;
-    border-collapse: collapse;
-    border: 1px solid black;
-}
+        table.scale_class tr td.selected {
+            border-bottom: 1px solid red;
+            font-weight: bold;
+            color: red;
+            text-align: center;
+        }
 
-hr.break {
-    page-break-after: always;
-}
+        table.head_table {
+            width: 17cm;
+            border-collapse: collapse;
+            border: 1px solid black;
+            padding-left: -1cm;
+        }
 
-hr.space {
-    height: 0.25cm;
-}
+        table.head_table td {
+            font: 12pt "Ariel",sans-serif;
+            padding-left: 1cm;
+            padding-top: 0.1cm;
+            border-collapse: collapse;
+            border: 1px solid black;
+        }
 
-.rubric {
-    font-weight: bold;
-}    
+        hr.break {
+            page-break-after: always;
+        }
 
-.rubric p {
-    font-weight: bold;
-}    
+        hr.space {
+            height: 0.25cm;
+        }
 
-table.backpage {
-    width: 17cm;
-}
+        .rubric {
+            font-weight: bold;
+        }
 
-td.examiner_comment {
-    padding-bottom: 4cm;
-}
+        .rubric p {
+            font-weight: bold;
+        }
 
-td.rubric_comment {
-    margin-bottom:{{ rubric_space }}cm;
-}
+        table.backpage {
+            width: 17cm;
+        }
 
-</style>
+        td.examiner_comment {
+            padding-bottom: 4cm;
+        }
+
+        td.rubric_comment {
+            margin-bottom:{{ rubric_space }}cm;
+        }
+
+    </style>
 {% endblock %}
 
 {% block content %}
-<h1>PHYS {{ config.MODULE_CODE }}/12 {{ type.name }}({{ type.code }})</h1>
-<table class="head_table">
-    <colgrpoup>
-        <col style="width: 12cm;"/>
-        <col/>
-    </colgroup>
-    <tbody>
-        <tr>
-            <td colspan=2>&lt;Student Name&gt;</td>
-        </tr>
-        <tr>
-            <td>&lt;Project Title&gt;</td>
-            <td>&lt;Group&gt;</td>
-        </tr>
-        <tr>
-            <td>Marker: &lt;Name&gt;</td>
-            <td>&lt;Date&gt;<//td>
-        </tr>
-    </tbody>
-</table>
-<hr class="space"/>
-{{ type.instructions|safe }}
-{% for rubric in type.rubric.all %}
-    <div class="rubric">{{ rubric.text|safe }}</div>
-    {{ rubric.html|safe }}
-</hr class="space"/>
-{% endfor %}
-<hr class="break"/>
-<table class="backpage">
-<tr><td><h3>Comments for the Examiner</h3></td></tr>
-<tr><td clas="examiner_comment">&nbsp;</td></tr>
-<tr><td><h3>Overall Score :&lt;Mark&gt;%</h3></td></tr>
-</table>
-<hr/>
+    <h1>PHYS {{ config.MODULE_CODE }}/12 {{ type.name }}({{ type.code }})</h1>
+    <table class="head_table">
+        <colgrpoup>
+            <col style="width: 12cm;"/>
+            <col/>
+        </colgroup>
+        <tbody>
+            <tr>
+                <td colspan=2>&lt;Student Name&gt;</td>
+            </tr>
+            <tr>
+                <td>&lt;Project Title&gt;</td>
+                <td>&lt;Group&gt;</td>
+            </tr>
+            <tr>
+                <td>Marker: &lt;Name&gt;</td>
+                <td>&lt;Date&gt;<//td>
+            </tr>
+        </tbody>
+    </table>
+    <hr class="space"/>
+    {{ type.instructions|safe }}
+    {% for rubric in type.rubric.all %}
+        <div class="rubric">{{ rubric.text|safe }}</div>
+        {{ rubric.html|safe }}
+        </hr class="space"/>
+    {% endfor %}
+    <hr class="break"/>
+    <table class="backpage">
+        <tr><td><h3>Comments for the Examiner</h3></td></tr>
+        <tr><td clas="examiner_comment">&nbsp;</td></tr>
+        <tr><td><h3>Overall Score :&lt;Mark&gt;%</h3></td></tr>
+    </table>
+    <hr/>
 {% endblock %}
 
 

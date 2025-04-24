@@ -4,15 +4,15 @@
 {% block title %}{{ block.super }Import Physics Articles{% endblock title %}
 
 {% block page %}
-<h2>Upload Inbox spreadsheet and Zip file from Turnitin</h2>
-<form action="/tutorial/admin/bulk_import/" method="post" enctype="multipart/form-data">
+  <h2>Upload Inbox spreadsheet and Zip file from Turnitin</h2>
+  <form action="/tutorial/admin/bulk_import/" method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {% bootstrap_form form layout="horizontal" %}
-  {% buttons %}
-    <button type="submit" class="btn btn-primary">
-      {% bootstrap_icon "star" %} Submit
-    </button>
-  {% endbuttons %}
+    {% buttons %}
+      <button type="submit" class="btn btn-primary">
+        {% bootstrap_icon "star" %} Submit
+      </button>
+    {% endbuttons %}
 
-</form>
+  </form>
 {% endblock page %}

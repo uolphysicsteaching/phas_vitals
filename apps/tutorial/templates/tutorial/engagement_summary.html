@@ -4,111 +4,82 @@
 {% load tutorial_tags %}
 {% block title %}{{ block.super }}Marking Sheets for {{ user.displayname }}{% endblock title %}
 {% block javascript %}
-{{ block.super }}
-<script>
-$(document).ready(function() {
-    $("#engagement_grid").dialog({"autoOpen":false });
-    $("a.session").click(function(event){
-        var session=$(this).attr('id');
-        var req="/tutorial/engagement/submit/"+session;
-        console.log(req);
-        $.get(req, function(data) {
-            $("#dialog_container").html(data);
-            $("#engagement_grid").dialog({"model":true,
-                                        "autoOpen":true,
-                                        "width": "auto",
-                                        "close":  function( event, ui ) {
-                                            location.reload();
-                                        },
-                                        "draggable":true });
+    {{ block.super }}
+    <script>
+        $(document).ready(function() {
+            $("#engagement_grid").dialog({"autoOpen":false });
+            document.body.addEventListener('htmx:afterSwap', function(evt) {
+                $("a.session").click(function(event){
+                    var session=$(this).attr('id');
+                    var req="/tutorial/engagement/submit/"+session;
+                    console.log(req);
+                    $.get(req, function(data) {
+                        $("#dialog_container").html(data);
+                        $("#engagement_grid").dialog({"model":true,
+                            "autoOpen":true,
+                            "width": "auto",
+                            "close":  function( event, ui ) {
+                                location.reload();
+                            },
+                            "draggable":true });
+                    })
+                    event.stopPropagation();
+                    event.preventDefault();
+                    return false;
+                })
+            });
+
         })
-        event.stopPropagation();
-        event.preventDefault();
-        return false;
-    })
-})
-</script>
+    </script>
 {% endblock javascript %}
 {% block css %}
-{{ block.super }}
-<style>
-.semester {
-    text-align: center;
-}
-.active_semester {
-    background-color:#b31b1b;
-    font-weight:bold;
-}
-td.semester.active_semester > a {
-    color: white;
-}
-td.semester.inactive_semester > a {
-    color: black;
-}
-</style>
+    {{ block.super }}
+    <style>
+        .semester {
+            text-align: center;
+        }
+        .active_semester {
+            background-color:#b31b1b;
+            font-weight:bold;
+        }
+        td.semester.active_semester > a {
+            color: white;
+        }
+        td.semester.inactive_semester > a {
+            color: black;
+        }
+    </style>
 
 {% endblock css %}
 
 {% block content %}
-{% get_flatpages '/tutorial/index/' as pages %}
-{{ pages.first.content | safe }}
-<form action="" id="cohort_form" method="POST">
-{% csrf_token %}
-{{ form }}
-</form><br/>
-<div class="table-container table-responsive" tabindex="0">
-    <table width=95% role="presentation" aria-label="Semester Selection">
-    <tr>
-    <td colspan=6 class='semester{% if semester == 1 %} active_semester{% else %} inactive_semester{% endif %}'><a href=/tutorial/engagement_view/1/{{ cohort.name }}/>Semester 1</a></td>
-    <td colspan=8 class='semester{% if semester == 2 %} active_semester{% else %} inactive_semester{% endif %}'><a href=/tutorial/engagement_view/2/{{ cohort.name }}/>Semester 2</a></td>
+    {% get_flatpages '/tutorial/index/' as pages %}
+    {{ pages.first.content | safe }}
+    <form action="" id="cohort_form" method="POST">
+        {% csrf_token %}
+        {{ form }}
+    </form><br/>
+    <div class="table-container table-responsive" tabindex="0">
+        <table width=95% role="presentation" aria-label="Semester Selection">
+            <tr>
+                <td colspan=6 class='semester{% if semester == 1 %} active_semester{% else %} inactive_semester{% endif %}'><a href=/tutorial/engagement_view/1/{{ cohort.name }}/>Semester 1</a></td>
+            <td colspan=8 class='semester{% if semester == 2 %} active_semester{% else %} inactive_semester{% endif %}'><a href=/tutorial/engagement_view/2/{{ cohort.name }}/>Semester 2</a></td>
     </tr>
     </table>
-</div>
-{% for group in groups %}
-    <h2>Engagement Summary for Tutorial group {{ group.code }} {{ group.cohort }}
-    <a href=mailto:?to={{group.tutor.nice_email|urlencode }}&bcc={% for student in group.members %}{{ student.nice_email|urlencode }},{% endfor %}>Email Group</a></h2>
-    <div class="table-container table-responsive" tabindex="0">
-        <table width=95% role="table" aria-label="Summary of student engagement: {{ group }}">
-            <tr>
-                <th id="students_{{ group.pk }}" colspan=2>Name of Student</th>
-                {% for session in sessions %}
-                    <th id="session_{{ group.pk }}_{{ session.pk }}"><a href="/tutorial/engagement_view/" class="session" id="{{ group.pk }}:{{ session.pk }}">{{ session.name }}</a></th>
-                {% endfor %}
-                <th colspan=2 id="status_{{ group.pk }}">Status</th>
-            </tr>
-            {% for student in group.members %}
-                <tr>
-                    <td headers="students_{{ group.pk }}">
-                        <a href="/accounts/detail/{{ student.number }}/#dashboard">{{ student.display_name }}</a>
-                    </td>
-                    <td>&nbsp;</td>
-                    {% engagement student semester cohort %}
-                    <td colspan=2 style="background-color: {{ student.activity_colour }}; color: {{ student.activity_colour|comp_colour }}" headers="status_{{ group.pk }}">{{ student.activity_label }}</td>
-                </tr>
-            {% endfor %}
-        </table>
-        {% if group.recorded < 100 %}
-            <div class="col-md-12 h4 text-center" style="padding: 10px; background-color: {{ group.recorded_colour }};">
-                Tutorial attendance record for this group is {{ group.recorded|floatformat:0 }}% Complete.
-            </div>
-            <strong>Missing records for:</strong><br/>
-            {% for session,session_list in group.missing_records.items %}
-                <strong>{{ session }}</strong>
-                <ul>
-                {% for student in session_list %}
-                    <li>{{ student.display_name }}</li>
-                {% endfor %}
-                </ul>
-            {% endfor %}
-            <p>If the student was a no-show then please return them as unexplained absent. If the student is
-            on temporary leave, or joined the group late, please return them as allowed absence. This will
-            help ensure that their overal engagemnt level is being accurately reflected.</p>
-        {% endif %}
     </div>
-{% endfor %}
-<div id="dialog_container" role="dialog" aria-label="Popup dialog for entering engagement data">
-<div id="engagement_grid">&nbsp;</div>
-</div>
+    <div hx-get="/tutorial/engagement_view/{{ semester }}/{{ cohort.name }}x/{{ next_code }}/?codes={{ codes|urlencode }}"
+         hx-include="form"
+         hx-swap="outerHTML"
+         hx-target="#table_part"
+         hx-trigger="revealed"
+         id="table_part">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+    <div id="dialog_container" role="dialog" aria-label="Popup dialog for entering engagement data">
+        <div id="engagement_grid">&nbsp;</div>
+    </div>
 
 
 {% endblock content %}

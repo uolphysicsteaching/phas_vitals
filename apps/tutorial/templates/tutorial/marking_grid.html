@@ -1,44 +1,44 @@
 {% load django_bootstrap5 %}
 <div style="width: 1280px;" id="marking_grid" title="{{ marksheet.student.tutorial_group_assignment }}">
-<p>Click on the phrases in te boxes that best describe the student report. You can click on more than one phrase in more than one
-box for each criteria and the score will be updated as you go. You may general feedback comments and adjust the score as you wish.</p>
-<form action="/tutorial/marking/submit/{{ marksheet.student.username }}/{{ marksheet.type.code }}/" method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    <table width=100%>
-    <tr>
-    <th>Criteria</th>
-    {% for label in class_labels %}
-    <th style="text-align: center;" width={{ col_width }}%>{{ label }}</th>
-    {% endfor %}
-    </tr>
-    {% for score in marksheet.tagable_scores %}
-        <tr>
-        <th>{{ score.rubric.name }}</th>
-        {% for tags in score.possible_tags.values %}
-            <td>{% for tag in tags %}
-                {% if tag in score.tags.all %}
-                    <a class="criteriatag settag" id="{{ score.pk }}_{{ tag.pk }}">{{ tag.text }}</a>
-                {% else %}
-                    <a class="criteriatag unsettag" id="{{ score.pk }}_{{ tag.pk }}">{{ tag.text }}</a>
-                {% endif %}
+    <p>Click on the phrases in te boxes that best describe the student report. You can click on more than one phrase in more than one
+        box for each criteria and the score will be updated as you go. You may general feedback comments and adjust the score as you wish.</p>
+    <form action="/tutorial/marking/submit/{{ marksheet.student.username }}/{{ marksheet.type.code }}/" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <table width=100%>
+            <tr>
+                <th>Criteria</th>
+                {% for label in class_labels %}
+                    <th style="text-align: center;" width={{ col_width }}%>{{ label }}</th>
+                {% endfor %}
+            </tr>
+            {% for score in marksheet.tagable_scores %}
+                <tr>
+                    <th>{{ score.rubric.name }}</th>
+                    {% for tags in score.possible_tags.values %}
+                        <td>{% for tag in tags %}
+                            {% if tag in score.tags.all %}
+                                <a class="criteriatag settag" id="{{ score.pk }}_{{ tag.pk }}">{{ tag.text }}</a>
+                            {% else %}
+                                <a class="criteriatag unsettag" id="{{ score.pk }}_{{ tag.pk }}">{{ tag.text }}</a>
+                            {% endif %}
+                        {% endfor %}
+                        </td>
+                    {% endfor %}
+                </tr>
             {% endfor %}
-            </td>
-        {% endfor %}
-        </tr>
-    {% endfor %}
-    <tr>
-    <td colspan={{ comment_cols }}>{% bootstrap_field  form.comment layout="vertical" %}</td>
-    <td>{% bootstrap_field  form.threshold layout="vertical" %}</td>
-        <td>
-        {% bootstrap_field form.score layout="vertical" %}<br/>
-        {% buttons %}
-        <button type="submit" class="btn btn-primary">
-            {% bootstrap_icon "star" %} Submit
-        </button>
-      {% endbuttons %}</td>
-    </tr>
-    </table>
-</form>
+            <tr>
+                <td colspan={{ comment_cols }}>{% bootstrap_field  form.comment layout="vertical" %}</td>
+                <td>{% bootstrap_field  form.threshold layout="vertical" %}</td>
+                <td>
+                    {% bootstrap_field form.score layout="vertical" %}<br/>
+                    {% buttons %}
+                        <button type="submit" class="btn btn-primary">
+                            {% bootstrap_icon "star" %} Submit
+                        </button>
+                    {% endbuttons %}</td>
+            </tr>
+        </table>
+    </form>
 </div>
 
 

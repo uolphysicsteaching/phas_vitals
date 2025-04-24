@@ -314,9 +314,14 @@ LOGGING = {
     "disable_existing_loggers": False,
     "handlers": {
         "file": {
-            "level": "ERROR",
+            "level": "DEBUG",
             "class": "logging.FileHandler",
             "filename": str(PROJECT_ROOT_PATH / "logs" / "django.log"),
+        },
+        "htmx_file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": str(PROJECT_ROOT_PATH / "logs" / "htmx.log"),
         },
         "file_info": {
             "class": "logging.FileHandler",
@@ -342,6 +347,7 @@ LOGGING = {
             "handlers": ["file_info"],
             "propagate": False,
         },
+        "htmx_views.views": {"handlers": ["htmx_file"], "level": "DEBUG", "propagate": False},
     },
 }
 

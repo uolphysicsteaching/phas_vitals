@@ -3,50 +3,50 @@
 {% block title %}{{ block.super }}Update Lab attednance{% endblock title %}
 
 {%block javascript  %}
-{{ block.super }}
-{{ formset.media }}
-<script type="text/javascript">
+  {{ block.super }}
+  {{ formset.media }}
+  <script type="text/javascript">
     $(function() {
-        $('tr.form-row').formset();
+      $('tr.form-row').formset();
     })
-</script>
+  </script>
 {% endblock %}
 
 {% block page %}
-<h2>Lab Attendance Upload</h2>
-{% if errors %}
-<h3>Some students not found</h3>
-<table>
-<tr><th>Student</th><th>Problem</th></tr>
-{% for fail in errors %}
-<tr><td>{{ fail.Student}}</td><td>{{ fail.reason }}</td></tr>
-{% endfor %}
-</table>
-{% endif %}
-<p>Upload a spreadsheet which has columns as follows:</p>
-<ul>
-<li><strong>Student ID</strong><br/> The Banner ID or the IT username of the student to assign to the tutorial group (Student accounts
-should already have been imported from Banner via Faculty Web Services!)</li>
-<li><strong>S<i>n</i> Wk <i>m</i></strong><br/>Where <i>n</i> is 1 or 2 for semester 1 or 2 and <i>m</i> is 1-11 for weeks 1 to 11</li>
-</ul>
-<p>The scores for each week should be as follows:</p>
-<ol start=0 style="margin-left: 32px;">
-<li>Was absent without reason</li>
-<li>Attended a catch-up but handed no work in</li>
-<li>Attended a catch up and handed work in</li>
-<li>Attended as normal but no work handed in</li>
-<li>Attended as normal and handed work in</li>
-</ol>
-<p>Leave the cell blank for either no attendance expected or the absence was authorised.</p>
-<br/>
-<form action="/tutorial/admin/lab_attendance/" method="post" enctype="multipart/form-data">
+  <h2>Lab Attendance Upload</h2>
+  {% if errors %}
+    <h3>Some students not found</h3>
+    <table>
+      <tr><th>Student</th><th>Problem</th></tr>
+      {% for fail in errors %}
+        <tr><td>{{ fail.Student}}</td><td>{{ fail.reason }}</td></tr>
+      {% endfor %}
+    </table>
+  {% endif %}
+  <p>Upload a spreadsheet which has columns as follows:</p>
+  <ul>
+    <li><strong>Student ID</strong><br/> The Banner ID or the IT username of the student to assign to the tutorial group (Student accounts
+      should already have been imported from Banner via Faculty Web Services!)</li>
+    <li><strong>S<i>n</i> Wk <i>m</i></strong><br/>Where <i>n</i> is 1 or 2 for semester 1 or 2 and <i>m</i> is 1-11 for weeks 1 to 11</li>
+  </ul>
+  <p>The scores for each week should be as follows:</p>
+  <ol start=0 style="margin-left: 32px;">
+    <li>Was absent without reason</li>
+    <li>Attended a catch-up but handed no work in</li>
+    <li>Attended a catch up and handed work in</li>
+    <li>Attended as normal but no work handed in</li>
+    <li>Attended as normal and handed work in</li>
+  </ol>
+  <p>Leave the cell blank for either no attendance expected or the absence was authorised.</p>
+  <br/>
+  <form action="/tutorial/admin/lab_attendance/" method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form }}
-  {% buttons %}
-    <button type="submit" class="btn btn-primary">
-      {% bootstrap_icon "star" %} Submit
-    </button>
-  {% endbuttons %}
+    {% buttons %}
+      <button type="submit" class="btn btn-primary">
+        {% bootstrap_icon "star" %} Submit
+      </button>
+    {% endbuttons %}
 
-</form>
+  </form>
 {% endblock page %}

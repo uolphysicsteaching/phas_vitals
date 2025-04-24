@@ -1,0 +1,28 @@
+<div class="row">
+    <div class="col-lg-4">
+        <h3 class="text-center">Homework {% if user.tests_score is not None %}{{ user.tests_score }}%{% endif %}</h3>
+        <img class="pie"  src='{{ homework_plot.data }}' alt="{{ homework_plot.alt }}" />
+    </div>
+    <div class="col-lg-4">
+        <h3 class="text-center">Labs {% if user.labs_score is not None %}{{ user.labs_score }}%{% endif %}</h3>
+        <img class="pie"  src='{{ lab_plot.data }}' alt="{{ lab_plot.alt }}" />
+    </div>
+    <div class="col-lg-4">
+        <h3 class="text-center">Coding {% if user.coding_score is not None %}{{ user.coding_score }}%{% endif %}</h3>
+        <img class="pie col-md-12"  src='{{ code_plot.data }}' alt="{{ code_plot.alt }}" />
+    </div>
+</div>
+<div class="row">
+
+    <div class="col-lg-4">
+        <h3 class="text-center">VITALs {% if user.vitals_score is not None %}{{ user.vitals_score }}%{% endif %}</h3>
+        <img class="pie" src='{{ vitals_plot.data }}' alt="{{ vitals_plot.alt }}" />
+    </div>
+    <div class="col-lg-4">
+        &nbsp;
+    </div>
+    <div class="col-lg-4">
+        <h3 class="text-center">Tutorials {% if user.engagement is not None %}{{ user.engagement }}%{% endif %}</h3>
+        <img class="pie"  src='{{ tutorial_plot.data }}' alt="{{ tutorial_plot.alt }}" />
+    </div>
+</div>

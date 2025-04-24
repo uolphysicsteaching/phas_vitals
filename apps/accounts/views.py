@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from dal import autocomplete
+from htmx_views.views import HTMXProcessMixin
 from util.http import buffer_to_base64, svg_data
 from util.spreadsheet import TutorReportSheet, save_virtual_workbook
 from util.views import (
@@ -93,17 +94,165 @@ class TutorGroupEmailsView(IsSuperuserViewMixin, FormView):
         return super().form_valid(form)
 
 
-class StudentSummaryView(IsStudentViewixin, TemplateView):
+class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
     """View class to provide students with summary."""
 
     template_name = "accounts/summary.html"
+    template_name_dashboard = "accounts/parts/summary_plots.html"
+    template_name_tests = "accounts/parts/summary_tests.html"
+    template_name_labs = "accounts/parts/summary_labs.html"
+    template_name_code = "accounts/parts/summary_code.html"
+    template_name_vitals = "accounts/parts/summary_vitals.html"
+    template_name_required = "accounts/parts/summary_required.html"
 
-    def get_context_data(self, **kwargs):
+    def get_context_data_tests(self, **kwargs):
+        """Get the context data for the tests page only."""
+        context = super().get_context_data(**kwargs)
+        if "username" in self.kwargs:
+            user = Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
+        else:
+            user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
+        modules = user.modules.all()
+        Tests = user.tests.model.homework.filter(module__in=modules).order_by("release_date", "name")
+        test_scores = {}
+        for test in Tests:
+            try:
+                test_scores[test] = user.test_results.get(test=test)
+            except ObjectDoesNotExist:
+                new_tr = user.test_results.model(user=user, test=test, passed=False, score=None)
+                new_tr.test_status = new_tr.manual_test_satus
+                new_tr.standing = "Missing"
+                test_scores[test] = new_tr
+        required = {}
+        context |= {
+            "user": user,
+            "modules": modules,
+            "Tests": Tests,
+            "scores": test_scores,
+            "tab": self.kwargs.get("selected_tab", "#tests"),
+        }
+        return context
+
+    def get_context_data_labs(self, **kwargs):
+        """Get the context data for the tests page only."""
+        context = super().get_context_data(**kwargs)
+        if "username" in self.kwargs:
+            user = Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
+        else:
+            user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
+        modules = user.modules.all()
+        Labs = user.tests.model.labs.filter(module__in=modules).order_by("release_date", "name")
+        lab_scores = {}
+        for lab in Labs:
+            try:
+                lab_scores[lab] = user.test_results.get(test=lab)
+            except ObjectDoesNotExist:
+                new_tr = user.test_results.model(user=user, test=lab, passed=False, score=None)
+                new_tr.test_status = new_tr.manual_test_satus
+                new_tr.standing = "Missing"
+                lab_scores[lab] = new_tr
+        context |= {
+            "user": user,
+            "modules": modules,
+            "Labs": Labs,
+            "lab_scores": lab_scores,
+            "tab": self.kwargs.get("selected_tab", "#labs"),
+        }
+        return context
+
+    def get_context_data_code(self, **kwargs):
+        """Get the context data for the tests page only."""
+        context = super().get_context_data(**kwargs)
+        if "username" in self.kwargs:
+            user = Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
+        else:
+            user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
+        modules = user.modules.all()
+        Code_tasks = user.tests.model.code_tasks.filter(module__in=modules).order_by("release_date", "name")
+        code_scores = {}
+        for code in Code_tasks:
+            try:
+                code_scores[code] = user.test_results.get(test=code)
+            except ObjectDoesNotExist:
+                new_tr = user.test_results.model(user=user, test=code, passed=False, score=None)
+                new_tr.test_status = new_tr.manual_test_satus
+                new_tr.standing = "Missing"
+                code_scores[code] = new_tr
+        context |= {
+            "user": user,
+            "modules": modules,
+            "Code_tasks": Code_tasks,
+            "code_scores": code_scores,
+            "tab": self.kwargs.get("selected_tab", "#code"),
+        }
+        return context
+
+    def get_context_data_vitals(self, **kwargs):
+        """Get the context data for the tests page only."""
+        context = super().get_context_data(**kwargs)
+        if "username" in self.kwargs:
+            user = Account.objects.filter(username=self.kwargs["username"]).prefetch_related("vital_results").first()
+        else:
+            user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("vital_results").first()
+        modules = user.modules.all()
+        VITALS = user.VITALS.model.objects.filter(module__in=modules).order_by("module", "start_date", "VITAL_ID")
+        vitals_results = {}
+        for vital in VITALS:
+            try:
+                vitals_results[vital.module] = vitals_results.get(vital.module, []) + [
+                    user.vital_results.get(vital=vital)
+                ]
+            except ObjectDoesNotExist:
+                new_vr = user.vital_results.model(user=user, vital=vital, passed=False)
+                vitals_results[vital.module] = vitals_results.get(vital.module, []) + [new_vr]
+        context |= {
+            "user": user,
+            "modules": modules,
+            "VITALS": VITALS,
+            "vitals_results": vitals_results,
+            "tab": self.kwargs.get("selected_tab", "#vitals"),
+        }
+        return context
+
+    def get_context_data_required(self, **kwargs):
+        """Get the context data for the tests page only."""
+        context = super().get_context_data(**kwargs)
+        if "username" in self.kwargs:
+            user = Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
+        else:
+            user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
+        modules = user.modules.all()
+        required = {}
+        for test in user.required_tests.all():
+            try:
+                required[test] = user.test_results.get(test=test)
+            except ObjectDoesNotExist:
+                new_tr = user.test_results.model(user=user, test=test, passed=False, score=None)
+                new_tr.test_status = new_tr.manual_test_satus
+                new_tr.standing = "Missing"
+                required[test] = new_tr
+        context |= {
+            "user": user,
+            "modules": modules,
+            "required": required,
+            "tab": self.kwargs.get("selected_tab", "#required"),
+        }
+        return context
+
+    def get_context_data_dashboard(self, **kwargs):
         """Get data for the student view."""
         if "username" in self.kwargs:
-            user = Account.objects.get(username=self.kwargs["username"])
+            user = (
+                Account.objects.filter(username=self.kwargs["username"])
+                .prefetch_related("test_results", "vital_results")
+                .first()
+            )
         else:
-            user = Account.objects.get(number=self.kwargs["number"])
+            user = (
+                Account.objects.filter(number=self.kwargs["number"])
+                .prefetch_related("test_results", "vital_results")
+                .first()
+            )
         modules = user.modules.all()
         VITALS = user.VITALS.model.objects.filter(module__in=modules).order_by("module", "start_date", "VITAL_ID")
         Tests = user.tests.model.homework.filter(module__in=modules).order_by("release_date", "name")
@@ -174,6 +323,28 @@ class StudentSummaryView(IsStudentViewixin, TemplateView):
             "lab_plot": self.homework_plot(lab_scores, what="Lab"),
             "code_plot": self.homework_plot(code_scores, what="Code Tasks"),
             "vitals_plot": self.vitals_plot(vitals_results),
+        }
+        return context
+
+    def get_context_data(self, **kwargs):
+        """Get data for the student view."""
+        if "username" in self.kwargs:
+            user = (
+                Account.objects.filter(username=self.kwargs["username"])
+                .prefetch_related("test_results", "vital_results")
+                .first()
+            )
+        else:
+            user = (
+                Account.objects.filter(number=self.kwargs["number"])
+                .prefetch_related("test_results", "vital_results")
+                .first()
+            )
+        modules = user.modules.all()
+        context = super().get_context_data(**kwargs)
+        context |= {
+            "user": user,
+            "modules": modules,
         }
         return context
 

@@ -1,0 +1,43 @@
+{% load humanize %}
+{% load tutorial_tags %}
+<tr>
+    <th colspan=15 style='background-color: {{ group.recorded_colour }};'>
+        <span style='color: {{ group.recorded_text_colour }}; background-color: {{ group.recorded_colour }};'>
+            Engagement Summary for Tutorial group {{ group.code }} {{ group.cohort }}
+            <a style='color: {{ group.recorded_text_colour }}; background-color: {{ group.recorded_colour }};' href=mailto:?to={{ group.tutor.nice_email|urlencode }}>( {{ group.tutor.formal_name }} )</a>
+            - <a style='color: {{ group.recorded_text_colour }}; background-color: {{ group.recorded_colour }};' href=mailto:?to={{group.tutor.nice_email|urlencode }}&bcc={% for student in group.members %}{{ student.nice_email|urlencode }},{% endfor %}>Email Group</a></span>
+    </th>
+</tr>
+<tr>
+    <th id="students_{{ group.pk }}" width=25% colspan=2>Name of Student</th>
+    {% for session in sessions %}
+        <th id="session_{{ group.pk }}_{{ session.pk }}">{{ session.name }}</th>
+    {% endfor %}
+    <th colspan=2 id="status_{{ group.pk }}">Status</th>
+</tr>
+{% for student in group.members %}
+    <tr>
+        <td headers="students_{{ group.pk }}">
+            <a href="/accounts/detail/{{ student.number }}/#dashboard">{{ student.display_name }}</a>
+        </td>
+        <td>&nbsp;</td>
+        {% engagement student semester cohort %}
+        <td colspan=2 style="background-color: {{ student.activity_colour }}; color: {{ student.activity_colour|comp_colour }}" headers="status_{{ group.pk }}">{{ student.activity_label }}</td>
+    </tr>
+{% endfor %}
+{% if next_code %}
+    <tr hx-get="/tutorial/engagement_view/{{ semester }}/{{ cohort.name }}x/{{ next_code }}/?codes={{ codes|urlencode }}"
+        hx-swap="outerHTML"
+        hx-target="#table_part" hx-trigger="intersect once"
+        hx-include="form" id="table_part">
+        <td class="text-center" colspan="15">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </td>
+    </tr>
+{% else %}
+    <script>
+        $("#tutorial_table").addClas("table-responsive");
+    </script>
+{% endif %}

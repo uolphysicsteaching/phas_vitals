@@ -58,7 +58,9 @@ class TutorialAssignment(models.Model):
     """A table to connect tutorials through to students and assessors."""
 
     objects = TutorialAssignmentManager()
-    tutorial: "QuerySet[Tutorial]" = models.ForeignKey("Tutorial", on_delete=models.CASCADE, related_name="tutees")
+    tutorial: "QuerySet[Tutorial]" = models.ForeignKey(
+        "tutorial.Tutorial", on_delete=models.CASCADE, related_name="tutees"
+    )
     student: "models.OneToOneField[TutorialAssignment, Account]" = models.OneToOneField(
         Account,
         on_delete=models.CASCADE,

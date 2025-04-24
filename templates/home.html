@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load flatpages %}
 {% block content %}
-{% get_flatpages '/home/index/' as pages %}
-{{ pages.first.content|safe }}
+    {% get_flatpages '/home/index/' as pages %}
+    {{ pages.first.content|safe }}
 {% endblock content %}

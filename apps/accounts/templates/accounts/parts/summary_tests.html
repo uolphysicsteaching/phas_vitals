@@ -1,0 +1,39 @@
+<h3>Homework Results</h3>
+{% for test_score in scores.values %}
+    <div class="border-top border-dark border-2 row {{ test_score.test.bootstrap5_class }}">
+        <div class="col-md-3">
+            <strong><a class="vital_link" href="{{ test_score.test.url }}">{{ test_score.test.name }}</a>
+                ({{ test_score.test.score_possible }} marks)</strong><br/>
+            Released: {{ test_score.test.release_date }}<br/>
+            Recommended: {{ test_score.test.recommended_date }}
+        </div>
+        <div class="col-md-3  align-middle {{ test_score.bootstrap5_class }}">
+            <div class="row">
+                <span class="col-sm-2 fs-1 {{ test_score.icon }}">&nbsp;</span>
+                <div class="col-sm-10 text-center align-middle fs-4">
+                    {% if test_score.passed %}
+                        Passed in {{ test_score.attempts.count }}attempt{% if test_score.attempts.count > 1%}s{% endif %}
+                    {% elif test_score.score is None %}
+                        {% if test_score.status == "NeedsGrading" %}
+                            Waiting for Mark
+                        {% elif test_score.test_status != "Not Started" %}
+                            Not Attempted
+                        {% endif %}
+                    {% else %}
+                        Not Passed ({{ test_score.attempts.count }}attempt{% if test_score.attempts.count > 1%}s{% endif %})
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 text-center align-middle">
+            {% if test_score.attempts.count > 0 %}
+                {{ test_score.score }} / {{ test_score.test.score_possible }} marks
+            {% else %}
+                {{ test_score.test.score_possible }} mark{% if test_score.test.score_possible > 1%}s{% endif %} possible
+            {% endif %}
+        </div>
+        <div class="col-md-3">
+            {{ test_score.vitals_text }}
+        </div>
+    </div>
+{% endfor %}

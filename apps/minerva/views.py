@@ -122,6 +122,7 @@ class StreamingImportTestsView(ImportTestsView):
     def form_valid(self, form):
         """Process the uploaded Gradebook data."""
         self.form = form
+        self.module = form.cleaned_data["module"]
         response = StreamingHttpResponse(iter(self.response_generator()))
         response["Content-Type"] = "text/plain"
         return response
@@ -130,51 +131,89 @@ class StreamingImportTestsView(ImportTestsView):
         """Yield rows for a table."""
         module = self.form.cleaned_data["module"]
         alt = False
+        tests = {}
         for df in self.data:
             for col in df.columns:
                 if match := self.test_name.search(col):
-                    name = match.groupdict()["name"]
-                    test_id = match.groupdict()["test_id"]
-                    possible = float(match.groupdict()["total"])
-                    test, new = Test.objects.get_or_create(test_id=test_id, module=module)
-                    cls = "light" if not alt else "secondary"
-                    alt = not alt
-                    if new:
-                        test.name = name
-                        test.score_possible = possible
-                        test.passing_score = 0.8 * possible
-                        test.save()
-                        yield f"<tr class='tb-{cls}'><td>Saving new test {name} {possible=} {test_id=}</td></tr>"
-                    else:
-                        test.name = name
-                        test.score_possible = possible
-                        test.passing_score = 0.8 * possible
-                        test.save()
-
-                        yield f"<tr class='tb-success'><td>ound existing column {name} {test_id=}</td></tr>"
+                    try:
+                        cls = "light" if not alt else "secondary"
+                        name = match.groupdict()["name"]
+                        test_id = match.groupdict()["test_id"]
+                        possible = float(match.groupdict()["total"])
+                        yield f"<tr class='tb-{cls}'><td>Matched column: {name} ({test_id})_ for {possible}</td></tr>"
+                        try:
+                            existing = Test.objects.get(module=module, name=name)
+                            test_id = existing.test_id
+                            yield "<tr><td>Updating ID</td></tr>"
+                        except Test.DoesNotExist:
+                            pass
+                        try:
+                            test = Test.objects.get(test_id=test_id, module=module)
+                            new = False
+                        except Test.DoesNotExist:
+                            test = Test(test_id=test_id, module=module, name=name)
+                            test.save()
+                            new = True
+                        alt = not alt
+                        if new:
+                            test.name = name
+                            test.score_possible = possible
+                            test.passing_score = 0.8 * possible
+                            test.save()
+                            tests[col] = test
+                            yield f"<tr class='tb-{cls}'><td>Saving new test {name} {possible=} {test_id=}</td></tr>"
+                        else:
+                            test.name = name
+                            test.score_possible = possible
+                            test.save()
+                            tests[col] = test
+                    except Exception as e:
+                        nl = "\n"
+                        yield f"<tr class='tb-warning'><td>Error {e} {format_exc().replace(nl,'<br/>')}</td></tr>"
                 else:
                     yield f"<tr class='tb-warning'><td>Unmatched column name {col}</td></tr>"
             for _, row in df.iterrows():
-                if row["Availability"] == "No" or np.isnan(row["Student ID"]):
-                    continue
-                first_name = row["First Name"]
-                last_name = row["Last Name"]
-                sid = int(row["Student ID"])
-                username = row["Username"]
-                user, _new = Account.objects.get_or_create(username=username)
-                user.first_name = first_name
-                user.last_name = last_name
-                user.number = sid
-                user.save()
-                ModuleEnrollment.objects.get_or_create(module=self.module, student=user)
-                for mod in self.module.sub_modules.all():
-                    ModuleEnrollment.objects.get_or_create(module=mod, student=user)
-                cls = "light" if not alt else "secondary"
-                alt = not alt
-                if new:
-                    yield f"<tr class='tb-success'><td>New user {user.display_name} created</tr></td>"
-                else:
-                    yield f"<tr class='tb-{cls}'><td>Existing user {user.display_name} updated</td></tr>"
+                try:
+                    cls = "light" if not alt else "secondary"
+
+                    if row["Availability"] == "No" or np.isnan(row["Student ID"]):
+                        yield f"<tr><td>Skipping Row {row}</td?</tr>"
+                        continue
+
+                    first_name = row["First Name"]
+                    last_name = row["Last Name"]
+                    sid = int(row["Student ID"])
+                    username = row["Username"]
+                    user, new = Account.objects.get_or_create(username=username)
+                    user.first_name = first_name
+                    user.last_name = last_name
+                    user.number = sid
+                    user.save()
+                    yield f"<tr class='tb-{cls}'>{'Added' if new else 'Updated'} {user.display_name}</td></tr>"
+                    ModuleEnrollment.objects.get_or_create(module=self.module, student=user)
+                    for mod in self.module.sub_modules.all():
+                        ModuleEnrollment.objects.get_or_create(module=mod, student=user)
+                    alt = not alt
+                    if new:
+                        yield f"<tr class='tb-success'><td>New user {user.display_name} created</tr></td>"
+                    else:
+                        yield f"<tr class='tb-{cls}'><td>Existing user {user.display_name} updated</td></tr>"
+                    for col, test in tests.items():
+                        cls = "light" if not alt else "secondary"
+                        score = row[col]
+                        if not isinstance(score, float) or np.isnan(score):
+                            yield f"<tr class='tb-{cls}'><td>Skipping Score {score}</td></tr>"
+                            continue  # bypass if no score for this student for this test
+                        ts, new = Test_Score.objects.get_or_create(user=user, test=test)
+                        ta, _ = Test_Attempt.objects.get_or_create(test_entry=ts, score=score)
+                        ta.save()
+                        ts.save()
+                        yield (
+                            f"<tr class='tb-{cls}'><td>Test score for {user.display_name} and {test.name}"
+                            + " of  {score} {'created' if new else 'updted'}</td></tr>"
+                        )
+                except Exception as e:
+                    yield f"<tr class='tb-warning'><td>Row {e}</td></tr>"
 
 
 class ImportTestHistoryView(IsSuperuserViewMixin, FormView):
@@ -466,24 +505,8 @@ class BaseShowTestResultsView(SingleTableMixin, HTMXProcessMixin, FormView):
 
     def get_table_data(self):
         """Fill out the table with data, creating the entries for the MarkType columns to interpret."""
-        table = [Row_Dict(student, self.tests) for student in self.entries]
-        return table
-
-        for student in self.entries:
-            record = {  # Standard student information entries
-                "student": student,
-                "number": student.SID,
-                "programme": student.programme.name,
-                "status": student.status,
-            }
-            for test in self.tests:  # Add columns for the tests
-                try:
-                    ent = student.test_results.get(test=test)
-                    record[set_nameen(test.name)] = ent
-                except ObjectDoesNotExist:
-                    record[test.name] = None
-
-            table.append(record)
+        tests = {set_name(test.name): test.pk for test in self.tests}
+        table = [Row_Dict(student, tests) for student in self.entries]
         return table
 
     def get_queryset(self):
@@ -497,7 +520,7 @@ class Row_Dict:
     def __init__(self, student, tests):
         self.student = student
         self.test_results = student.test_results.all()
-        self.tests = {set_name(test.name): test.pk for test in tests}
+        self.tests = tests
 
     def __getitem__(self, index):
         match index:

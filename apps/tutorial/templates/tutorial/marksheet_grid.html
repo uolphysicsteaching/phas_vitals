@@ -3,93 +3,93 @@
 {% block extra_style %}
     <style type="text/css">
 
-@page {
-  size: landscape;
-  width: 29.7cm;
-  height: 21cm;
-  margin: 1.5cm
-}
+        @page {
+            size: landscape;
+            width: 29.7cm;
+            height: 21cm;
+            margin: 1.5cm
+        }
 
-body {
-    background-color: white;
-    font-size: 10pt;
-    font-family: "Times New Roman", serif;
+        body {
+            background-color: white;
+            font-size: 10pt;
+            font-family: "Times New Roman", serif;
 
-}
+        }
 
-h1 {
-    margin: 0 0 0 0.5cm;
-    padding 0;
-    text-align: center;
-    font: 16pt "Times New Roman",serif;
+        h1 {
+            margin: 0 0 0 0.5cm;
+            padding 0;
+            text-align: center;
+            font: 16pt "Times New Roman",serif;
 
-}
+        }
 
-    span.criteriatag {
-        font-size: 90%;
-    }
-    span.unsettag {
-        color: black;
-        background: white;
-        text-decoration: none;
-    }
+        span.criteriatag {
+            font-size: 90%;
+        }
+        span.unsettag {
+            color: black;
+            background: white;
+            text-decoration: none;
+        }
 
-    span.settag {
-        color: black;
-        background: yellow;
-        text-decoration: underline;
-        text-decoration-style: double;
-     }
+        span.settag {
+            color: black;
+            background: yellow;
+            text-decoration: underline;
+            text-decoration-style: double;
+        }
 
-     td {
-        margin: 0px;
-        padding: 0px;
-     }
-     table {
-        width: 100%;
-     }
+        td {
+            margin: 0px;
+            padding: 0px;
+        }
+        table {
+            width: 100%;
+        }
 
 
 
-</style>
+    </style>
 {% endblock %}
 
 {% block content %}
-<h1>{{ marksheet.student.tutorial_group_assignment }}</h1>
-<h2>{{ marksheet.type.name }}</h2>
+    <h1>{{ marksheet.student.tutorial_group_assignment }}</h1>
+    <h2>{{ marksheet.type.name }}</h2>
     <div id="grid">
-    <table>
-    <tr>
-    <th>Criteria</th>
-    {% for label in class_labels %}
-    <th style="text-align: center; width: {{ col_width }}%">{{ label }}</th>
-    {% endfor %}
-    </tr>
-    {% for score in marksheet.scores.all %}
-        <tr>
-        <th>{{ score.rubric.name }}</th>
-        {% for tags in score.possible_tags.values %}
-            <td>{% for tag in tags %}
-                {% if tag in score.tags.all %}
-                    <span class="criteriatag settag" id="{{ score.pk }}_{{ tag.pk }}">{{ tag.text }}</span>
-                {% else %}
-                    <span class="criteriatag unsettag" id="{{ score.pk }}_{{ tag.pk }}">{{ tag.text }}</span>
-                {% endif %}
+        <table>
+            <tr>
+                <th>Criteria</th>
+                {% for label in class_labels %}
+                    <th style="text-align: center; width: {{ col_width }}%">{{ label }}</th>
+                {% endfor %}
+            </tr>
+            {% for score in marksheet.scores.all %}
+                <tr>
+                    <th>{{ score.rubric.name }}</th>
+                    {% for tags in score.possible_tags.values %}
+                        <td>{% for tag in tags %}
+                            {% if tag in score.tags.all %}
+                                <span class="criteriatag settag" id="{{ score.pk }}_{{ tag.pk }}">{{ tag.text }}</span>
+                            {% else %}
+                                <span class="criteriatag unsettag" id="{{ score.pk }}_{{ tag.pk }}">{{ tag.text }}</span>
+                            {% endif %}
+                        {% endfor %}
+                        </td>
+                    {% endfor %}
+                </tr>
             {% endfor %}
-            </td>
-        {% endfor %}
-        </tr>
-    {% endfor %}
-    <tr>
-    <td colspan={{ cols }}><h3>General Feedback Comments</h3>
-    <p>{{ marksheet.comment|safe }}</td>
-        <td>
-        <h3>Overall Mark</h3>
-        <h1>{{ score }}</h1>
-        </td>
-    </tr>
-    </table>
-    </div>
+            <tr>
+                <td colspan={{ cols }}><h3>General Feedback Comments</h3>
+                    <p>{{ marksheet.comment|safe }}</td>
+                    <td>
+                        <h3>Overall Mark</h3>
+                        <h1>{{ score }}</h1>
+                    </td>
+                </tr>
+            </table>
+        </div>
 
 {% endblock %}
 

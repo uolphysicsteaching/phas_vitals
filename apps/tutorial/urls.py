@@ -25,7 +25,8 @@ urlpatterns = [
     path("engagement/submit/<session>", views.SubmitStudentEngagementView.as_view()),
     path("engagement_view/", views.ShowEngagementView.as_view()),
     path("engagement_view/<int:semester>/<cohort>/", views.ShowEngagementView.as_view()),
-    path("engagement_view/<int:semester>/<cohort>/<code>", views.ShowEngagementView.as_view()),
+    path("engagement_view/<int:semester>/<cohort>//", views.ShowEngagementView.as_view()),
+    path("engagement_view/<int:semester>/<cohort>/<code>/", views.ShowEngagementView.as_view()),
     path(
         "engagement/admin_submit/session_<int:student>_<int:session>", views.AdminSubmitStudentEngagementView.as_view()
     ),

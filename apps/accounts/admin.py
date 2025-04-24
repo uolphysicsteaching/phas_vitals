@@ -20,6 +20,7 @@ from django.utils.translation import gettext_lazy as _
 
 # external imports
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
+from minerva.tasks import update_vitals
 
 # app imports
 from .forms import UserAdminForm
@@ -31,6 +32,7 @@ from .resource import (
     SectionResource,
     UserResource,
 )
+from .tasks import update_tests_score
 
 
 class StudentListFilter(SimpleListFilter):
@@ -240,7 +242,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
         "programme__name",
         "section__name",
     )
-    actions = ["export_roster", "export_groups"]
+    actions = ["rebuild_vitals", "export_roster", "export_groups"]
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
@@ -315,6 +317,14 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
         response["Content-Disposition"] = f"attachment; filename={self.model.__name__} Groups.csv"
 
         return response
+
+    @action(description="Rebuild VITALs results")
+    def rebuild_vitals(self, request, queryset):
+        """Remove all the VITAL results and then rebuild them from test results."""
+        for account in queryset.all():
+            account.vital_results.all().delete()
+            for test_result in account.test_results.all():
+                update_vitals.delay(test_result.pk)
 
 
 @register(AccountGroup)

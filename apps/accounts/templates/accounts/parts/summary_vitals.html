@@ -1,0 +1,49 @@
+<h3>VITALS passed/not passed</h3>
+<div class="accordion" id="accordianVITALs">
+    {% for module,vr in vitals_results.items %}
+        <div class="accordion-item">
+            <div class="accordion-header" id="heading_{{ module.code }}" role="navigation">
+                <button class="accordion-button" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#collapse_{{ module.code }}"
+                        aria-expanded={% if forloop.first %}"true"{% else %}"false"{% endif %}
+                        aria-controls="collapse_{{ module.code }}">
+                    <span class="fs-3">{{ module.code }}:{{ module.name }}</span>
+                </button>
+            </div>
+            <div id="collapse_{{ module.code }}"
+                 class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
+                 aria-labelledby="heading_{{ module.cond }}"
+                 data-bs-parent="#accordianVITALs">
+                <div class="accordion-body">
+                    {% for vital_result in vr %}
+                        <div class="row border-top border-dark border-2 {{ vital_result.vital.bootstrap5_class }}">
+                            <div class="col-md-4">
+                                <strong><a class="vital_link" href="{{ vital_result.vital.url }}">{{ vital_result.vital }}
+                                    ({{ vital_result.vital.module.code }})</a></strong><br/>
+                                {% if vital_result.passed %}Passed: {{ vital_result.date_passed }}{% endif %}
+                            </div>
+                            <div class="col-md-3  align-middle {{ vital_result.bootstrap5_class }}">
+                                <div class="row">
+                                    <span class="col-sm-2 fs-1 {{ vital_result.icon }}">&nbsp;</span>
+                                    <div class="col-sm-10 text-center align-middle fs-3">
+
+                                        {% if vital_result.passed %}
+                                            Passed
+                                        {% elif vital_result.status != "Not Started" %}
+                                            Not Passed
+                                        {% else %}
+                                            &nbsp;
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                {{ vital_result.tests_text }}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>

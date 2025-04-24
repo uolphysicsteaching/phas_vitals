@@ -4,17 +4,17 @@
 {% block title %}{{ block.super }Import Declaration of Academic Integrity Records{% endblock title %}
 
 {% block page %}
-<h2>Upload Gradescope Assignment Marks Spreadsheet for Declaration of Academic Integrity</h2>
-<p>This will only pay attention to whether the student submission was missing or not, not whether it has been graded or
-what the grade was!</p>
-<form action="/tutorial/admin/gradescope_import/" method="post" enctype="multipart/form-data">
+  <h2>Upload Gradescope Assignment Marks Spreadsheet for Declaration of Academic Integrity</h2>
+  <p>This will only pay attention to whether the student submission was missing or not, not whether it has been graded or
+    what the grade was!</p>
+  <form action="/tutorial/admin/gradescope_import/" method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form }}
-  {% buttons %}
-    <button type="submit" class="btn btn-primary">
-      {% bootstrap_icon "star" %} Submit
-    </button>
-  {% endbuttons %}
+    {% buttons %}
+      <button type="submit" class="btn btn-primary">
+        {% bootstrap_icon "star" %} Submit
+      </button>
+    {% endbuttons %}
 
-</form>
+  </form>
 {% endblock page %}

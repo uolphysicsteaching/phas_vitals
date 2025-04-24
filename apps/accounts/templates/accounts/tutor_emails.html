@@ -2,17 +2,17 @@
 {% load django_bootstrap5 %}
 {% block title %}{{ block.super }}Send Tutor Emails{% endblock title %}
 {% block javascript %}
-{{ block.super }}
-{{ form.media }}
+    {{ block.super }}
+    {{ form.media }}
 {% endblock %}
 
 {% block content %}
 
-<form id="tutoprform" action="{{ request.url }}" method="post" enctype="multipart/form-data" >
-    {% csrf_token %}
-    {% bootstrap_form form %}
-    <br/>
-{% bootstrap_button "Send Emails" button_type="submit" button_class="btn-primary" %}
-</form>
+    <form id="tutoprform" action="{{ request.url }}" method="post" enctype="multipart/form-data" >
+        {% csrf_token %}
+        {% bootstrap_form form %}
+        <br/>
+        {% bootstrap_button "Send Emails" button_type="submit" button_class="btn-primary" %}
+    </form>
 
 {% endblock content %}

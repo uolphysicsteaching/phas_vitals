@@ -2,32 +2,32 @@
 {% load tutorial_tags %}
 {% load django_bootstrap5 %}
 {% block title %}
-{{ block.super }} Toggle Student Active Status.{% endblock title %}
+    {{ block.super }} Toggle Student Active Status.{% endblock title %}
 {% block javascript %}
-{{ block.super }}
-{{ forms.search.media }}
-{{ forms.update.media }}
+    {{ block.super }}
+    {{ forms.search.media }}
+    {{ forms.update.media }}
 {% endblock javascript %}
 {% block content %}
-<h2>Find Student and Set Activity Flag</h2>
-<p>Start typing part of the student name, or their ID number and select from the list. After the
-form updates, set he activity status and press Update.</p>
-<p>Students marked as in-active cannot log into the site and are suppressed in Tutor reports and
-listings of student activity.</p>
+    <h2>Find Student and Set Activity Flag</h2>
+    <p>Start typing part of the student name, or their ID number and select from the list. After the
+        form updates, set he activity status and press Update.</p>
+    <p>Students marked as in-active cannot log into the site and are suppressed in Tutor reports and
+        listings of student activity.</p>
 
-<form id="activity_form" action="{{ request.path }}" method="post" enctype="multipart/form-data" >
-<input type="hidden" name="action" value="search"></input>
-    {% csrf_token %}
-    {% bootstrap_form forms.search layout='horizontal' %}
-    <br/>
-</form>
-<form id="activity_form" action="{{ request.path }}" method="post" enctype="multipart/form-data" >
-<input type="hidden" name="action" value="update"></input>
+    <form id="activity_form" action="{{ request.path }}" method="post" enctype="multipart/form-data" >
+        <input type="hidden" name="action" value="search"></input>
+        {% csrf_token %}
+        {% bootstrap_form forms.search layout='horizontal' %}
+        <br/>
+    </form>
+    <form id="activity_form" action="{{ request.path }}" method="post" enctype="multipart/form-data" >
+        <input type="hidden" name="action" value="update"></input>
 
-    {% csrf_token %}
-    {% bootstrap_form forms.update layout='horizontal' %}
-    <br/>
-{% bootstrap_button "Update" button_type="submit" button_class="btn-primary" %}
-</form>
+        {% csrf_token %}
+        {% bootstrap_form forms.update layout='horizontal' %}
+        <br/>
+        {% bootstrap_button "Update" button_type="submit" button_class="btn-primary" %}
+    </form>
 {% endblock content %}
 

@@ -322,6 +322,12 @@ class VITAL(models.Model):
 
 
 @patch_model(Account, prep=property)
+def applicable_vitals(self):
+    """All VITALs that are associated with a module that I am enrolled on."""
+    return VITAL.objects.filter(module__in=self.modules.all())
+
+
+@patch_model(Account, prep=property)
 def passed_vitals(self):
     """Return the set of vitals passed by the current user."""
     return VITAL.objects.filter(student_results__passed=True, student_results__user=self).exclude(status="Not Started")
@@ -350,13 +356,13 @@ def required_tests(self):
     """Calculate the minimum required tests to pass all failed VITALs."""
     data = []
 
-    for vital in chain(self.failed_vitals.all(), self.untested_vitals.all(), self.forthcoming_vitals.all()):
+    for vital in self.applicable_vitals.exclude(pk__in=[x.pk for x in self.passed_vitals.all()]):
         row = {"VITAL": vital.VITAL_ID}
         for test in vital.tests.all():
             row[test.test_id] = 1
         data.append(row)
     if not len(data):
-        return Test.objects.none()
+        return Vital.objects.first().test.model.objects.none()
     data = pd.DataFrame(data).transpose().fillna(0.0)
     data.columns = data.loc["VITAL"]
     data = data.drop("VITAL")

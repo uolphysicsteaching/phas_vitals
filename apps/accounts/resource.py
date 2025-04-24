@@ -274,7 +274,6 @@ class UserResource(resources.ModelResource):
             "programme",
             "section",
             "registration_status",
-            "apt",
         )
         import_id_fields = ["username"]
 
@@ -304,8 +303,15 @@ class UserResource(resources.ModelResource):
         "programme": {"programme": _none, "Programme": _none},
         "section": {"section": _none, "Section": _none},
         "registtration_status": {"registtration_status": _none, "Registration Status": _none, "ESTS_Code": _none},
-        "apt": {"apt": _none, "tutor": _none, "Tutor Name": _none},
+        #        "apt": {"apt": _none, "tutor": _none, "Tutor Name": _none},
     }
+
+    def before_import(self, dataset, **kwargs):
+        # mimic a 'dynamic field' - i.e. append field which exists on
+        # Book model, but not in dataset
+        if "username" not in dataset.headers:
+            dataset.headers.append("username")
+        super().before_import(dataset, **kwargs)
 
     def import_row(self, row, instance_loader, using_transactions=True, dry_run=False, **kwargs):
         """Match up bad fields."""
@@ -324,7 +330,9 @@ class UserResource(resources.ModelResource):
             if bad_field in row:
                 del row[bad_field]
 
-        return super(UserResource, self).import_row(row, instance_loader, using_transactions, dry_run, **kwargs)
+        return super(UserResource, self).import_row(
+            row, instance_loader, using_transactions=using_transactions, dry_run=dry_run, **kwargs
+        )
 
 
 class GroupResource(resources.ModelResource):

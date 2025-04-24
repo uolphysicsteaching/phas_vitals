@@ -571,6 +571,12 @@ class Test(models.Model):
         try:
             return cls.objects.get(**search)
         except cls.DoesNotExist:
+            pass
+        del search["name"]
+        search["columns__name"] = name
+        try:
+            return cls.objects.get(**search)
+        except cls.DoesNotExist:
             return None
 
 

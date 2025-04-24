@@ -9,13 +9,15 @@ spell:
 black: isort
 	find . -name '*.py' -exec black -l 119 {} \;
 
+djhtml:
+	djhtml apps/ templates/
 
 check:
 	python manage.py check
 
 commit:	_commit
 
-_commit: spell isort black check
+_commit: spell isort black djhtml check
 	git add apps/
 	git commit -a
 	git push origin

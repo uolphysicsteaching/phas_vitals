@@ -6,15 +6,18 @@ from collections import namedtuple
 # Django imports
 # Create your views here.
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Q
+from django.db.models import OuterRef, Q, Subquery
 from django.utils.html import format_html
 from django.views.generic import DetailView, FormView
 
 # external imports
+from accounts.models import Account
 from accounts.views import StudentSummaryView
 from dal import autocomplete
 from django_tables2 import SingleTableMixin
 from django_tables2.columns import Column
+from django_tables2.paginators import LazyPaginator
+from htmx_views.views import HTMXProcessMixin
 from matplotlib import pyplot as plt
 from minerva.forms import ModuleSelectForm
 from minerva.models import ModuleEnrollment
@@ -28,7 +31,7 @@ from util.views import (
 )
 
 # app imports
-from .models import VITAL
+from .models import VITAL, VITAL_Result
 
 ImageData = namedtuple("ImageData", ["data", "alt"], defaults=["", ""])
 
@@ -65,6 +68,13 @@ class VITALResultColumn(Column):
         match value:
             case None:
                 ret = ""
+            case VITAL_Result():
+                if value.passed is None:
+                    ret = '<span class="badge bg-secondary">!</span>'
+                elif value.passed:
+                    ret = '<span class="badge bg-success">P</span>'
+                else:
+                    ret = '<span class="badge bg-danger">F</span>'
             case {"passed": passed}:
                 if passed is None:
                     ret = '<span class="badge bg-secondary">!</span>'
@@ -73,19 +83,21 @@ class VITALResultColumn(Column):
                 else:
                     ret = '<span class="badge bg-danger">F</span>'
             case _:
-                ret = value
+                ret = str(value)
 
         return format_html(ret)
 
 
-class BaseShowvitalResults(SingleTableMixin, FormView):
+class BaseShowvitalResults(SingleTableMixin, HTMXProcessMixin, FormView):
     """View to show vital results for a module in a table."""
 
     form_class = ModuleSelectForm
+    paginator_class = LazyPaginator
     table_class = BaseTable
     template_name = "vitals/vital_results.html"
+    template_name_next_batch = "vitals/parts/vital_results_next_batch.html"
+    table_pagination = {"per_page": 10}
     context_table_name = "vital_results"
-    table_pagination = False
 
     def __init__(self, *args, **kargs):
         """Construct instance variables."""
@@ -105,7 +117,8 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
         """Update self.module with the module selected in the form."""
         self.module = form.cleaned_data["module"]
         if self.module is not None:
-            self.vitals = self.module.VITALS.all().order_by("tests__type", "start_date", "name")
+            self.vitals = VITAL.objects.filter(module=self.module).order_by("tests__type", "start_date", "name")
+        self.page = int(self.request.GET.get("page", 1))
         return self.render_to_response(self.get_context_data())
 
     def get_table_class(self):
@@ -116,6 +129,7 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
             attrs["Overall"] = VITALResultColumn(orderable=False, vital=None)
         klass = type("DynamicTable", (self.table_class,), attrs)
         setattr(klass._meta, "row_attrs", {"class": "student_link"})
+        setattr(klass._meta, "template_name", "util/table.html")
         return klass
 
     def get_context_data(self, **kwargs):
@@ -124,30 +138,18 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
         context["module"] = self.module
         return context
 
+    def get_context_data_next_batch(self, **kwargs):
+        ret = self.get_context_data(**kwargs)
+        return ret
+
     def get_entries(Self):
         """Override this mewothd in actual classes."""
         raise NotImplementedError("You must supply a get_entries method.")
 
     def get_table_data(self):
         """Fill out the table with data, creating the entries for the MarkType columns to interpret."""
-        table = []
-
-        for entry in self.entries:
-            record = {  # Standard student information entries
-                "student": entry.student,
-                "number": entry.student.SID,
-                "programme": entry.student.programme.name,
-                "status": entry.status.code,
-                "Overall": {"passed": entry.passed_vitals},
-            }
-            for vital in self.vitals:  # Add columns for the vitals
-                try:
-                    ent = entry.student.vital_results.get(vital=vital)
-                    record[vital.name] = {x: getattr(ent, x) for x in ["passed"]}
-                except ObjectDoesNotExist:
-                    record[vital.name] = None
-
-            table.append(record)
+        vitals = {vital.name: vital.pk for vital in self.vitals}
+        table = [Row_Dict(student, vitals, self.module) for student in self.entries]
         return table
 
     def get_queryset(self):
@@ -155,16 +157,57 @@ class BaseShowvitalResults(SingleTableMixin, FormView):
         return self.get_table_data()
 
 
+class Row_Dict:
+    """Proxy for a dictionary that delays evaluating the test results."""
+
+    def __init__(self, student, vitals, module):
+        self.student = student
+        self.vital_results = student.vital_results.filter(vital__module=module).all()
+        self.vitals = vitals
+        dd = self.__dict__
+
+    def __getitem__(self, index):
+        match index:
+            case "student":
+                return self.student
+            case "SID":
+                return self.student.number
+            case "programme":
+                return self.student.programme.name
+            case "status":
+                return self.student.status
+            case "Overall":
+                if self.vital_results.count() != len(self.vitals):
+                    return {"passed": None}
+                if self.vital_results.filter(passed=False).count() > 0:
+                    return {"passed": False}
+                return {"passed": True}
+            case vital if vital in self.vitals:
+                try:
+                    return self.vital_results.get(vital__pk=self.vitals[vital])
+                except ObjectDoesNotExist:
+                    return None
+            case _:
+                return False
+
+
 class ShowAllVitalResultsView(IsSuperuserViewMixin, BaseShowvitalResults):
     """Show all the student VITAL results."""
 
     def get_entries(self):
         """Get all module enrollments for the module."""
-        return (
-            ModuleEnrollment.objects.filter(active=True, module=self.module)
-            .prefetch_related("student", "student__vital_results", "student__programme", "status")
-            .order_by("student__last_name", "student__first_name")
+        if not getattr(self, "page", False):
+            return Account.objects.none()
+        enroillments = ModuleEnrollment.objects.filter(module=self.module, active=True).values("id")
+        status = enroillments.filter(student=OuterRef("pk")).values("status__code")
+        qs = (
+            Account.objects.filter(module_enrollments__in=enroillments)
+            .annotate(status=Subquery(status))
+            .select_related("programme")
+            .prefetch_related("vital_results")
+            .order_by("last_name", "first_name")
         )
+        return qs
 
 
 class ShowTutorVitalResultsView(IsStaffViewMixin, BaseShowvitalResults):
@@ -172,13 +215,18 @@ class ShowTutorVitalResultsView(IsStaffViewMixin, BaseShowvitalResults):
 
     def get_entries(self):
         """Get all module enrollments for the module."""
-        return (
-            ModuleEnrollment.objects.filter(
-                active=True, module=self.module, student__tutorial_group__tutor=self.request.user
-            )
-            .prefetch_related("student", "student__vital_results", "student__programme", "status")
-            .order_by("student__last_name", "student__first_name")
+        if not getattr(self, "page", False):
+            return Account.objects.none()
+        enroillments = ModuleEnrollment.objects.filter(module=self.module, active=True).values("id")
+        status = enroillments.filter(student=OuterRef("pk")).values("status__code")
+        qs = (
+            Account.objects.filter(module_enrollments__in=enroillments, tutorial_group__tutor=self.request.user)
+            .annotate(status=Subquery(status))
+            .select_related("programme")
+            .prefetch_related("vital_results")
+            .order_by("last_name", "first_name")
         )
+        return qs
 
 
 class ShowVitralResultsView(RedirectView):
