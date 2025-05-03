@@ -6,6 +6,7 @@ import os
 from copy import deepcopy
 
 # Django imports
+import django.utils.timezone as tz
 from django import forms
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -54,7 +55,9 @@ class GradebookImport(IsStaffViewMixin, SessionWizardView):
 
         columns = [("", "None")] + force_cols
         self._add_choice_field(form_class, "studentID", force_cols, "Student ID Column", sid_guess)
-        self._add_choice_field(form_class, "date", force_cols, "Date Column", date_guess, required=False)
+        self._add_choice_field(
+            form_class, "date", [("", "None")] + force_cols, "Date Column", date_guess, required=False
+        )
 
         for test in module.tests.all().order_by("release_date"):
             self._add_choice_field(form_class, test.name, columns, f"Test: {test.name}", required=False)
@@ -130,7 +133,10 @@ class GradebookImport(IsStaffViewMixin, SessionWizardView):
                 student = module.student_enrollments.get(student__number=sid).student
             except ObjectDoesNotExist:
                 continue
-            date = self._parse_date(row, date_col)
+            if date_col is None:
+                date = tz.today()
+            else:
+                date = self._parse_date(row, date_col)
             self._process_attempts(row, student, mapping, date)
 
     def _parse_date(self, row, date_col):
