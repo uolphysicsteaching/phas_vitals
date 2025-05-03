@@ -8,10 +8,10 @@ The `urlpatterns` list routes URLs to views. For more information please see:
 from pathlib import Path
 
 # Django imports
-from django.conf.urls import include
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
-from django.urls import path, re_path
+from django.urls import include
+from django.urls import path
 
 # external imports
 from ajax_select import urls as ajax_select_urls
@@ -31,7 +31,7 @@ urlpatterns = [
     # url(r'^$', 'phas_vitals.views.home', name='home'),
     # url(r'^blog/', include('blog.urls')),
     path("", HomeView.as_view()),
-    re_path(r"^ajax_select/", include(ajax_select_urls)),
+    path("ajax_select/", include(ajax_select_urls)),
     path("riaradh/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api-auth/", include("rest_framework.urls")),
