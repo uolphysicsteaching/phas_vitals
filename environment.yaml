@@ -9,11 +9,11 @@ dependencies:
   - django-ajax-selects
   - django-autocomplete-light
   - django-bootstrap5
-  - django-constance=3.1.0
+  - django-constance==4.3.2
   - django-extra-views
-  - django-grappelli=3.0.6
+  - django-grappelli==4.0.1
   - django-ical
-  - django-import-export==3.3.7
+  - django-import-export==4.3.7
   - django-mathfilters
   - django-photologue
   - django-picklefield
@@ -21,15 +21,15 @@ dependencies:
   - django-sitetree
   - django-suit
   - django-tinymce
-  - django==4.2.16
+  - django==4.2.21
   - djangorestframework
   - ipython
   - mamba
   - openssl
   - psycopg2
-  - python=3.11
+  - python
   - simple_html_table
-  - tablib=3.5.0
+  - tablib==3.8.0
   - gunicorn
   - cookiecutter
   - multiprocess
@@ -74,4 +74,7 @@ dependencies:
   - dal-admin-filters
   - pytidylib
   - django-formtools
+  - django-htmx
+  - djhtml
+  - django-upgrade
 prefix: /usr/lib/miniconda3/envs/django
