@@ -1,13 +1,13 @@
 PYTHON_SETUP	=	python setup.py
 
 isort:
-	find . -name '*.py' -exec isort --profile black {} \;
+	find . -name '*.py' | xargs isort --profile django
 
 spell:
 	-find . -name '*.py' | xargs codespell -w
 
 black: isort
-	find . -name '*.py' -exec black -l 119 {} \;
+	find . -name '*.py' | xargs black -l 119 -t py311
 
 djhtml:
 	djhtml apps/ templates/

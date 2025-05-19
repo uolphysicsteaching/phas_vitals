@@ -8,6 +8,7 @@ from tempfile import NamedTemporaryFile
 from textwrap import shorten
 
 # Django imports
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
 
 # external imports
@@ -569,40 +570,66 @@ class Spreadsheet(BaseSpreadsheet):
         """Fill in VITALS component labels on marksheet."""
         mh = 0
         component_columns = {}
-        for c, ix in zip(module.VITALS.all(), range(5, 5 + module.VITALS.count())):
-            component_columns[c] = (ix, c.name)
-            cell = self.sheet.cell(row=11, column=ix)
-            cell.value = c.name
-            mh = max(len(c.name), mh)
-            if len(c.name) > 2:
-                alignment = cell.alignment.copy(text_rotation=90)
-                cell.alignment = alignment
-            else:
-                alignment = cell.alignment.copy(text_rotation=0)
-                cell.alignment = alignment
-            cell = self.sheet.cell(row=12, column=ix)
-            cell.value = "P/F"
-            cell = self.sheet.cell(row=13, column=ix)
-            cell.value = 1.0
+        if module.VITALS.all().count() > 0:
+            for c, ix in zip(module.VITALS.all(), range(5, 5 + module.VITALS.count())):
+                component_columns[c] = (ix, c.name)
+                cell = self.sheet.cell(row=11, column=ix)
+                cell.value = c.name
+                mh = max(len(c.name), mh)
+                if len(c.name) > 2:
+                    alignment = cell.alignment.copy(text_rotation=90)
+                    cell.alignment = alignment
+                else:
+                    alignment = cell.alignment.copy(text_rotation=0)
+                    cell.alignment = alignment
+                cell = self.sheet.cell(row=12, column=ix)
+                cell.value = "P/F"
+                cell = self.sheet.cell(row=13, column=ix)
+                cell.value = 1.0
+        elif module.sub_modules.all().count() > 0:  # Assessment module where we want to see the P/F delivery units
+            for c, ix in zip(module.sub_modules.all().order_by("code"), range(5, 5 + module.sub_modules.count())):
+                component_columns[c] = (ix, c.code)
+                cell = self.sheet.cell(row=11, column=ix)
+                cell.value = c.code
+                mh = max(len(c.code), mh)
+                if len(c.name) > 2:
+                    alignment = cell.alignment.copy(text_rotation=90)
+                    cell.alignment = alignment
+                else:
+                    alignment = cell.alignment.copy(text_rotation=0)
+                    cell.alignment = alignment
+                cell = self.sheet.cell(row=12, column=ix)
+                cell.value = "P/F"
+                cell = self.sheet.cell(row=13, column=ix)
+                cell.value = 1.0
         if mh > 2:
             self.sheet.row_dimensions[11].height = 6.5 * mh
         return component_columns
 
     def _enter_student_entries(self, module, component_columns, entries):
         """Get student entries and fill in components."""
+        VITALS = module.VITALS.count() > 0
+        ASSESSMENT = module.sub_modules.count() > 0
         if entries is None:
-            entries = module.student_enrollments.prefetch_related("student", "student__vital_results").order_by(
-                "student"
-            )
+            if VITALS:
+                entries = (
+                    module.student_enrollments.filter(student__is_active=True)
+                    .prefetch_related("student", "student__vital_results")
+                    .order_by("student")
+                )
+            elif ASSESSMENT:
+                entries = module.student_enrollments.filter(student__is_active=True).order_by("student")
         elif isinstance(entries, dict):
             entries = (
                 module.student_enrollments.filter(**entries)
+                .filter(student__is_active=True)
                 .prefetch_related("student", "student__vital_results")
                 .order_by("student")
             )
         else:
             entries = (
                 module.student_enrollments.filter(entries)
+                .filter(student__is_active=True)
                 .prefetch_related("student", "student__vital_results")
                 .order_by("student")
             )
@@ -614,9 +641,20 @@ class Spreadsheet(BaseSpreadsheet):
             self.sheet.cell(row=row, column=3).value = ent.student.number
             self.sheet.cell(row=row, column=4).value = ent.status.code
             for _, (comp_col, mtype) in component_columns.items():
-                mks = ent.student.vital_results.filter(vital__name=mtype)
-                comp_mark = mks.count() > 0 and mks.last().passed
-                self.sheet.cell(row=row, column=comp_col).value = "P" if comp_mark else ""
+                if VITALS:
+                    mks = ent.student.vital_results.filter(vital__name=mtype)
+                    comp_mark = mks.count() > 0 and mks.last().passed
+                    self.sheet.cell(row=row, column=comp_col).value = "P" if comp_mark else ""
+                if ASSESSMENT:
+                    try:
+                        mks = ent.student.module_enrollments.get(module__code=mtype)
+                    except ObjectDoesNotExist:
+                        self.sheet.cell(row=row, column=comp_col).value = ""
+                        continue
+
+                    comp_mark = {True: "P", False: "F", None: ""}[mks.passed_vitals]
+                    self.sheet.cell(row=row, column=comp_col).value = comp_mark
+
         return ix
 
     def fill_in(self, *args, **kwargs):

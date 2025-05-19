@@ -2,7 +2,7 @@
 """Forms for the minerva interacting application."""
 # Django imports
 from django import forms
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.forms.widgets import Select
 
 # external imports
@@ -87,12 +87,42 @@ class TestHistoryImportForm(forms.Form):
         return get_mime(content)
 
 
+HAS_VITALS = Q(vitals_count__gt=0)
+HAS_SUBMODS = Q(sub_mods_count__gt=0)
+
+
 class ModuleSelectForm(forms.Form):
     """Form that selects a module and immediately updates."""
 
     module = forms.ModelChoiceField(
         required=False,
-        queryset=Module.objects.annotate(vitals_count=Count("VITALS")).filter(vitals_count__gt=0),
+        queryset=Module.objects.annotate(vitals_count=Count("VITALS"), sub_mods_count=Count("sub_modules")).filter(
+            HAS_VITALS | HAS_SUBMODS
+        ),
+        widget=Select(attrs={"onChange": "this.form.submit();"}),
+    )
+
+
+class VITALsModuleSelectForm(forms.Form):
+    """Form that selects a module and immediately updates."""
+
+    module = forms.ModelChoiceField(
+        required=False,
+        queryset=Module.objects.annotate(vitals_count=Count("VITALS"), sub_mods_count=Count("sub_modules")).filter(
+            HAS_VITALS
+        ),
+        widget=Select(attrs={"onChange": "this.form.submit();"}),
+    )
+
+
+class AssessmentModuleSelectForm(forms.Form):
+    """Form that selects a module and immediately updates."""
+
+    module = forms.ModelChoiceField(
+        required=False,
+        queryset=Module.objects.annotate(vitals_count=Count("VITALS"), sub_mods_count=Count("sub_modules")).filter(
+            HAS_SUBMODS
+        ),
         widget=Select(attrs={"onChange": "this.form.submit();"}),
     )
 

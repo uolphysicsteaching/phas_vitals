@@ -19,7 +19,7 @@ from django_tables2.columns import Column
 from django_tables2.paginators import LazyPaginator
 from htmx_views.views import HTMXProcessMixin
 from matplotlib import pyplot as plt
-from minerva.forms import ModuleSelectForm
+from minerva.forms import VITALsModuleSelectForm as ModuleSelectForm
 from minerva.models import ModuleEnrollment
 from util.http import svg_data
 from util.tables import BaseTable

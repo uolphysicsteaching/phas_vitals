@@ -400,7 +400,7 @@ class Test(models.Model):
     grading_attemptsAllowed = models.IntegerField(blank=True, null=True, verbose_name="Number of allowed attempts")
     students = models.ManyToManyField("accounts.Account", through="Test_Score", related_name="tests")
     ignore_zero = models.BooleanField(
-        default=False, blank=True, null=True, verbose_name="Zoer grades are not attempts"
+        default=False, blank=True, null=True, verbose_name="Zero grades are not attempts"
     )
 
     class Meta:
@@ -805,17 +805,24 @@ class Test_Score(models.Model):
 
     def check_passed(self, orig=None):
         """Check whether the user has passed the test."""
+        # TODO replace this code when we have direct reading of gradescope scores
+        best_score = None
         if self.attempts.exclude(status="NeedsGrading").count() == 0:  # Nothing to mark yet
             self.status = "NeedsGrading"
             if np.isnan(self.test.passing_score):
                 return None, True, not self.passed
-            return None, False, False
+            numerically_passed = False
+            pass_changed = False
+            return best_score, numerically_passed, pass_changed
         scores = np.round(self.attempts.exclude(score=None).values_list("score"), 2)
         if scores.size > 0:
             best_score = np.nanmax(scores)
         else:
             best_score = False
-        numerically_passed = bool(best_score and (best_score >= self.test.passing_score))
+        numerically_passed = bool(  # deal with rouinding errors by checking with isclose as well as >=
+            best_score is not None
+            and (best_score >= self.test.passing_score or np.isclose(self.test.passing_score, best_score))
+        )
         if orig:
             pass_changed = numerically_passed ^ orig.passed
         else:
@@ -825,6 +832,7 @@ class Test_Score(models.Model):
 
     def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
         """Correct the passed flag if score is equal to or greater than test.passing_score."""
+        # TODO: revise code after we have gradescope scores directly available.
         if self.pk is not None:
             orig = Test_Score.objects.get(pk=self.pk)
         else:

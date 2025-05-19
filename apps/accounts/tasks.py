@@ -36,22 +36,25 @@ def update_tests_score(requests):
     """
     data = {request.args[0]: request.args[1] for request in requests}  # Use dict keys to de-dupl;icate accounts
 
-    accounts = Account.objects.filter(pk__in=list(data.keys()))
-    for account in accounts:
-        logger.debug(f"Updating tests for {account.username}")
-        try:
-            account.tests_score = np.round(
-                100.0
-                * account.passed_tests.count()
-                / (account.passed_tests.count() + account.failed_tests.count() + account.untested_tests.count())
-            )
-        except (ValueError, ZeroDivisionError):
-            account.tests_score = None
-    Account.objects.bulk_update(accounts, ["tests_score"])
-    # Now chain the next method since we've done the null update
-    for account in accounts:
-        if data[account.pk]:
-            update_labs_score.delay(account.pk, True)
+    try:
+        accounts = Account.objects.filter(pk__in=list(data.keys()))
+        for account in accounts:
+            logger.debug(f"Updating tests for {account.username}")
+            try:
+                account.tests_score = np.round(
+                    100.0
+                    * account.passed_tests.count()
+                    / (account.passed_tests.count() + account.failed_tests.count() + account.untested_tests.count())
+                )
+            except (ValueError, ZeroDivisionError):
+                account.tests_score = None
+        Account.objects.bulk_update(accounts, ["tests_score"])
+        # Now chain the next method since we've done the null update
+        for account in accounts:
+            if data[account.pk]:
+                update_labs_score.delay(account.pk, True)
+    except Exception as err:
+        logger.debug(f"Exception in update_tests_score: {err}")
 
 
 @shared_task(base=PHASTask, flush_every=100, flush_interval=10)
@@ -63,23 +66,25 @@ def update_labs_score(requests):
         chain next task (bool): If True, call the next task for this account.
     """
     data = {request.args[0]: request.args[1] for request in requests}  # Use dict keys to de-dupl;icate accounts
-
-    accounts = Account.objects.filter(pk__in=list(data.keys()))
-    for account in accounts:
-        logger.debug(f"Updating Labs for {account.username}")
-        try:
-            account.labs_score = np.round(
-                100.0
-                * account.passed_labs.count()
-                / (account.passed_labs.count() + account.failed_labs.count() + account.untested_labs.count())
-            )
-        except (ValueError, ZeroDivisionError):
-            account.labs_score = None
-    Account.objects.bulk_update(accounts, ["labs_score"])
-    # Now chain the next method since we've done the null update
-    for account in accounts:
-        if data[account.pk]:
-            update_coding_score.delay(account.pk, True)
+    try:
+        accounts = Account.objects.filter(pk__in=list(data.keys()))
+        for account in accounts:
+            logger.debug(f"Updating Labs for {account.username}")
+            try:
+                account.labs_score = np.round(
+                    100.0
+                    * account.passed_labs.count()
+                    / (account.passed_labs.count() + account.failed_labs.count() + account.untested_labs.count())
+                )
+            except (ValueError, ZeroDivisionError):
+                account.labs_score = None
+        Account.objects.bulk_update(accounts, ["labs_score"])
+        # Now chain the next method since we've done the null update
+        for account in accounts:
+            if data[account.pk]:
+                update_coding_score.delay(account.pk, True)
+    except Exception as err:
+        logger.debug(f"Exception in update_all_labs: {err}")
 
 
 @shared_task(base=PHASTask, flush_every=100, flush_interval=10)
@@ -91,23 +96,25 @@ def update_coding_score(requests):
         chain next task (bool): If True, call the next task for this account.
     """
     data = {request.args[0]: request.args[1] for request in requests}  # Use dict keys to de-dupl;icate accounts
-
-    accounts = Account.objects.filter(pk__in=list(data.keys()))
-    for account in accounts:
-        logger.debug(f"Updating Labs for {account.username}")
-        try:
-            account.coding_score = np.round(
-                100.0
-                * account.passed_coding.count()
-                / (account.passed_coding.count() + account.failed_coding.count() + account.untested_coding.count())
-            )
-        except (ValueError, ZeroDivisionError):
-            account.coding_score = None
-    Account.objects.bulk_update(accounts, ["coding_score"])
-    # Now chain the next method since we've done the null update
-    for account in accounts:
-        if data[account.pk]:
-            update_vitals_score.delay(account.pk, True)
+    try:
+        accounts = Account.objects.filter(pk__in=list(data.keys()))
+        for account in accounts:
+            logger.debug(f"Updating Labs for {account.username}")
+            try:
+                account.coding_score = np.round(
+                    100.0
+                    * account.passed_coding.count()
+                    / (account.passed_coding.count() + account.failed_coding.count() + account.untested_coding.count())
+                )
+            except (ValueError, ZeroDivisionError):
+                account.coding_score = None
+        Account.objects.bulk_update(accounts, ["coding_score"])
+        # Now chain the next method since we've done the null update
+        for account in accounts:
+            if data[account.pk]:
+                update_vitals_score.delay(account.pk, True)
+    except Exception as err:
+        logger.debug(f"Exception in update_coding_score: {err}")
 
 
 @shared_task(base=PHASTask, flush_every=100, flush_interval=10)
@@ -119,23 +126,25 @@ def update_vitals_score(requests):
         chain next task (bool): If True, call the next task for this account.
     """
     data = {request.args[0]: request.args[1] for request in requests}  # Use dict keys to de-dupl;icate accounts
-
-    accounts = Account.objects.filter(pk__in=list(data.keys()))
-    for account in accounts:
-        logger.debug(f"Updating VITALs for {account.username}")
-        try:
-            account.vitals_score = np.round(
-                100.0
-                * account.passed_vitals.count()
-                / (account.passed_vitals.count() + account.failed_vitals.count() + account.untested_vitals.count())
-            )
-        except (ValueError, ZeroDivisionError):
-            account.vitals_score = None
-    Account.objects.bulk_update(accounts, ["vitals_score"])
-    # Now chain the next method since we've done the null update
-    for account in accounts:
-        if data[account.pk]:
-            update_engagement.delay(account.pk, True)
+    try:
+        accounts = Account.objects.filter(pk__in=list(data.keys()))
+        for account in accounts:
+            logger.debug(f"Updating VITALs for {account.username}")
+            try:
+                account.vitals_score = np.round(
+                    100.0
+                    * account.passed_vitals.count()
+                    / (account.passed_vitals.count() + account.failed_vitals.count() + account.untested_vitals.count())
+                )
+            except (ValueError, ZeroDivisionError):
+                account.vitals_score = None
+        Account.objects.bulk_update(accounts, ["vitals_score"])
+        # Now chain the next method since we've done the null update
+        for account in accounts:
+            if data[account.pk]:
+                update_engagement.delay(account.pk, True)
+    except Exception as err:
+        logger.debug(f"Exception in update_vitals_score: {err}")
 
 
 @shared_task(base=PHASTask, flush_every=100, flush_interval=10)
@@ -147,42 +156,44 @@ def update_engagement(requests):
        chain next task (bool): If True, call the next task for this account.
     """
     data = {request.args[0]: request.args[1] for request in requests}  # Use dict keys to de-dupl;icate accounts
+    try:
+        accounts = Account.objects.filter(pk__in=list(data.keys()))
+        for account in accounts:
+            if (phas1000 := account.module_enrollments.filter(module__code=config.TUTORIAL_MODULE)).count() > 0:
+                cohort = phas1000.first().module.year
+            else:  # No point updating engagement if student not registered on PHAS1000
+                continue
 
-    accounts = Account.objects.filter(pk__in=list(data.keys()))
-    for account in accounts:
-        if (phas1000 := account.module_enrollments.filter(module__code=config.TUTORIAL_MODULE)).count() > 0:
-            cohort = phas1000.first().module.year
-        else:  # No point updating engagement if student not registered on PHAS1000
-            continue
-
-        try:
-            logger.debug(f"Updating engagement score for {account.username}")
-            record = (
-                np.array(
-                    account.tutorial_sessions.filter(session__cohort=cohort)
-                    .order_by("-session__start")
-                    .values_list("score")
+            try:
+                logger.debug(f"Updating engagement score for {account.username}")
+                record = (
+                    np.array(
+                        account.tutorial_sessions.filter(session__cohort=cohort)
+                        .order_by("-session__start")
+                        .values_list("score")
+                    )
+                    .ravel()
+                    .astype(float)
                 )
-                .ravel()
-                .astype(float)
-            )
-            if record.size > 0:
-                record = np.where(record < 0, np.nan, record)
-                record = np.where(record == 2, 3, record)  # Good and excellent engagement should count the same
-                weight = np.exp(-np.arange(len(record)) / config.ENGAGEMENT_TC)
-                perfect = (3 * np.ones_like(record) * weight)[~np.isnan(record)].sum()
-                actual = (record * weight)[~np.isnan(record)].sum()
-                result = np.round(100 * actual / perfect, 1)
-            else:
-                result = None
+                if record.size > 0:
+                    record = np.where(record < 0, np.nan, record)
+                    record = np.where(record == 2, 3, record)  # Good and excellent engagement should count the same
+                    weight = np.exp(-np.arange(len(record)) / config.ENGAGEMENT_TC)
+                    perfect = (3 * np.ones_like(record) * weight)[~np.isnan(record)].sum()
+                    actual = (record * weight)[~np.isnan(record)].sum()
+                    result = np.round(100 * actual / perfect, 1)
+                else:
+                    result = None
 
-            account.engagement = result
-        except (ValueError, ZeroDivisionError):
-            account.engagement = None
-    Account.objects.bulk_update(accounts, ["engagement"])
-    for account in accounts:
-        if data[account.pk]:
-            update_activity.delay(account.pk, True)
+                account.engagement = result
+            except (ValueError, ZeroDivisionError):
+                account.engagement = None
+        Account.objects.bulk_update(accounts, ["engagement"])
+        for account in accounts:
+            if data[account.pk]:
+                update_activity.delay(account.pk, True)
+    except Exception as err:
+        logger.debug(f"Exception in update_engagement: {err}")
 
 
 @shared_task(base=PHASTask, flush_every=100, flush_interval=10)
@@ -194,45 +205,47 @@ def update_activity(requests):
        chain next task (bool): If True, call the next task for this account.
     """
     data = {request.args[0]: request.args[1] for request in requests}  # Use dict keys to de-dupl;icate accounts
-
-    accounts = Account.objects.filter(pk__in=list(data.keys()))
-    for account in accounts:
-        try:
-            logger.debug(f"Updating overall activity score for {account.username}")
-            hw = account.tests_score
-            if not isinstance(hw, float) or np.isnan(hw):
-                hw = 100.0
-            lb = account.labs_score
-            if not isinstance(lb, float) or np.isnan(lb):
-                lb = 100.0
-            ct = account.coding_score
-            if not isinstance(ct, float) or np.isnan(ct):
-                ct = 100.0
-            vt = account.vitals_score
-            if not isinstance(vt, float) or np.isnan(vt):
-                vt = 100.0
-            tt = account.engagement
-            if not isinstance(tt, float) or np.isnan(tt):
-                tt = 100.0
-            account.activity_score = np.round(
-                (
-                    config.TESTS_WEIGHT * hw
-                    + config.LABS_WEIGHT * lb
-                    + config.CODING_WEIGHT * ct
-                    + config.VITALS_WEIGHT * vt
-                    + config.TUTORIALS_WEIGHT * tt
+    try:
+        accounts = Account.objects.filter(pk__in=list(data.keys()))
+        for account in accounts:
+            try:
+                logger.debug(f"Updating overall activity score for {account.username}")
+                hw = account.tests_score
+                if not isinstance(hw, float) or np.isnan(hw):
+                    hw = 100.0
+                lb = account.labs_score
+                if not isinstance(lb, float) or np.isnan(lb):
+                    lb = 100.0
+                ct = account.coding_score
+                if not isinstance(ct, float) or np.isnan(ct):
+                    ct = 100.0
+                vt = account.vitals_score
+                if not isinstance(vt, float) or np.isnan(vt):
+                    vt = 100.0
+                tt = account.engagement
+                if not isinstance(tt, float) or np.isnan(tt):
+                    tt = 100.0
+                account.activity_score = np.round(
+                    (
+                        config.TESTS_WEIGHT * hw
+                        + config.LABS_WEIGHT * lb
+                        + config.CODING_WEIGHT * ct
+                        + config.VITALS_WEIGHT * vt
+                        + config.TUTORIALS_WEIGHT * tt
+                    )
+                    / (
+                        config.TESTS_WEIGHT
+                        + config.LABS_WEIGHT
+                        + config.CODING_WEIGHT
+                        + config.VITALS_WEIGHT
+                        + config.TUTORIALS_WEIGHT
+                    )
                 )
-                / (
-                    config.TESTS_WEIGHT
-                    + config.LABS_WEIGHT
-                    + config.CODING_WEIGHT
-                    + config.VITALS_WEIGHT
-                    + config.TUTORIALS_WEIGHT
-                )
-            )
-        except (ValueError, ZeroDivisionError):
-            continue
-    Account.objects.bulk_update(accounts, ["activity_score"])
+            except (ValueError, ZeroDivisionError):
+                continue
+        Account.objects.bulk_update(accounts, ["activity_score"])
+    except Exception as err:
+        logger.debug(f"Exception in update_activity: {err}")
 
 
 @celery_app.task
@@ -245,8 +258,11 @@ def update_all_users():
     Use celery-batches and DjangoTask to allow us to discard multiple requests for greater efficiency.
     """
     logger.debug("Running update all users task")
-    for account in Account.objects.all():
-        update_tests_score.delay(account.pk, True)
+    try:
+        for account in Account.objects.all():
+            update_tests_score.delay(account.pk, True)
+    except Exception as err:
+        logger.debug(f"Exception in update_all_users: {err}")
 
 
 @shared_task()

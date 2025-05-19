@@ -60,16 +60,34 @@ def import_gradebook():
 @shared_task(base=PHASTask, flush_every=100, flush_interval=10)
 def update_vitals(requests):
     """For each vital that uses this test, check whether a vital is passed and update as necessary."""
-    ids = list(set([request.args[0] for request in requests]))  # Pass through set deduplicates account.pk values
+    ids = set()
+    for request in requests:
+        match request.args[0]:
+            case int():
+                ids |= set([request.args[0]])
+            case list() | tuple() | set():
+                ids |= set(request.args[0])
+            case _:
+                logger.debug(f"Unable to understand {request.args[0]} as test_score ids")
+    ids = list(ids)
     logger.debug(f"Running minerva.update_vitals for {ids}")
     test_scores = Test_Score.objects.filter(pk__in=ids)
     for test_score in test_scores:
         logger.debug(f"Looking at test score {test_score}")
-        for vm in test_score.test.vitals_mappings.all().prefetch_related(
-            "vital"
-        ):  # For each vital that this test could pass
-            logger.debug(f"Checking mapping {vm}")
-            vm.vital.check_vital(test_score.user)
+        try:
+            for vm in test_score.test.vitals_mappings.all().select_related(
+                "vital", "test"
+            ):  # For each vital that this test could pass
+                logger.debug(f"Checking mapping {vm}")
+                if vm.sufficient:  # short circuit for most tests
+                    if test_score.passed or (vm.condition == "attempt" and not test_score.test.ignore_zero):
+                        logger.debug(f"Recording simple pass for {test_score.user}")
+                        vm.vital.passed(test_score.user)
+                else:
+                    logger.debug(f"Doing full VITAL check for {test_score.user}")
+                    vm.vital.check_vital(test_score.user)
+        except Exception as err:
+            logger.debug(f"Update vitals exception {err}")
 
 
 @shared_task()

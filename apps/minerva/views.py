@@ -10,7 +10,6 @@ from traceback import format_exc
 # Django imports
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.core.paginator import Paginator
 from django.db.models import OuterRef, Q, Subquery
 from django.db.utils import IntegrityError
 from django.forms import ValidationError

@@ -54,13 +54,6 @@ def update_user_vitals(modelAdmin, request, queryset):
         vr.vital.check_vital(vr.user)
 
 
-@admin.action(description="Force Update of VITALs")
-def update_module_vitals(modelAdmin, request, queryset):
-    """Force an update of all VITALs for the selected users."""
-    for vr in VITAL_Result.objects.filter(user__modules__in=queryset.all()):
-        vr.vital.check_vital(vr.user)
-
-
 @admin.action(description="Force Update of VITAL")
 def update_vital_users(modelAdmin, request, queryset):
     """Force an update of all users for the selected VITALs."""
@@ -71,7 +64,6 @@ def update_vital_users(modelAdmin, request, queryset):
 
 
 add_action("accounts.Account", update_user_vitals)
-add_action("minerva.Module", update_module_vitals)
 
 
 @admin.register(VITAL)

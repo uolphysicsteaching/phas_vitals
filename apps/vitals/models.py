@@ -43,6 +43,13 @@ class VITAL_Test_Map(models.Model):
     condition = models.CharField(max_length=10, choices=PASS_OPTIONS, default="pass")
     required_fractrion = models.FloatField(default=1.0)
 
+    def __str__(self):
+        """Provide a sensible string for logging etc."""
+        return (
+            f"Mapping: {dict(self.PASS_OPTIONS)[self.condition]} {self.test.name} to pass {self.vital.name} "
+            + f"{'neccessary' if self.necessary else ''} {'sufficient' if self.sufficient else ''}"
+        )
+
 
 class VITAL_ResultManager(models.Manager):
     """Annotate results with vitals status fields."""

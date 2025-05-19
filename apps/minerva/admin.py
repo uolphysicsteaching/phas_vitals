@@ -116,7 +116,7 @@ class ModuleAdmin(ImportExportModelAdmin):
     iniines = [
         ModuleEnrollmentInline,
     ]
-    actions = ["generate_marksheet", "update_tests", "update_columns", "mapping_export"]
+    actions = ["generate_marksheet", "update_tests", "update_columns", "mapping_export", "refresh_vitals"]
 
     fieldsets = (
         (
@@ -187,6 +187,14 @@ class ModuleAdmin(ImportExportModelAdmin):
 
         df.to_excel(response)
         return response
+
+    @admin.action(description="Refresh VITALs from test results")
+    def refresh_vitals(self, request, queryset):
+        """Fire off async tasks to update vital results for all the test results from a module."""
+        for module in queryset.all():
+            for test in module.tests.all():
+                pks = [x[0] for x in test.results.all().values_list("pk")]
+                update_vitals.delay(pks)
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
