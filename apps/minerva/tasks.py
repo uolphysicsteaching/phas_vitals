@@ -41,6 +41,8 @@ def import_gradebook():
     imported_modules = []
     for module in Module.objects.all():
         logger.debug(f"Attempting to import {module.key}")
+        logger.debug(f"Cleaning up dead columns.")
+        module.remove_columns_not_in_json()
         try:
             GradebookColumn.create_or_update_from_json(module)
         except OSError:  # Probably no JSON File

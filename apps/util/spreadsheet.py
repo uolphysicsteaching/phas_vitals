@@ -601,7 +601,7 @@ class Spreadsheet(BaseSpreadsheet):
                 cell = self.sheet.cell(row=12, column=ix)
                 cell.value = "P/F"
                 cell = self.sheet.cell(row=13, column=ix)
-                cell.value = 1.0
+                cell.value = 1.0 if module.level > 0 else 0.0
         if mh > 2:
             self.sheet.row_dimensions[11].height = 6.5 * mh
         return component_columns

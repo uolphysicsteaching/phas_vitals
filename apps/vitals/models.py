@@ -6,6 +6,7 @@ from datetime import timedelta
 from itertools import chain
 
 # Django imports
+from django.apps import apps
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone as tz
@@ -369,7 +370,8 @@ def required_tests(self):
             row[test.test_id] = 1
         data.append(row)
     if not len(data):
-        return Vital.objects.first().test.model.objects.none()
+        Test = apps.get_model("minerva", "Test")
+        return Test.objects.none()
     data = pd.DataFrame(data).transpose().fillna(0.0)
     data.columns = data.loc["VITAL"]
     data = data.drop("VITAL")

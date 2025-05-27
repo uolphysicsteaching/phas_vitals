@@ -3,7 +3,7 @@
 # Python imports
 import logging
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 from os import path
 
 # Django imports
@@ -170,6 +170,12 @@ class Module(models.Model):
         return f"{self.key}_Course_Memberships.json"
 
     @property
+    def data_ready(self):
+        """Return True if there is data for this module to read."""
+        blob = f"{self.key}.DataReady"
+        return blob in json.get_blob_list()
+
+    @property
     def json_updated(self):
         """Get the last modified timestamp for the course_json file."""
         client = json.get_blob_client(self.course_json)
@@ -277,10 +283,17 @@ class Module(models.Model):
             return
         try:
             for test in self.tests.all():
-                test.attempts_from_dicts()
+                test.attempts_from_columns()
         except IOError:
             return None
         return True
+
+    def remove_columns_not_in_json(self, remove_column=True):
+        """Check to see whether all the columns for a test are in the json or not."""
+        if not self.data_ready:  # Don;'t do anything if we don't have data
+            return
+        for test in self.tests.all():
+            test.remove_columns_not_in_json(remove_column=remove_column)
 
 
 class StatusCode(models.Model):
@@ -450,7 +463,17 @@ class Test(models.Model):
     @property
     def attempts_json(self):
         """Match the filename for the test attempts."""
-        return [x.json_file for x in self.columns.all()]
+        return [x.json_attempts_file for x in self.columns.all()]
+
+    @property
+    def grades_json(self):
+        """Match the filename for the test attempts."""
+        return [x.json_grades_file for x in self.columns.all()]
+
+    @property
+    def data_ready(self):
+        """Pass through to module level data ready."""
+        return self.module.data_ready
 
     def natural_key(self):
         """Return string representation a natural key."""
@@ -458,7 +481,7 @@ class Test(models.Model):
 
     def save(
         self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None
-    ):  #  pylint: disable=arguments-differ
+    ):  # pylint: disable=arguments-differ
         """Check whether we need to update test_score passing fields."""
         if self.pk and self.results.count() > 0:
             orig = Test.objects.get(pk=self.pk)
@@ -470,10 +493,18 @@ class Test(models.Model):
             for test_score in self.results.all():  # Update all test_scores for both passes and fails
                 test_score.save()
 
-    def attempts_from_dicts(self):
-        """Create a test attempt from with a single, or list of dictionaries derived from a json file."""
+    def attempts_from_columns(self):
+        """Create a test attempts and test scores from the individual column hjson files."""
         for column in self.columns.all():
             column.update_attempts()
+            logger.debug(f"Updated attempts for column {column}")
+            column.update_grades()
+            logger.debug(f"Updated grades for column {column}")
+
+    def grades_from_columns(self):
+        """Create test scores from each columns json files."""
+        for column in self.columns.all():
+            column.update_scoress()
 
     def add_attempt(self, student, mark, date=None):
         """Add a Test_Attempt, including Test_Score as necessary."""
@@ -561,6 +592,19 @@ class Test(models.Model):
                 column.test = test
                 column.save()
 
+    def remove_columns_not_in_json(self, remove_column=True):
+        """Check to see whether all the columns for a test are in the json or not."""
+        if not self.data_ready:  # Don;'t do anything if we don't have data
+            return
+        blobs = json.get_blob_list()
+        for column in self.columns.all():
+            if column.json_attempts_file not in blobs and column.json_grades_file not in blobs:
+                if remove_column:
+                    column.delete()
+                else:
+                    column.test = None
+                    column.save()
+
     @classmethod
     def get_by_column_name(cls, name, module=None):
         """Pattern match the name to see if we can locate a matching Test."""
@@ -600,6 +644,16 @@ class GradebookColumn(models.Model):
         return self.test.module.key + f"_Grade_Columns_Attempt_{self.gradebook_id}.json"
 
     @property
+    def json_attempts_file(self):
+        """Return the name of the JSON column file."""
+        return self.test.module.key + f"_Grade_Columns_Attempt_{self.gradebook_id}.json"
+
+    @property
+    def json_grades_file(self):
+        """Return the name of the JSON column file."""
+        return self.test.module.key + f"_Column_Grades_{self.gradebook_id}.json"
+
+    @property
     def json_properties(self):
         """Get the Blob storage properties."""
         return json.get_blob_client(self.json_file).get_blob_properties()
@@ -612,7 +666,24 @@ class GradebookColumn(models.Model):
     @property
     def current_json_entries(self):
         """Get the current entries in the JSON file and match to users."""
-        json_data = json.get_blob_by_name(self.json_file)
+        json_data = json.get_blob_by_name(self.json_attempts_file)
+        if json_data is None:
+            raise IOError(f"No json blob {self.attemps_json}")
+        json_data = {x["userId"]: x for x in json_data}
+        qs = (
+            self.test.module.student_enrollments.filter(user_id__in=set(json_data.keys()))
+            .prefetch_related("student")
+            .order_by("student__last_name", "student__first_name")
+        )
+        for enrollment in qs.all():
+            data = json_data.get(enrollment.user_id, None)
+            data["student"] = enrollment.student
+            yield data
+
+    @property
+    def current_json_scores(self):
+        """Get the current scores  in the JSON file and match to users."""
+        json_data = json.get_blob_by_name(self.json_grades_file)
         if json_data is None:
             raise IOError(f"No json blob {self.attemps_json}")
         json_data = {x["userId"]: x for x in json_data}
@@ -647,10 +718,48 @@ class GradebookColumn(models.Model):
             )
             attempt.score = data.get("score", None)
             attempt.status = data.get("status", "NeedsGrading" if attempt.score is None else "Completed")
-            attempt.created = pytz.utc.localize(data["created"])
-            attempt.attempted = pytz.utc.localize(data["attemptDate"])
-            attempt.modified = pytz.utc.localize(data["modified"])
+            attempt.created = pytz.utc.localize(data.get("created", datetime.now()))
+            attempt.attempted = pytz.utc.localize(data.get("attemptDate", datetime.now()))
+            attempt.modified = pytz.utc.localize(data.get("modified", datetime.now()))
             attempt.save()
+
+    def update_grades(self):
+        """Update the TestAttempts from this Gradebook column."""
+        for data in self.current_json_scores:
+            match data:
+                case {"score": score}:
+                    pass
+                case {"displayGrade": {"score": score}}:
+                    pass
+                case _:
+                    score = None
+
+            if data is None:  # No data for this enrollment for some reason
+                continue
+            if self.test.ignore_zero and score == 0:  # By pass zero scores if we're ignoring them
+                continue
+            if "status" not in data and score is None:
+                continue
+            if score is not None and score > self.test.score_possible:  # Looks like core>max score
+                continue  # so bypass this attempt
+            result, new = Test_Score.objects.get_or_create(user=data["student"], test=self.test)
+            if (
+                new
+                or result.attempts.count() == 0
+                or "overridden" in data
+                or (score != result.best_score and score is not None)
+            ):  # Need a new or override attempt entry
+                attempt, _ = Test_Attempt.objects.get_or_create(
+                    test_entry=result,
+                    attempt_id=f'{self.test.test_id}_{result.id}_{data.get("lastRelevantDate",tz.now()).strftime("%Y%m%d_%H%M%S")}',
+                )
+                attempt.score = score
+                attempt.status = data.get("status", "NeedsGrading" if attempt.score is None else "Completed")
+                attempt.created = pytz.utc.localize(data.get("created", datetime.now()))
+                attempt.attempted = pytz.utc.localize(data.get("attemptDate", datetime.now()))
+                attempt.modified = pytz.utc.localize(data.get("modified", datetime.now()))
+                attempt.override = "overridden" in data
+                attempt.save()
 
     @classmethod
     def create_or_update_from_json(cls, module):
@@ -776,37 +885,50 @@ class Test_Score(models.Model):
         match self.manual_standing:
             case "Ok":
                 if sufficient.count() > 0:
-                    ret += f"You passed:\n{vital_qs_to_html(sufficient,self.user)}"
+                    ret += f"You passed:\n{vital_qs_to_html(sufficient, self.user)}"
                 if necessary.count() > 0:
-                    ret += f"Contributed to passing:\n{vital_qs_to_html(necessary,self.user)}"
+                    ret += f"Contributed to passing:\n{vital_qs_to_html(necessary, self.user)}"
             case "Overdue" | "Missing":
                 if sufficient.count() > 0:
-                    ret += f"You would still pass:\n{vital_qs_to_html(sufficient,self.user)}"
+                    ret += f"You would still pass:\n{vital_qs_to_html(sufficient, self.user)}"
                 if necessary.count() > 0:
-                    ret += f"Would contribute to passing:\n{vital_qs_to_html(necessary,self.user)}"
+                    ret += f"Would contribute to passing:\n{vital_qs_to_html(necessary, self.user)}"
             case "Finished":
                 if sufficient.count() > 0:
-                    ret += f"You would have passed:\n{vital_qs_to_html(sufficient,self.user)}"
+                    ret += f"You would have passed:\n{vital_qs_to_html(sufficient, self.user)}"
                 if necessary.count() > 0:
-                    ret += f"Would have contributed to passing:\n{vital_qs_to_html(necessary,self.user)}"
+                    ret += f"Would have contributed to passing:\n{vital_qs_to_html(necessary, self.user)}"
             case "Released" | "Not Started":
                 if sufficient.count() > 0:
-                    ret += f"You will pass:\n{vital_qs_to_html(sufficient,self.user)}"
+                    ret += f"You will pass:\n{vital_qs_to_html(sufficient, self.user)}"
                 if necessary.count() > 0:
-                    ret += f"Will contribute to passing:\n{vital_qs_to_html(necessary,self.user)}"
+                    ret += f"Will contribute to passing:\n{vital_qs_to_html(necessary, self.user)}"
             case "Waiting for Mark":
                 if sufficient.count() > 0:
-                    ret += f"This will let you pass:\n{vital_qs_to_html(sufficient,self.user)}"
+                    ret += f"This will let you pass:\n{vital_qs_to_html(sufficient, self.user)}"
                 if necessary.count() > 0:
-                    ret += f"This will contribute to you passing:\n{vital_qs_to_html(necessary,self.user)}"
+                    ret += f"This will contribute to you passing:\n{vital_qs_to_html(necessary, self.user)}"
             case _:
                 ret = ""
         return format_html(ret)
 
+    @property
+    def best_score(self):
+        """Figure out the best score from the attempts."""
+        best_score = None
+        if (attempts := self.attempts.filter(override=True)).count() == 0:
+            attempts = self.attempts.exclude(score=None)
+        scores = np.round(attempts.values_list("score"), 2)
+        if scores.size > 0:
+            best_score = np.nanmax(scores)
+        else:
+            best_score = False
+        return best_score
+
     def check_passed(self, orig=None):
         """Check whether the user has passed the test."""
         # TODO replace this code when we have direct reading of gradescope scores
-        best_score = None
+        best_score = self.best_score
         if self.attempts.exclude(status="NeedsGrading").count() == 0:  # Nothing to mark yet
             self.status = "NeedsGrading"
             if np.isnan(self.test.passing_score):
@@ -814,11 +936,6 @@ class Test_Score(models.Model):
             numerically_passed = False
             pass_changed = False
             return best_score, numerically_passed, pass_changed
-        scores = np.round(self.attempts.exclude(score=None).values_list("score"), 2)
-        if scores.size > 0:
-            best_score = np.nanmax(scores)
-        else:
-            best_score = False
         numerically_passed = bool(  # deal with rouinding errors by checking with isclose as well as >=
             best_score is not None
             and (best_score >= self.test.passing_score or np.isclose(self.test.passing_score, best_score))
@@ -868,6 +985,7 @@ class Test_Attempt(models.Model):
     created = models.DateTimeField(blank=True, null=True)
     attempted = models.DateTimeField(blank=True, null=True)
     modified = models.DateTimeField(blank=True, null=True)
+    override = models.BooleanField(default=False)
 
     def __str__(self):
         """Make simple string representation."""

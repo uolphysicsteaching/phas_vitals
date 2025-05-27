@@ -69,7 +69,7 @@ def get_blob_list(container_client=None):
     ret = {}
     for blob in blob_list:
         name_parts = blob.name.split("/")
-        if name_parts[-1].endswith(".json"):
+        if name_parts[-1].endswith(".json") or name_parts[-1].endswith(".DataReady"):
             ret[name_parts[-1]] = blob
     return ret
 
@@ -79,17 +79,24 @@ def get_blob_by_name(name, smart_dates=True, raw=False):
     container_client = get_container_client()
     blobs = get_blob_list(container_client)
     loads = smart_loads if smart_dates else dumb_loads
+    return_data = []
     if name in blobs:
         blob = blobs[name]
         try:
             raw_data = container_client.download_blob(blob.name).read()
             if raw:
                 return raw_data
-            data = loads(raw_data)
+            for line in raw_data.split(b"\r\n"):
+                if line.strip() == b"" or line.strip().startswith(b"#"):  # blank lines and comments
+                    continue
+                data = loads(line)
+                if "results" in data:
+                    return_data.extend(data["results"])
+                else:
+                    logger.error("No results key in line of json data!")
         except Exception as ex:
             logger.error(f"Failed to download nlob {blob.name}  -error {ex}")
             return None
-        data = data["results"]
-        return data
+        return return_data
     logger.error(f"Blob {name} not in store!")
     return None
