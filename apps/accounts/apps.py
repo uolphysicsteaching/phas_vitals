@@ -3,6 +3,7 @@ from os.path import basename, dirname
 
 # Django imports
 from django.apps import AppConfig
+from django.db.utils import ProgrammingError
 
 
 class AccountsConfig(AppConfig):
@@ -33,5 +34,5 @@ class AccountsConfig(AppConfig):
                 name="Can Review Whole Cohort",
                 content_type=content_type,
             )
-        except ImportError:
+        except (ImportError, ProgrammingError):
             pass

@@ -74,7 +74,7 @@ appdirs = [APPS_PATH / x for x in APPS_PATH.glob("*") if (APPS_PATH / x).is_dir(
 CUSTOM_APPS = []
 # Autobuild all
 print("#" * 80)
-for appdir in appdirs:
+for appdir in sorted(appdirs):
     if (appdir / "models.py").exists():  # Only add apps that have a models.py
         print(f"Adding app {appdir.name}")
         CUSTOM_APPS.append(appdir.name)
@@ -110,7 +110,6 @@ DEFAULT_APPS = (
         "django_tables2",
         "django_auth_adfs",
         "email_obfuscator",
-        "floppyforms",
         "import_export",
         "mathfilters",
         "oauth2_provider",
@@ -287,7 +286,6 @@ TIME_ZONE = "Europe/London"
 USE_I18N = True
 
 # Localisation
-USE_L10N = True
 
 # enable timezone awareness by default
 USE_TZ = True
