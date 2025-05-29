@@ -136,6 +136,7 @@ class Account(AbstractUser):
     givenName = models.CharField(max_length=128, blank=True, null=True, verbose_name="MS account given name")
     registration_status = models.CharField(max_length=10, blank=True, null=True, default="")
     section = models.ForeignKey("Section", on_delete=models.SET_NULL, blank=True, null=True, related_name="students")
+    override_vitals = models.BooleanField(default=False, verbose_name="VITAL awards manually overridden")
     # Fields updated by celery tasks
     tests_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
     labs_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])

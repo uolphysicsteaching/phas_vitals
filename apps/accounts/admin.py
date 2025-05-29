@@ -207,7 +207,12 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
         (
             _("Permissions"),
             {
-                "fields": (("is_active", "is_staff", "is_superuser"), "groups", "user_permissions"),
+                "fields": (
+                    ("is_active", "override_vitals"),
+                    ("is_staff", "is_superuser"),
+                    "groups",
+                    "user_permissions",
+                ),
                 "classes": ("tab-fs-permissions",),
             },
         ),
@@ -322,7 +327,8 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
     def rebuild_vitals(self, request, queryset):
         """Remove all the VITAL results and then rebuild them from test results."""
         for account in queryset.all():
-            account.vital_results.all().delete()
+            if not account.override_vitals:  # Don't remove VITALs from students marked for manual VITAL allocations
+                account.vital_results.all().delete()
             for test_result in account.test_results.all():
                 update_vitals.delay(test_result.pk)
 
