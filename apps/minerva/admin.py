@@ -1,4 +1,5 @@
 """Admin interface classes for util app."""
+import logging
 
 # Django imports
 from django.contrib import admin, messages
@@ -15,6 +16,7 @@ from tinymce.widgets import TinyMCE
 from util.admin import add_inlines
 
 # app imports
+from accounts.admin import StudentListFilter
 from phas_vitals import celery_app
 
 # app imports
@@ -41,6 +43,7 @@ from .resource import (
 # Register your models here.
 update_vitals = celery_app.signature("minerva.tasks.update_vitals")
 
+logger = logging.getLogger("celery_tasks")
 
 class ModuleFilter(AutocompleteFilter):
     """Lookup filter for module names."""
@@ -278,9 +281,11 @@ class TestAdmin(ImportExportModelAdmin):
     @admin.action(description="Refresh VITALs from test results")
     def refresh_vitals(self, request, queryset):
         """Fire off async tasks to update vital results for all the test results from a column."""
+        logger.debug("Sending test results for {queryset.count()} tests.")
         for test in queryset.all():
-            for test_score in test.results.all():
-                update_vitals.delay(test_score.pk)
+            test_scores_pk=[x[0] for x in test.results.all().values_list("pk")]
+            logger.debug(f"Updating {len(test_scores_pk)} test results for {test}")
+            update_vitals.delay(test_scores_pk)
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
@@ -411,7 +416,8 @@ class ModuleEnrollmentAdmin(ImportExportModelAdmin):
     """Admin interface for ModuleEnrollment objects."""
 
     list_display = ("module", "student", "status")
-    list_filter = (ModuleFilter, "student", "status")
+    list_editable = ("status",)
+    list_filter = (ModuleFilter, StudentListFilter, "status")
     search_fields = [
         "module__name",
         "module__code",

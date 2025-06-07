@@ -72,7 +72,7 @@ class Cohort(models.Model):
     def new(cls):
         """Try to return the Cohort for the current academic year."""
         date = timezone.now()
-        year = date.year if date.month > 5 else date.year - 1
+        year = date.year if date.month > 7 else date.year - 1
         y2 = year - 1999
         combined = str(year * 100 + y2)
         try:
