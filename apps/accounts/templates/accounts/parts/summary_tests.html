@@ -27,7 +27,7 @@
         </div>
         <div class="col-md-2 text-center align-middle">
             {% if test_score.attempts.count > 0 %}
-                {{ test_score.score }} / {{ test_score.test.score_possible }} marks
+                {{ test_score.student_score }}
             {% else %}
                 {{ test_score.test.score_possible }} mark{% if test_score.test.score_possible > 1%}s{% endif %} possible
             {% endif %}

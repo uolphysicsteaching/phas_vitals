@@ -18,6 +18,7 @@ urlpatterns = [
         "tools/student_list/xlsx/", views.CohortFilterActivityScoresExportView.as_view(), name="cohort_activity_list"
     ),
     path("tools/toggle_active/", views.DeactivateStudentView.as_view(), name="toggle_active"),
+    path("tools/toggle_vital/", views.AwardVITALView.as_view(), name="toggle_vital"),
     path("tools/scores_summary/", views.CohortScoresOverview.as_view(), name="score_summary_plot"),
     path("tools/scores_progression/", views.CohortProgressionOverview.as_view(), name="score_progression_plot"),
     path("student_lookup", views.StudentAutocomplete.as_view(), name="Student_lookup"),

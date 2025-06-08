@@ -3,6 +3,7 @@ from django.contrib import admin
 
 # external imports
 from accounts.models import Account
+from accounts.admin import StudentListFilter
 from import_export.admin import ImportExportModelAdmin
 from util.admin import add_action, add_inlines
 
@@ -14,6 +15,35 @@ from .resource import (
     VITAL_Test_MapResource,
     VITALResource,
 )
+
+
+class VITALListFilter(admin.SimpleListFilter):
+    """A filter for selecting student accounts sorted by surname."""
+
+    # Human-readable title which will be displayed in the
+    # right admin sidebar just above the filter options.
+    title = "VITAL"
+
+    # Parameter for the filter that will be used in the URL query.
+    parameter_name = "VITAL"
+
+    def lookups(self, request, model_admin):
+        """Return a sorted list of student names."""
+        res = VITAL.objects.all().order_by("VITAL_ID")
+        return tuple([(vital.VITAL_ID, str(vital)) for vital in res.all()])
+
+    def queryset(self, request, queryset):
+        """Return the object with a student of the right username."""
+        # Compare the requested value (either '80s' or '90s')
+        # to decide how to filter the queryset.
+        fields = [f.name for f in queryset.model._meta.get_fields()]
+        if self.value() is None:
+            return queryset
+        if "vital" in fields:
+            return queryset.filter(vital__VITAL_ID=self.value())
+        if "VITAL" in fields:
+            return queryset.filter(VITAL__VITAL_ID=self.value())
+
 
 # Register your models here.
 
@@ -118,8 +148,9 @@ class VITAL_Test_MapAdmin(ImportExportModelAdmin):
 class VITAL_ResultAdmin(ImportExportModelAdmin):
     """Admin interface for VITAL Results."""
 
-    list_display = ("vital", "user", "date_passed")
-    list_filter = list_display
+    list_display = ("vital", "user", "passed", "date_passed")
+    list_editable = ("passed", )
+    list_filter = (VITALListFilter, StudentListFilter, "passed", "date_passed")
     search_fields = ["vital__name", "user__first_name", "user__last_name", "user__username", "vital__module__name"]
 
     def get_export_resource_class(self):

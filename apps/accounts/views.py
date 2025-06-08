@@ -37,9 +37,11 @@ from util.views import (
 # app imports
 from .forms import (
     AllStudentSelectForm,
+    StudentSelectForm,
     CohortFilterActivityScoresForm,
     ToggleActiveForm,
     TutorSelectForm,
+    ToggleVITALForm,
 )
 from .models import Account
 
@@ -641,3 +643,56 @@ class DeactivateStudentView(IsSuperuserViewMixin, MultiFormMixin, TemplateRespon
             kwargs["data"] = {"user": self.user}
             kwargs["initial"] = kwargs["data"]
         return AllStudentSelectForm(**kwargs)
+
+class AwardVITALView(IsSuperuserViewMixin, MultiFormMixin, TemplateResponseMixin, ProcessMultipleFormsView):
+    """View to locate a student recortd and then edit to set account activity flag."""
+
+    form_classes = {"search": StudentSelectForm, "update": ToggleVITALForm}
+    success_urls = {"search": "", "update": ""}
+    template_name = "accounts/admin/toggle_vital.html"
+    user = None
+    vital = None
+
+    def search_form_valid(self, form):
+        """Process the user search form being valid."""
+        self.user = form.cleaned_data["user"]
+        return self.render_to_response(self.get_context_data(forms=self._forms))
+
+    def update_form_valid(self, form):
+        """Save the updated user instance."""
+        try:
+            self.user = Account.objects.get(username=form.cleaned_data["username"])
+        except ObjectDoesNotExist:
+            form.errors.add(f"{form.cleaned_data['username']} not a valid username.")
+            return self.form_invalid(form)
+
+        self.vital = form.cleaned_data["VITAL"]
+        vr,_ = Account.vital_results.field.model.objects.get_or_create(user=self.user, vital=self.vital)
+        if not vr.passed and form.cleaned_data["passed"]:
+            self.user.override_vitals = True
+            self.user.save()
+        vr.passed = form.cleaned_data["passed"]
+        vr.save()
+
+        return self.render_to_response(self.get_context_data(forms=self._forms))
+
+    def create_update_form(self, **kwargs):
+        """Force use of the existing user account to load fields."""
+        if self.user:
+            kwargs["data"] = {
+                "username": self.user.username,
+                "number": self.user.number,
+                "display_name": self.user.display_name,
+            }
+        if self.vital:
+            vr,_ = Account.vital_results.field.model.objects.get_or_create(user=self.user, vital=self.vital)
+            kwargs.update({"vital":self.vital, "passed":vr.passed})
+        kwargs["initial"] = kwargs.get("data",{})
+        return ToggleVITALForm(**kwargs)
+
+    def create_search_form(self, **kwargs):
+        """Force use of existing user object to populate."""
+        if self.user:
+            kwargs["data"] = {"user": self.user}
+            kwargs["initial"] = kwargs["data"]
+        return StudentSelectForm(**kwargs)

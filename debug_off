@@ -1,0 +1,2 @@
+#! /bin/bash
+find /home/ -name 'production.py' -exec perl -pi -e 's/DEBUG\s*=\s*True/DEBUG = False/g;' {} \; > /dev/null 2>&1

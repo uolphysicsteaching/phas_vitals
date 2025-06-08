@@ -258,7 +258,7 @@ class TestAdmin(ImportExportModelAdmin):
                         "name",
                     ),
                     "description",
-                    ("score_possible", "passing_score"),
+                    ("score_possible", "passing_score", "suppress_numerical_score"),
                     ("grading_attemptsAllowed", "ignore_zero"),
                 ),
                 "classes": [

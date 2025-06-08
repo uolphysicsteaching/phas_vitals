@@ -404,6 +404,7 @@ class Test(models.Model):
     # Mandatory fields
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
+    suppress_numerical_score = models.BooleanField(default=False,blank=True, null=True, verbose_name="Do not reveal numerical score to students")
     type = models.CharField(max_length=10, choices=TEST_TYPES, default=TEST_TYPES[0][0])
     score_possible = models.FloatField(default=100, verbose_name="Maximum possible score")
     passing_score = models.FloatField(default=80, verbose_name="Passing score")
@@ -924,6 +925,12 @@ class Test_Score(models.Model):
         else:
             best_score = False
         return best_score
+
+    @property
+    def student_score(self):
+        if self.test.suppress_numerical_score:
+            return f"at least {self.test.passing_score} marks" if self.passed else f"less than {self.test.passing_score} marks"
+        return f"{self.score} / {self.test.score_possible} marks"
 
     def check_passed(self, orig=None):
         """Check whether the user has passed the test."""
