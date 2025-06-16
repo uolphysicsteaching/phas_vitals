@@ -1,11 +1,17 @@
+# Python imports
+import logging
+
 # Django imports
 from django.contrib import admin
 
 # external imports
-from accounts.models import Account
 from accounts.admin import StudentListFilter
+from accounts.models import Account
 from import_export.admin import ImportExportModelAdmin
 from util.admin import add_action, add_inlines
+
+# app imports
+from phas_vitals import celery_app
 
 # app imports
 from .forms import VITAL_ResultForm, VITAL_Test_MapForm, VITALForm
@@ -15,6 +21,10 @@ from .resource import (
     VITAL_Test_MapResource,
     VITALResource,
 )
+
+update_vitals = celery_app.signature("minerva.tasks.update_vitals")
+
+logger = logging.getLogger("celery_tasks")
 
 
 class VITALListFilter(admin.SimpleListFilter):
@@ -80,17 +90,31 @@ add_inlines("minerva.Module", VITALInline, "VITALS")
 @admin.action(description="Force Update of VITALs")
 def update_user_vitals(modelAdmin, request, queryset):
     """Force an update of all VITALs for the selected users."""
-    for vr in VITAL_Result.objects.filter(user__in=queryset.all()):
-        vr.vital.check_vital(vr.user)
+    test_pks = set()
+    for user in queryset.all():
+        test_pks |= set([x[0] for x in user.test_results.all().values_list("pk")])
+    logger.debug(f"Triggering update_vitals for the following test_results: {test_pks}")
+    update_vitals.delay(list(test_pks))
 
 
 @admin.action(description="Force Update of VITAL")
 def update_vital_users(modelAdmin, request, queryset):
     """Force an update of all users for the selected VITALs."""
-    users = Account.objects.filter(modules__VITALS__in=queryset.all())
-    for user in users:
-        for vital in queryset.all():
-            vital.check_vital(user)
+    test_scores = set()
+    for vital in queryset.all():
+        students = [x[0] for x in vital.module.module_enrollments.values_list("student")]
+        tests = vital.tests.all()
+        if tests:
+            test_scores |= set(
+                [
+                    x[0]
+                    for x in tests.first()
+                    .results.model.objects.filter(user__pk__in=students, test__in=tests)
+                    .values_list("pk")
+                ]
+            )
+    logger.debug(f"Triggering update_vitals for the following test_results: {test_pks}")
+    update_vitals.delay(list(test_pks))
 
 
 add_action("accounts.Account", update_user_vitals)
@@ -149,7 +173,7 @@ class VITAL_ResultAdmin(ImportExportModelAdmin):
     """Admin interface for VITAL Results."""
 
     list_display = ("vital", "user", "passed", "date_passed")
-    list_editable = ("passed", )
+    list_editable = ("passed",)
     list_filter = (VITALListFilter, StudentListFilter, "passed", "date_passed")
     search_fields = ["vital__name", "user__first_name", "user__last_name", "user__username", "vital__module__name"]
 

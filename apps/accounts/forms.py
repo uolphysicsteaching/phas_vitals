@@ -138,14 +138,14 @@ class CohortFilterActivityScoresForm(forms.Form):
     )
     value = forms.FloatField(required=True, initial=40.0)
 
+
 class ToggleVITALForm(forms.Form):
     """Tweaks to the User Admin account form."""
 
     number = forms.IntegerField(disabled=True, label="SID", required=False)
     display_name = forms.CharField(disabled=True, label="Student Name", required=False)
     username = forms.CharField(widget=forms.HiddenInput())
-    VITAL = forms.ModelMultipleChoiceField(
-        queryset= Account.VITALS.field.model.objects.all(),
-        widget = autocomplete.ModelSelect2(url="vitals:VITAL_lookup")
+    VITAL = forms.ModelChoiceField(
+        queryset=Account.VITALS.field.model.objects.all(), widget=autocomplete.ModelSelect2(url="vitals:VITAL_lookup")
     )
     passed = forms.ChoiceField(choices=[(None, "-"), (False, "No Passed"), (True, "Passed")])

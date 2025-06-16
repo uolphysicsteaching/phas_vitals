@@ -404,7 +404,9 @@ class Test(models.Model):
     # Mandatory fields
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
-    suppress_numerical_score = models.BooleanField(default=False,blank=True, null=True, verbose_name="Do not reveal numerical score to students")
+    suppress_numerical_score = models.BooleanField(
+        default=False, blank=True, null=True, verbose_name="Do not reveal numerical score to students"
+    )
     type = models.CharField(max_length=10, choices=TEST_TYPES, default=TEST_TYPES[0][0])
     score_possible = models.FloatField(default=100, verbose_name="Maximum possible score")
     passing_score = models.FloatField(default=80, verbose_name="Passing score")
@@ -714,9 +716,10 @@ class GradebookColumn(models.Model):
             ):  # Looks like core>max score
                 continue  # so bypass this attempt
             result, _ = Test_Score.objects.get_or_create(user=data["student"], test=self.test)
-            attempt, _ = Test_Attempt.objects.get_or_create(
-                test_entry=result, attempt_id=f'{self.test.test_id}+{data["id"]}'
-            )
+            try:
+                attempt = Test_Attempt.objects.get(test_entry=result, attempt_id=f'{self.test.test_id}+{data["id"]}')
+            except Test_Attempt.DoesNotExist:
+                attempt = Test_Attempt(test_entry=result, attempt_id=f'{self.test.test_id}+{data["id"]}')
             attempt.score = data.get("score", None)
             attempt.status = data.get("status", "NeedsGrading" if attempt.score is None else "Completed")
             attempt.created = pytz.utc.localize(data.get("created", datetime.now()))
@@ -750,10 +753,16 @@ class GradebookColumn(models.Model):
                 or "overridden" in data
                 or (score != result.best_score and score is not None)
             ):  # Need a new or override attempt entry
-                attempt, _ = Test_Attempt.objects.get_or_create(
-                    test_entry=result,
-                    attempt_id=f'{self.test.test_id}_{result.id}_{data.get("lastRelevantDate",tz.now()).strftime("%Y%m%d_%H%M%S")}',
-                )
+                try:
+                    attempt = Test_Attempt.objects.get(
+                        test_entry=result,
+                        attempt_id=f'{self.test.test_id}_{result.id}_{data.get("lastRelevantDate",tz.now()).strftime("%Y%m%d_%H%M%S")}',
+                    )
+                except Test_Attempt.DoesNotExist:
+                    attempt = Test_Attempt(
+                        test_entry=result,
+                        attempt_id=f'{self.test.test_id}_{result.id}_{data.get("lastRelevantDate",tz.now()).strftime("%Y%m%d_%H%M%S")}',
+                    )
                 attempt.score = score
                 attempt.status = data.get("status", "NeedsGrading" if attempt.score is None else "Completed")
                 attempt.created = pytz.utc.localize(data.get("created", datetime.now()))
@@ -929,7 +938,11 @@ class Test_Score(models.Model):
     @property
     def student_score(self):
         if self.test.suppress_numerical_score:
-            return f"at least {self.test.passing_score} marks" if self.passed else f"less than {self.test.passing_score} marks"
+            return (
+                f"at least {self.test.passing_score} marks"
+                if self.passed
+                else f"less than {self.test.passing_score} marks"
+            )
         return f"{self.score} / {self.test.score_possible} marks"
 
     def check_passed(self, orig=None):

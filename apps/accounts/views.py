@@ -37,11 +37,11 @@ from util.views import (
 # app imports
 from .forms import (
     AllStudentSelectForm,
-    StudentSelectForm,
     CohortFilterActivityScoresForm,
+    StudentSelectForm,
     ToggleActiveForm,
-    TutorSelectForm,
     ToggleVITALForm,
+    TutorSelectForm,
 )
 from .models import Account
 
@@ -644,6 +644,7 @@ class DeactivateStudentView(IsSuperuserViewMixin, MultiFormMixin, TemplateRespon
             kwargs["initial"] = kwargs["data"]
         return AllStudentSelectForm(**kwargs)
 
+
 class AwardVITALView(IsSuperuserViewMixin, MultiFormMixin, TemplateResponseMixin, ProcessMultipleFormsView):
     """View to locate a student recortd and then edit to set account activity flag."""
 
@@ -667,7 +668,7 @@ class AwardVITALView(IsSuperuserViewMixin, MultiFormMixin, TemplateResponseMixin
             return self.form_invalid(form)
 
         self.vital = form.cleaned_data["VITAL"]
-        vr,_ = Account.vital_results.field.model.objects.get_or_create(user=self.user, vital=self.vital)
+        vr, _ = Account.vital_results.field.model.objects.get_or_create(user=self.user, vital=self.vital)
         if not vr.passed and form.cleaned_data["passed"]:
             self.user.override_vitals = True
             self.user.save()
@@ -685,9 +686,9 @@ class AwardVITALView(IsSuperuserViewMixin, MultiFormMixin, TemplateResponseMixin
                 "display_name": self.user.display_name,
             }
         if self.vital:
-            vr,_ = Account.vital_results.field.model.objects.get_or_create(user=self.user, vital=self.vital)
-            kwargs.update({"vital":self.vital, "passed":vr.passed})
-        kwargs["initial"] = kwargs.get("data",{})
+            vr, _ = Account.vital_results.field.model.objects.get_or_create(user=self.user, vital=self.vital)
+            kwargs.update({"vital": self.vital, "passed": vr.passed})
+        kwargs["initial"] = kwargs.get("data", {})
         return ToggleVITALForm(**kwargs)
 
     def create_search_form(self, **kwargs):
