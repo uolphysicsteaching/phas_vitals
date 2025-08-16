@@ -413,10 +413,14 @@ class StudentAutocomplete(autocomplete.Select2QuerySetView):
         qs = Account.objects.filter(is_staff=False)
 
         if self.q:
-            qs = qs.filter(
-                Q(last_name__icontains=self.q) | Q(first_name__icontains=self.q) | Q(username__icontains=self.q)
-            ).order_by("last_name")
-        return qs
+            try:
+                qq = int(self.q)
+                qs = qs.filter(Q(number=qq))
+            except (ValueError, TypeError):
+                qs = qs.filter(
+                    Q(last_name__icontains=self.q) | Q(first_name__icontains=self.q) | Q(username__icontains=self.q)
+                )
+        return qs.order_by("last_name")
 
 
 class StaffAutocomplete(autocomplete.Select2QuerySetView):
@@ -599,6 +603,22 @@ class CohortProgressionOverview(IsStaffViewMixin, TemplateView):
             else:
                 context[f"{attr}_plot"] = data
         return context
+
+
+class StudentRecordView(IsSuperuserViewMixin, FormView):
+    """Lookup an individual student and redirect to their dashboard."""
+
+    form_class = AllStudentSelectForm
+    template_name = "accounts/admin/search_student_dashboard.html"
+
+    def form_valid(self, form):
+        """Record the user from the form."""
+        self.user = form.cleaned_data["user"]
+        return super().form_valid(self)
+
+    def get_success_url(self):
+        """Return the dasjboard view for the student."""
+        return f"/accounts/detail/{self.user.number}/#dashboard"
 
 
 class DeactivateStudentView(IsSuperuserViewMixin, MultiFormMixin, TemplateResponseMixin, ProcessMultipleFormsView):

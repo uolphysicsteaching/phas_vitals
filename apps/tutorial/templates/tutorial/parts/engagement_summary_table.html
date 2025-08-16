@@ -42,7 +42,7 @@
     {% endif %}
 </div>
 {% if next_code %}
-    <div id="table_part" hx-get="/tutorial/engagement_view/{{ semester }}/{{ cohort.name }}x/{{ next_code }}/?codes={{ codes|urlencode }}"
+    <div id="table_part" hx-get="/tutorial/engagement_view/{{ semester }}/{{ cohort.name }}/{{ next_code }}/?codes={{ codes|urlencode }}"
          hx-swap="outerHTML"
          hx-target="#table_part" hx-trigger="revealed"
          hx-include="form">

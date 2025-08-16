@@ -67,7 +67,7 @@
     </tr>
     </table>
     </div>
-    <div hx-get="/tutorial/engagement_view/{{ semester }}/{{ cohort.name }}x/{{ next_code }}/?codes={{ codes|urlencode }}"
+    <div hx-get="/tutorial/engagement_view/{{ semester }}/{{ cohort.name }}/{{ next_code }}/?codes={{ codes|urlencode }}"
          hx-include="form"
          hx-swap="outerHTML"
          hx-target="#table_part"

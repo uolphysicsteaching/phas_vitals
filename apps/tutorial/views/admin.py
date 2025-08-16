@@ -29,6 +29,11 @@ from ..models import Meeting, Tutorial, TutorialAssignment, students_Q
 from ..tables import BaseTable, MarkColumn
 
 
+def current_cohort():
+    """Defer evaluation of the current Cohot."""
+    return Cohort.current.name
+
+
 class AdminDashboardView(IsSuperuserViewMixin, FormMixin, TemplateView):
     """Collect various admin tools in one place."""
 
@@ -96,7 +101,7 @@ class MeetingsSummary(IsSuperuserViewMixin, FormMixin, SingleTableView):
 
     def get_table_data(self):
         """Fill out the table with data, creating the entries for the MarkType columns to interpret."""
-        cohort = self.kwargs.get("cohort", self.get_initial().get("cohort", Cohort.current.name))
+        cohort = self.kwargs.get("cohort", self.get_initial().get("cohort", current_cohort))
         try:
             cohort = Cohort.objects.get(name=cohort)
         except (ObjectDoesNotExist, MultipleObjectsReturned):

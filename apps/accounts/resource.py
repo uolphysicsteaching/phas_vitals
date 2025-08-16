@@ -260,6 +260,7 @@ class UserResource(resources.ModelResource):
         model = Account
         fields = (
             "username",
+            "apt",
             "title",
             "first_name",
             "last_name",

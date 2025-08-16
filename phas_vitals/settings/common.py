@@ -356,6 +356,8 @@ EMAIL_HOST = "smtp.leeds.ac.uk"
 EMAIL_PORT = 25
 EMAIL_USE_TLS = False
 DEFAULT_FROM_EMAIL = f"no-reply@{SITE_NAME}.leeds.ac.uk"
+EMAIL_SUBJECT_PREFIX = f"{SITE_NAME.upper()}: "
+
 
 # ##### Constance Settings ##################################
 
@@ -416,7 +418,7 @@ BATON = {
         {
             "type": "app",
             "name": "accounts",
-            "label": "AUsers and Accounts",
+            "label": "Users and Accounts",
             "icon": "fa fa-users",
             "default_open": False,
             "models": (

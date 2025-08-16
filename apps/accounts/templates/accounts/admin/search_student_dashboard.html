@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load tutorial_tags %}
+{% load django_bootstrap5 %}
+{% block title %}
+    {{ block.super }} Display Student Dashboard{% endblock title %}
+{% block javascript %}
+    {{ block.super }}
+    {{ form.media }}
+{% endblock javascript %}
+{% block content %}
+    <h2>Display Student Dashboard</h2>
+    <p>Start typing part of the student name, or their ID number and select from the list to show their dashboard.</p>
+
+    <form id="search_form" action="{{ request.path }}" method="post" enctype="multipart/form-data" >
+        {% csrf_token %}
+        {% bootstrap_form form layout='horizontal' %}
+    </form>
+{% endblock content %}

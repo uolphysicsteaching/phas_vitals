@@ -21,6 +21,7 @@ urlpatterns = [
     path("tools/toggle_vital/", views.AwardVITALView.as_view(), name="toggle_vital"),
     path("tools/scores_summary/", views.CohortScoresOverview.as_view(), name="score_summary_plot"),
     path("tools/scores_progression/", views.CohortProgressionOverview.as_view(), name="score_progression_plot"),
+    path("tools/student_dasjboard/", views.StudentRecordView.as_view(), name="lookup_)student_dashboard"),
     path("student_lookup", views.StudentAutocomplete.as_view(), name="Student_lookup"),
     path("staff_lookup", views.StaffAutocomplete.as_view(), name="Staff_lookup"),
 ]

@@ -113,8 +113,8 @@ def update_vital_users(modelAdmin, request, queryset):
                     .values_list("pk")
                 ]
             )
-    logger.debug(f"Triggering update_vitals for the following test_results: {test_pks}")
-    update_vitals.delay(list(test_pks))
+    logger.debug(f"Triggering update_vitals for the following test_results: {test_scores}")
+    update_vitals.delay(list(test_scores))
 
 
 add_action("accounts.Account", update_user_vitals)

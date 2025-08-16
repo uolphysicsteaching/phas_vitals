@@ -170,7 +170,7 @@ class Row_Dict:
         match index:
             case "student":
                 return self.student
-            case "SID":
+            case "SID" | "number":
                 return self.student.number
             case "programme":
                 return self.student.programme.name

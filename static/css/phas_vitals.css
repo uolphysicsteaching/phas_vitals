@@ -149,4 +149,8 @@ footer ul.navbar-nav li.nav-item a,footer  a:visited, footer  a:hover  {
     li.nav-item a, nav-link a {
         font-size: 14pt;
     }
+
+    li.nav-item.dropdown a {
+        font-size: 12pt;
+    }
 }

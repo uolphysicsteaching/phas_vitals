@@ -7,13 +7,13 @@ dependencies:
   - isort
   - simple_html_table
   - pillow
-  - django=5.2.1
+  - django>=5.2.4
   - json-datetime
   - django-tags-input
   - psycopg
   - django-multi-form-view
   - pandas
-  - django-upgrade=1.25
+  - django-upgrade>=1.25
   - django-cron
   - django-photologue
   - django-admin-sortable
@@ -36,7 +36,7 @@ dependencies:
   - exifread
   - django-celery-beat
   - django-bootstrap4
-  - celery=5.5.2
+  - celery>=5.5.2
   - django-braces
   - django-oauth-toolkit
   - django-filebrowser
@@ -47,7 +47,7 @@ dependencies:
   - xlsxwriter
   - django-sortedm2m
   - django-extra-views
-  - django-constance=4.3.2
+  - django-constance>=4.3.2
   - django-appconf
   - chardet
   - azure-storage-blob
@@ -101,7 +101,7 @@ dependencies:
   - multiprocess
   - celery-batches
   - dal-admin-filters
-  - django-suit
+  - django-suit=2.0beta4
   - django-extensions
   - mamba
   - django-celery-results
@@ -112,4 +112,8 @@ dependencies:
   - whitenoise
   - django-smart-selects
   - django_auth_ldap_ad
-prefix: /opt/miniconda3/envs/django
+  - html2docx
+  - beautifulsoup4
+  - html-for-docx
+  - django-multiupload
+prefix: /usr/lib/miniconda3/envs/django

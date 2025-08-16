@@ -44,6 +44,19 @@ class TutorStudentEngagementSummary(IsStaffViewMixin, HTMXProcessMixin, FormMixi
     template_name_table_part = "tutorial/parts/engagement_summary_table.html"
     form_class = CohortSelectForm
 
+    def clean_kwargs(self):
+        """Utility method to convert 'None' to None values in self.kwargs."""
+        for k, val in self.kwargs.items():
+            match val:
+                case "None":
+                    self.kwargs[k] = None
+                case list():
+                    for ix, v in enumerate(val):
+                        if v == "None":
+                            val[ix] = None
+                case _:
+                    pass
+
     def get_initial(self):
         """Get initial values for the form."""
         if isinstance(self.kwargs.get("cohort", None), str):
@@ -63,6 +76,7 @@ class TutorStudentEngagementSummary(IsStaffViewMixin, HTMXProcessMixin, FormMixi
     def get_context_data(self, **kwargs):
         """Ensure the context data includes a list of marktypes and also the current cohort."""
         context = super().get_context_data(**kwargs)
+        self.clean_kwargs()
         cohort = self.kwargs["cohort"]
         if cohort and not isinstance(cohort, Cohort):
             cohort = Cohort.objects.get(name=cohort)

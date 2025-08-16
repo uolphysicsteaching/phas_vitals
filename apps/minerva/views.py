@@ -2,6 +2,7 @@
 
 # Python imports
 import csv
+import io
 import re
 from collections import namedtuple
 from textwrap import shorten
@@ -13,7 +14,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import OuterRef, Q, Subquery
 from django.db.utils import IntegrityError
 from django.forms import ValidationError
-from django.http import StreamingHttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.utils.html import format_html
 from django.views.generic import DetailView, FormView
 
@@ -525,7 +526,7 @@ class Row_Dict:
         match index:
             case "student":
                 return self.student
-            case "SID":
+            case "SID" | "number":
                 return self.student.number
             case "programme":
                 return self.student.programme.name
@@ -600,6 +601,54 @@ class GenerateModuleMarksheetView(IsSuperuserViewMixin, FormView):
         """Respond with a marksheet for the selected module."""
         module = form.cleaned_data["module"]
         return module.generate_marksheet()
+
+
+class StudentPerformanceSpreadsheetView(IsSuperuserViewMixin, FormView):
+    """Make a pandas dataframe of student performance and stream it to the user."""
+
+    template_name = "minerva/generate_performance_spreadheet.html"
+    form_class = ModuleSelectForm
+    success_url = "/minerva/generate_performance_spreadsheet/"
+
+    def form_valid(self, form):
+        """Respond with a marksheet for the selected module."""
+        module = form.cleaned_data["module"]
+        cols = {
+            "Homework Passed": "passed_tests",
+            "Home Failed": "failed_tests",
+            "Labs Passed": "passed_labs",
+            "Labs Failed": "failed_labs",
+            "Coding Passed": "passed_coding",
+            "Coding Failed": "failed_coding",
+            "VITALs passed": "passed_vitals",
+            "VITALs failed": "failed_vitals",
+            "Required Work": "required_tests",
+        }
+        rows = []
+        for student in module.students.all():
+            data = {"Student": student.display_name, "SID": student.number, "Programme": student.programme}
+            for col, attr in cols.items():
+                data[col] = ",\n".join([str(x) for x in getattr(student, attr).all()])
+            rows.append(data)
+        df = pd.DataFrame(rows)
+
+        # Create a BytesIO buffer
+        output = io.BytesIO()
+
+        # Write Excel file to buffer
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Data")
+
+        # Rewind buffer
+        output.seek(0)
+
+        # Create response
+        response = HttpResponse(
+            output,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = 'attachment; filename="' + f"{module.code}_summary.xlsx" + '"'
+        return response
 
 
 class TestDetailView(IsStudentViewixin, DetailView):

@@ -155,6 +155,11 @@ class Module(models.Model):
         return f"{self.year.name}_{self.courseId}_{self.code}"
 
     @property
+    def categories_json(self):
+        """Name of JSON file that has the course details."""
+        return f"{self.key}_Course_Gradebook_Categories.json"
+
+    @property
     def course_json(self):
         """Name of JSON file that has the course details."""
         return f"{self.key}_Course.json"
