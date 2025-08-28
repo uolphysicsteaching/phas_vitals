@@ -111,23 +111,25 @@ class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
         """Get the context data for the tests page only."""
         context = super().get_context_data(**kwargs)
         if "username" in self.kwargs:
-            user = Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
+            self.user = (
+                Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
+            )
         else:
-            user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
-        modules = user.modules.all()
-        Tests = user.tests.model.homework.filter(module__in=modules).order_by("release_date", "name")
+            self.user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
+        modules = self.user.modules.all()
+        Tests = self.user.tests.model.homework.filter(module__in=modules).order_by("release_date", "name")
         test_scores = {}
         for test in Tests:
             try:
-                test_scores[test] = user.test_results.get(test=test)
+                test_scores[test] = self.user.test_results.get(test=test)
             except ObjectDoesNotExist:
-                new_tr = user.test_results.model(user=user, test=test, passed=False, score=None)
+                new_tr = self.user.test_results.model(user=self.user, test=test, passed=False, score=None)
                 new_tr.test_status = new_tr.manual_test_satus
                 new_tr.standing = "Missing"
                 test_scores[test] = new_tr
         required = {}
         context |= {
-            "user": user,
+            "user": self.user,
             "modules": modules,
             "Tests": Tests,
             "scores": test_scores,
@@ -139,22 +141,24 @@ class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
         """Get the context data for the tests page only."""
         context = super().get_context_data(**kwargs)
         if "username" in self.kwargs:
-            user = Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
+            self.user = (
+                Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
+            )
         else:
-            user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
-        modules = user.modules.all()
-        Labs = user.tests.model.labs.filter(module__in=modules).order_by("release_date", "name")
+            self.user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
+        modules = self.user.modules.all()
+        Labs = self.user.tests.model.labs.filter(module__in=modules).order_by("release_date", "name")
         lab_scores = {}
         for lab in Labs:
             try:
-                lab_scores[lab] = user.test_results.get(test=lab)
+                lab_scores[lab] = self.user.test_results.get(test=lab)
             except ObjectDoesNotExist:
-                new_tr = user.test_results.model(user=user, test=lab, passed=False, score=None)
+                new_tr = self.user.test_results.model(user=self.user, test=lab, passed=False, score=None)
                 new_tr.test_status = new_tr.manual_test_satus
                 new_tr.standing = "Missing"
                 lab_scores[lab] = new_tr
         context |= {
-            "user": user,
+            "user": self.user,
             "modules": modules,
             "Labs": Labs,
             "lab_scores": lab_scores,
@@ -166,22 +170,24 @@ class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
         """Get the context data for the tests page only."""
         context = super().get_context_data(**kwargs)
         if "username" in self.kwargs:
-            user = Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
+            self.user = (
+                Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
+            )
         else:
-            user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
-        modules = user.modules.all()
-        Code_tasks = user.tests.model.code_tasks.filter(module__in=modules).order_by("release_date", "name")
+            self.user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
+        modules = self.user.modules.all()
+        Code_tasks = self.user.tests.model.code_tasks.filter(module__in=modules).order_by("release_date", "name")
         code_scores = {}
         for code in Code_tasks:
             try:
-                code_scores[code] = user.test_results.get(test=code)
+                code_scores[code] = self.user.test_results.get(test=code)
             except ObjectDoesNotExist:
-                new_tr = user.test_results.model(user=user, test=code, passed=False, score=None)
+                new_tr = self.user.test_results.model(user=self.user, test=code, passed=False, score=None)
                 new_tr.test_status = new_tr.manual_test_satus
                 new_tr.standing = "Missing"
                 code_scores[code] = new_tr
         context |= {
-            "user": user,
+            "user": self.user,
             "modules": modules,
             "Code_tasks": Code_tasks,
             "code_scores": code_scores,
@@ -193,22 +199,24 @@ class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
         """Get the context data for the tests page only."""
         context = super().get_context_data(**kwargs)
         if "username" in self.kwargs:
-            user = Account.objects.filter(username=self.kwargs["username"]).prefetch_related("vital_results").first()
+            self.user = (
+                Account.objects.filter(username=self.kwargs["username"]).prefetch_related("vital_results").first()
+            )
         else:
-            user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("vital_results").first()
-        modules = user.modules.all()
-        VITALS = user.VITALS.model.objects.filter(module__in=modules).order_by("module", "start_date", "VITAL_ID")
+            self.user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("vital_results").first()
+        modules = self.user.modules.all()
+        VITALS = self.user.VITALS.model.objects.filter(module__in=modules).order_by("module", "start_date", "VITAL_ID")
         vitals_results = {}
         for vital in VITALS:
             try:
                 vitals_results[vital.module] = vitals_results.get(vital.module, []) + [
-                    user.vital_results.get(vital=vital)
+                    self.user.vital_results.get(vital=vital)
                 ]
             except ObjectDoesNotExist:
-                new_vr = user.vital_results.model(user=user, vital=vital, passed=False)
+                new_vr = self.user.vital_results.model(user=self.user, vital=vital, passed=False)
                 vitals_results[vital.module] = vitals_results.get(vital.module, []) + [new_vr]
         context |= {
-            "user": user,
+            "user": self.user,
             "modules": modules,
             "VITALS": VITALS,
             "vitals_results": vitals_results,
@@ -220,21 +228,23 @@ class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
         """Get the context data for the tests page only."""
         context = super().get_context_data(**kwargs)
         if "username" in self.kwargs:
-            user = Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
+            self.user = (
+                Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
+            )
         else:
-            user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
-        modules = user.modules.all()
+            self.user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
+        modules = self.user.modules.all()
         required = {}
-        for test in user.required_tests.all():
+        for test in self.user.required_tests.all():
             try:
-                required[test] = user.test_results.get(test=test)
+                required[test] = self.user.test_results.get(test=test)
             except ObjectDoesNotExist:
-                new_tr = user.test_results.model(user=user, test=test, passed=False, score=None)
+                new_tr = self.user.test_results.model(user=self.user, test=test, passed=False, score=None)
                 new_tr.test_status = new_tr.manual_test_satus
                 new_tr.standing = "Missing"
                 required[test] = new_tr
         context |= {
-            "user": user,
+            "user": self.user,
             "modules": modules,
             "required": required,
             "tab": self.kwargs.get("selected_tab", "#required"),
@@ -244,56 +254,56 @@ class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
     def get_context_data_dashboard(self, **kwargs):
         """Get data for the student view."""
         if "username" in self.kwargs:
-            user = (
+            self.user = (
                 Account.objects.filter(username=self.kwargs["username"])
                 .prefetch_related("test_results", "vital_results")
                 .first()
             )
         else:
-            user = (
+            self.user = (
                 Account.objects.filter(number=self.kwargs["number"])
                 .prefetch_related("test_results", "vital_results")
                 .first()
             )
-        modules = user.modules.all()
-        VITALS = user.VITALS.model.objects.filter(module__in=modules).order_by("module", "start_date", "VITAL_ID")
-        Tests = user.tests.model.homework.filter(module__in=modules).order_by("release_date", "name")
-        Labs = user.tests.model.labs.filter(module__in=modules).order_by("release_date", "name")
-        Code_tasks = user.tests.model.code_tasks.filter(module__in=modules).order_by("release_date", "name")
+        modules = self.user.modules.all()
+        VITALS = self.user.VITALS.model.objects.filter(module__in=modules).order_by("module", "start_date", "VITAL_ID")
+        Tests = self.user.tests.model.homework.filter(module__in=modules).order_by("release_date", "name")
+        Labs = self.user.tests.model.labs.filter(module__in=modules).order_by("release_date", "name")
+        Code_tasks = self.user.tests.model.code_tasks.filter(module__in=modules).order_by("release_date", "name")
 
         test_scores = {}
         for test in Tests:
             try:
-                test_scores[test] = user.test_results.get(test=test)
+                test_scores[test] = self.user.test_results.get(test=test)
             except ObjectDoesNotExist:
-                new_tr = user.test_results.model(user=user, test=test, passed=False, score=None)
+                new_tr = self.user.test_results.model(user=self.user, test=test, passed=False, score=None)
                 new_tr.test_status = new_tr.manual_test_satus
                 new_tr.standing = "Missing"
                 test_scores[test] = new_tr
         lab_scores = {}
         required = {}
-        for test in user.required_tests.all():
+        for test in self.user.required_tests.all():
             try:
-                required[test] = user.test_results.get(test=test)
+                required[test] = self.user.test_results.get(test=test)
             except ObjectDoesNotExist:
-                new_tr = user.test_results.model(user=user, test=test, passed=False, score=None)
+                new_tr = self.user.test_results.model(user=self.user, test=test, passed=False, score=None)
                 new_tr.test_status = new_tr.manual_test_satus
                 new_tr.standing = "Missing"
                 required[test] = new_tr
         for lab in Labs:
             try:
-                lab_scores[lab] = user.test_results.get(test=lab)
+                lab_scores[lab] = self.user.test_results.get(test=lab)
             except ObjectDoesNotExist:
-                new_tr = user.test_results.model(user=user, test=lab, passed=False, score=None)
+                new_tr = self.user.test_results.model(user=self.user, test=lab, passed=False, score=None)
                 new_tr.test_status = new_tr.manual_test_satus
                 new_tr.standing = "Missing"
                 lab_scores[lab] = new_tr
         code_scores = {}
         for code in Code_tasks:
             try:
-                code_scores[code] = user.test_results.get(test=code)
+                code_scores[code] = self.user.test_results.get(test=code)
             except ObjectDoesNotExist:
-                new_tr = user.test_results.model(user=user, test=code, passed=False, score=None)
+                new_tr = self.user.test_results.model(user=self.user, test=code, passed=False, score=None)
                 new_tr.test_status = new_tr.manual_test_satus
                 new_tr.standing = "Missing"
                 code_scores[code] = new_tr
@@ -301,14 +311,14 @@ class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
         for vital in VITALS:
             try:
                 vitals_results[vital.module] = vitals_results.get(vital.module, []) + [
-                    user.vital_results.get(vital=vital)
+                    self.user.vital_results.get(vital=vital)
                 ]
             except ObjectDoesNotExist:
-                new_vr = user.vital_results.model(user=user, vital=vital, passed=False)
+                new_vr = self.user.vital_results.model(user=self.user, vital=vital, passed=False)
                 vitals_results[vital.module] = vitals_results.get(vital.module, []) + [new_vr]
         context = super().get_context_data(**kwargs)
         context |= {
-            "user": user,
+            "user": self.user,
             "modules": modules,
             "VITALS": VITALS,
             "Tests": Tests,
@@ -320,10 +330,10 @@ class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
             "code_scores": code_scores,
             "vitals_results": vitals_results,
             "tab": self.kwargs.get("selected_tab", "#tests"),
-            "tutorial_plot": self.tutorial_plot(user),
-            "homework_plot": self.homework_plot(test_scores),
-            "lab_plot": self.homework_plot(lab_scores, what="Lab"),
-            "code_plot": self.homework_plot(code_scores, what="Code Tasks"),
+            "tutorial_plot": self.tutorial_plot(self.user),
+            "homework_plot": self.test_plot("Homework"),
+            "lab_plot": self.test_plot("Lab Experiment"),
+            "code_plot": self.test_plot("Code Tasks"),
             "vitals_plot": self.vitals_plot(vitals_results),
         }
         return context
@@ -331,21 +341,21 @@ class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
     def get_context_data(self, **kwargs):
         """Get data for the student view."""
         if "username" in self.kwargs:
-            user = (
+            self.user = (
                 Account.objects.filter(username=self.kwargs["username"])
                 .prefetch_related("test_results", "vital_results")
                 .first()
             )
         else:
-            user = (
+            self.user = (
                 Account.objects.filter(number=self.kwargs["number"])
                 .prefetch_related("test_results", "vital_results")
                 .first()
             )
-        modules = user.modules.all()
+        modules = self.user.modules.all()
         context = super().get_context_data(**kwargs)
         context |= {
-            "user": user,
+            "user": self.user,
             "modules": modules,
         }
         return context
@@ -364,25 +374,16 @@ class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
         alt = "Tutproal attendance" + " ".join([f"{label}:{count}" for label, count in data.items()])
         return ImageData(pie_chart(data, colours), alt)
 
-    def homework_plot(self, test_scores, what="Homework"):
-        """Make a pie chart of test statuses."""
-        data = {}
-        colours = []
-        for test, test_score in test_scores.items():
-            if test.status == "Not Started" and test_score.standing == "Missing":
-                continue
-            try:
-                attempted = test_score.attempts.count()
-            except ValueError:  # New test_score
-                attempted = 0
-            for label, (attempts, colour) in settings.TESTS_ATTEMPTS_PROFILE[test_score.standing].items():
-                if attempts < 0 or attempts >= attempted:
-                    if label not in data:
-                        colours.append(colour)
-                    data[label] = data.get(label, 0) + 1
-                    break
-        alt = f"{what} results" + " ".join([f"{label}:{count}" for label, count in data.items()])
-        return ImageData(pie_chart(data, colours), alt)
+    def test_plot(self, category_name):
+        """Make a pie chart plot from the summary_scores."""
+        try:
+            ss = self.user.summary_scores.get(category__text=category_name)
+            data = ss.data.get("data", {})
+            colours = ss.data.get("colours", [])
+            alt = f"{category_name.title()} results" + " ".join([f"{label}:{count}" for label, count in data.items()])
+            return ImageData(pie_chart(data, colours), alt)
+        except ObjectDoesNotExist:
+            pass
 
     def vitals_plot(self, vitals_results):
         """Make a pier chart for passing vitals."""

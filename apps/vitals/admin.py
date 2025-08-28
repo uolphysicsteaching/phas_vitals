@@ -64,6 +64,15 @@ class VITAL_Test_MapInline(admin.StackedInline):
     model = VITAL_Test_Map
     form = VITAL_Test_MapForm
     extra = 0
+    fk_name = "test"
+
+
+class VITAL_Test_Map_VITAL_Inline(admin.StackedInline):
+    """Inline Admin for Test Mapping for use with VITALs."""
+
+    model = VITAL_Test_Map
+    form = VITAL_Test_MapForm
+    extra = 0
 
 
 class VITAL_ResultInline(admin.StackedInline):
@@ -127,7 +136,7 @@ class VITALAdmin(ImportExportModelAdmin):
     list_display = ("name", "module", "VITAL_ID")
     list_filter = list_display
     search_fields = ["name", "description", "module__name", "VITAL_ID"]
-    inlines = [VITAL_Test_MapInline, VITAL_ResultInline]
+    inlines = [VITAL_Test_Map_VITAL_Inline, VITAL_ResultInline]
     actions = [
         update_vital_users,
     ]

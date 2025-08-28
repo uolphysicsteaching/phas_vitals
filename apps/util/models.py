@@ -1,5 +1,8 @@
 """Models for util app."""
 
+# Python imports
+import secrets
+
 # Django imports
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
@@ -83,6 +86,26 @@ def contrast(colour: str) -> str:
 
 
 # Create your models here.
+
+
+class APIKey(models.Model):
+    """Class to store API Keys for DRF access."""
+
+    key = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
+    created = models.DateTimeField(auto_now_add=True)
+    comment = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ["created"]
+        constraints = [models.UniqueConstraint(fields=["key"], name="apkikey_unique_keys")]
+
+    @classmethod
+    def new(cls):
+        """Create and save a new API key."""
+        key = cls(key=secrets.token_hex(64), is_active=True, comment="Auto-generated")
+        key.save()
+        return key
 
 
 class GroupedTree(TreeBase):

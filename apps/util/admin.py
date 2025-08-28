@@ -6,12 +6,14 @@ from collections.abc import Iterable
 
 # Django imports
 from django.apps import apps
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db.models import Model
+from django.http import HttpResponseRedirect
 from django.utils.translation import gettext_lazy as _
 
 # external imports
 from accounts.models import Account, Cohort
+from import_export.admin import ImportExportModelAdmin
 
 # Import two helper functions and two admin models to inherit our custom model from.
 from sitetree.admin import (
@@ -21,66 +23,22 @@ from sitetree.admin import (
     override_tree_admin,
 )
 
-# Register your models here.
+# app imports
+from .models import APIKey
+from .resources import APIKeyResource
 
 
-# And our custom tree item admin model.
-class CustomTreeItemAdmin(TreeItemAdmin):
-    """Custom sitetree item admin to add ability to control display groups."""
+def describe(description, type=int):
+    """Add a short description to a function."""
 
-    fieldsets = (
-        (
-            _("Basic settings"),
-            {
-                "classes": (
-                    "baton-tabs-init",
-                    "baton-tab-fs-basic",
-                    "baton-tab-fs-access",
-                    "baton-tab-fs-display",
-                    "baton-tab-fs-extra",
-                ),
-                "fields": (
-                    "parent",
-                    "title",
-                    "url",
-                ),
-            },
-        ),
-        (
-            _("Access settings"),
-            {
-                "classes": ("tab-fs-access",),
-                "fields": (
-                    "access_loggedin",
-                    "access_guest",
-                    "access_restricted",
-                    ("access_staff", "access_superuser"),
-                    "access_permissions",
-                    "access_perm_type",
-                    "groups",
-                    "not_groups",
-                ),
-            },
-        ),
-        (
-            _("Display settings"),
-            {"classes": ("tab-fs-display",), "fields": ("hidden", "inmenu", "inbreadcrumbs", "insitetree")},
-        ),
-        (
-            _("Additional settings"),
-            {"classes": ("tab-fs-extra",), "fields": ("hint", "description", "alias", "urlaspattern")},
-        ),
-    )
+    def real_describe(func):
+        """Set the description on the function."""
+        func.short_description = description
+        if issubclass(type, bool):
+            func.boolean = True
+        return func
 
-    filter_horizontal = ("access_permissions", "groups", "not_groups")
-
-
-class CustomTreeAdmin(TreeAdmin):
-    """Simple duplicate."""
-
-
-override_tree_admin(CustomTreeAdmin)
-override_item_admin(CustomTreeItemAdmin)
+    return real_describe
 
 
 @contextlib.contextmanager
@@ -163,6 +121,99 @@ def patch_admin(model, **kargs):
                     old_value.append(value)
             else:
                 setattr(model_admin, attr, value)
+
+
+# Register your models here.
+
+
+# And our custom tree item admin model.
+class CustomTreeItemAdmin(TreeItemAdmin):
+    """Custom sitetree item admin to add ability to control display groups."""
+
+    fieldsets = (
+        (
+            _("Basic settings"),
+            {
+                "classes": (
+                    "baton-tabs-init",
+                    "baton-tab-fs-basic",
+                    "baton-tab-fs-access",
+                    "baton-tab-fs-display",
+                    "baton-tab-fs-extra",
+                ),
+                "fields": (
+                    "parent",
+                    "title",
+                    "url",
+                ),
+            },
+        ),
+        (
+            _("Access settings"),
+            {
+                "classes": ("tab-fs-access",),
+                "fields": (
+                    "access_loggedin",
+                    "access_guest",
+                    "access_restricted",
+                    ("access_staff", "access_superuser"),
+                    "access_permissions",
+                    "access_perm_type",
+                    "groups",
+                    "not_groups",
+                ),
+            },
+        ),
+        (
+            _("Display settings"),
+            {"classes": ("tab-fs-display",), "fields": ("hidden", "inmenu", "inbreadcrumbs", "insitetree")},
+        ),
+        (
+            _("Additional settings"),
+            {"classes": ("tab-fs-extra",), "fields": ("hint", "description", "alias", "urlaspattern")},
+        ),
+    )
+
+    filter_horizontal = ("access_permissions", "groups", "not_groups")
+
+
+class CustomTreeAdmin(TreeAdmin):
+    """Simple duplicate."""
+
+
+@admin.register(APIKey)
+class APIKeyAdmin(ImportExportModelAdmin):
+    """Admin class to manage the API Keys."""
+
+    list_display = ["short_key", "is_active", "created", "comment"]
+    list_filter = ["is_active", "created"]
+    suit_list_filter_horizontal = list_filter
+    search_fields = ["comment"]
+    actions = ["create_new"]
+
+    @describe("Shortented version of the key value")
+    def short_key(self, obj):
+        """Shorten the key hex value."""
+        return f"{obj.key[:6]}...{obj.key[-6:]}"
+
+    def get_export_resource_class(self):
+        """Retuirn the class Import-export resource."""
+        return APIKeyResource
+
+    def get_import_resource_class(self):
+        """Retuirn the class Import-export resource."""
+        return APIKeyResource
+
+    @admin.action(description="Create new key")
+    def create_new(self, request, queryset):
+        for _ in queryset.all():
+            obj = APIKey.new()
+        self.message_user(request, f"Created: {obj}", messages.SUCCESS)
+        return HttpResponseRedirect(request.META.get("HTTP_REFERER", "/admin/"))
+
+
+override_tree_admin(CustomTreeAdmin)
+override_item_admin(CustomTreeItemAdmin)
 
 
 class StudentListFilter(admin.SimpleListFilter):

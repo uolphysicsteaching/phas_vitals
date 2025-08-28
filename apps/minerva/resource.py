@@ -15,6 +15,7 @@ from .models import (
     Test,
     Test_Attempt,
     Test_Score,
+    TestCategory,
 )
 
 # Register your models here.
@@ -59,6 +60,7 @@ class TestResource(resources.ModelResource):
     class Meta:
         model = Test
         fields = (
+            "id",
             "test_id",
             "module",
             "name",
@@ -72,7 +74,7 @@ class TestResource(resources.ModelResource):
             "recommended_date",
             "grading_attemptsAllowed",
         )
-        import_id_fields = ["test_id"]
+        import_id_fields = ["id"]
 
     module = fields.Field(
         column_name="module",
@@ -86,12 +88,27 @@ class TestResource(resources.ModelResource):
             row["test_id"] = f"_{np.random.randint(1E6)}_X"
 
 
+class TestCategoryResource(resources.ModelResource):
+    """Import Export Resource for Test Categories"""
+
+    class Meta:
+        model = TestCategory
+        fields = ["id", "module", "text", "category_id"]
+        import_id_fields = ["id"]
+
+    module = fields.Field(
+        column_name="module",
+        attribute="module",
+        widget=widgets.ForeignKeyWidget(Module, "code"),
+    )
+
+
 class GradebookColumnResource(resources.ModelResource):
     """Import-Export resource for Gradebook columns."""
 
     class Meta:
         model = GradebookColumn
-        fields = ("gradebook_id", "name", "test")
+        fields = ("gradebook_id", "name", "test", "category", "module")
         import_id_fields = ["gradebook_id"]
 
     test = fields.Field(
@@ -99,6 +116,30 @@ class GradebookColumnResource(resources.ModelResource):
         attribute="test",
         widget=widgets.ForeignKeyWidget(Test, "test_id"),
     )
+
+    module = fields.Field(
+        column_name="module",
+        attribute="module",
+        widget=widgets.ForeignKeyWidget(Module, "code"),
+    )
+
+    category = fields.Field(
+        column_name="category",
+        attribute="category",
+        widget=None,
+    )
+
+    def before_input_row(self, row, **kwargs):
+        """Get the module instance and then get the matching tests."""
+        module = row.get("module")
+        category = row.get("category")
+        try:
+            module = Module.ovbjects.get(code=module)
+            module.create_test_categories_from_json()
+        except (Module.DoesNotExist, Module.MultipleObjectsReturned):
+            raise Module.DoesNotExist(f"Cannot get a unique module with code {module}")
+        category, _ = TestCategory.objects.get(module=module, test=category)
+        row["category"] = category.pk
 
 
 class Test_ScoreResource(resources.ModelResource):

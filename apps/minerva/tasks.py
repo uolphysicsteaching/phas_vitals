@@ -41,7 +41,9 @@ def import_gradebook():
     imported_modules = []
     for module in Module.objects.all():
         logger.debug(f"Attempting to import {module.key}")
-        logger.debug(f"Cleaning up dead columns.")
+        if not module.data_ready:
+            logger.debug(f"Module {module.key} data not ready.")
+        logger.debug(f"Cleaning up dead columns and creating new ones.")
         module.remove_columns_not_in_json()
         try:
             GradebookColumn.create_or_update_from_json(module)
@@ -57,39 +59,6 @@ def import_gradebook():
     logger.debug("Updated constance.config")
     update_all_users.delay()
     return imported_modules
-
-
-@shared_task(base=PHASTask, flush_every=100, flush_interval=10)
-def update_vitals(requests):
-    """For each vital that uses this test, check whether a vital is passed and update as necessary."""
-    ids = set()
-    for request in requests:
-        match request.args[0]:
-            case int():
-                ids |= set([request.args[0]])
-            case list() | tuple() | set():
-                ids |= set(request.args[0])
-            case _:
-                logger.debug(f"Unable to understand {request.args[0]} as test_score ids")
-    ids = list(ids)
-    logger.debug(f"Running minerva.update_vitals for {ids}")
-    test_scores = Test_Score.objects.filter(pk__in=ids)
-    for test_score in test_scores:
-        logger.debug(f"Looking at test score {test_score}")
-        try:
-            for vm in test_score.test.vitals_mappings.all().select_related(
-                "vital", "test"
-            ):  # For each vital that this test could pass
-                logger.debug(f"Checking mapping {vm}")
-                if vm.sufficient:  # short circuit for most tests
-                    if test_score.passed or (vm.condition == "attempt" and not test_score.test.ignore_zero):
-                        logger.debug(f"Recording simple pass for {test_score.user}")
-                        vm.vital.passed(test_score.user)
-                else:
-                    logger.debug(f"Doing full VITAL check for {test_score.user}")
-                    vm.vital.check_vital(test_score.user)
-        except Exception as err:
-            logger.debug(f"Update vitals exception {err}")
 
 
 @shared_task()

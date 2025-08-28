@@ -7,8 +7,14 @@ import re
 from contextlib import contextmanager
 
 # Django imports
+from django.apps import apps
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.views import View
+from django.views.generic import TemplateView
+
+# external imports
+from ajax_select import registry
 
 logger = logging.getLogger(__name__)
 
@@ -282,6 +288,63 @@ class HTMXFormMixin(HTMXProcessMixin):
             with temp_attr(self, "_htmx_form_invalid", True):
                 return handler(form)
         return super().form_invalid(form)
+
+
+class _LocalUserPassesTest:
+    """Implement the bits of UserPassesTestMixin that we need wiuthout triggering the early import."""
+
+    def dispatch(self, request, *args, **kwargs):
+        user_test_result = self.test_func()
+        if not user_test_result:
+            # Django imports
+            from django.contrib.auth.views import redirect_to_login
+
+            return redirect_to_login(self.request.get_full_path(), self.login_url(), self.redirect_field_name())
+        return super().dispatch(request, *args, **kwargs)
+
+
+class LinkedSelectEndpointView(_LocalUserPassesTest, TemplateView):
+    """Endpoint for htmx_views:select urls for linked select widget."""
+
+    template_name = "htmx_views/widgets/options.html"
+    login_url = settings.LOGIN_URL
+    redirect_field_name = "next"
+
+    def test_func(self):
+        """Get our lookup and use authentication if required."""
+        try:
+            self.lookup_channel = self.kwargs.get("lookup_channel")
+            self.parent = self.kwargs.get("parent", None)
+            self.lookup = registry.get(self.kwargs.get("lookup_channel"))
+        except ImproperlyConfigured:
+            return False
+        if hasattr(self.lookup, "check_auth"):
+            try:
+                self.lookup.check_auth(self.request)
+            except PermissionDenied:
+                return False
+        return True
+
+    def get_context_data(self, **kwargs):
+        """Add the option_list to the context."""
+        if self.parent is None:
+            self.parent = getattr(self.lookup, "parameter_name", None)
+        if self.parent is None:
+            raise ImproperlyConfigured(
+                f"Creating an htmx_views widget for {self.lookup_channel} without knowing the trigger."
+            )
+        query = self.request.GET.get(self.parent)
+        try:
+            query = int(query)
+        except (TypeError, ValueError):
+            pass
+
+        context = super().get_context_data(**kwargs)
+        opts = {"---------": None}
+        if query:
+            opts.update({str(x): x.pk for x in self.lookup.get_query(query, self.request).distinct()})
+        context["options"] = opts
+        return context
 
 
 if not hasattr(View, "_bon_htmx_dispatch"):  # View needs monkey patching

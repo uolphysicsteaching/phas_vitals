@@ -469,13 +469,18 @@ class BaseShowTestResultsView(SingleTableMixin, HTMXProcessMixin, FormView):
 
         return kwargs
 
+    def form_invalid(self, form):
+        """Pick up bad form data."""
+        data = form.errors
+        assert False
+
     def form_valid(self, form):
         """Update self.module with the module selected in the form."""
         self.module = form.cleaned_data["module"]
         self.mode = form.cleaned_data.get("mode", "score")
-        self.type = form.cleaned_data.get("type", "homework")
+        self.type = form.cleaned_data.get("type")
         if self.module is not None:
-            self.tests = self.module.tests.filter(type=self.type).order_by("release_date", "name")
+            self.tests = self.module.tests.filter(category=self.type).order_by("release_date", "name")
         self.page = int(self.request.GET.get("page", 1))
         return self.render_to_response(self.get_context_data())
 

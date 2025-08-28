@@ -10,6 +10,7 @@ from os import path
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import DEFAULT_DB_ALIAS, models
+from django.db.models import F, Q
 from django.forms import ValidationError
 from django.utils import timezone as tz
 from django.utils.html import format_html
@@ -284,12 +285,21 @@ class Module(models.Model):
         """Update the module from json data."""
         try:
             self.update_enrollments()
-        except IOError:
-            return
+            self.create_test_categories_from_json()
+        except (OSError, IOError):
+            return None
         try:
             for test in self.tests.all():
                 test.attempts_from_columns()
-        except IOError:
+        except (OSError, IOError):
+            return None
+        return True
+
+    def create_test_categories_from_json(self):
+        """Build TestCategory objects from the module's JSON file."""
+        try:
+            TestCategory.update_from_json(self)
+        except (IOError, OSError):
             return None
         return True
 
@@ -299,6 +309,52 @@ class Module(models.Model):
             return
         for test in self.tests.all():
             test.remove_columns_not_in_json(remove_column=remove_column)
+
+
+class TestCategory(models.Model):
+    """Represents a Gradebook Test Category label to ID mapping."""
+
+    module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name="categories")
+    text = models.CharField(max_length=80)
+    category_id = models.CharField(max_length=20, db_index=True)
+    order = models.PositiveIntegerField(
+        default=0,
+        blank=False,
+        null=False,
+        editable=False,
+        db_index=True,
+    )
+    in_dashboard = models.BooleanField(default=False, help_text="Include scores in student dashboard")
+    label = models.CharField(max_length=40, null=True, blank=True, help_text="Label for dashboard")
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        """Generate a string representation."""
+        return f"{self.text} ({self.module.code})"
+
+    @classmethod
+    def update_from_json(cls, module, json_blob=None):
+        """Read the json blob and create or removecategories."""
+        if json_blob is None:
+            json_blob = module.categories_json
+        if (json_data := json.get_blob_by_name(json_blob, False)) is None:
+            raise IOError(f"No JSON file for {module}")
+        categories = {x["id"]: x["title"] for x in json_data}
+        # Remove goneaway categories
+        gone = [x.pk for x in cls.objects.filter(module=module) if x.category_id not in categories]
+        cls.objects.filter(pk__in=gone).delete()
+        for category_id, title in categories.items():
+            category, _ = cls.objects.get_or_create(module=module, category_id=category_id)
+            category.text = title
+            category.save()
+
+    def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
+        """Set the label to be the text if the label is &nbsp;"""
+        if not self.label:
+            self.label = self.text[:40]
+        super().save(force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)
 
 
 class StatusCode(models.Model):
@@ -356,6 +412,84 @@ class ModuleEnrollment(models.Model):
         return vitals.count() == passed.count()
 
 
+class SummaryScore(models.Model):
+    """Store a summary score and related data."""
+
+    # Denormalised fields for ease of working
+    module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name="+", editable=False)
+    student = models.ForeignKey(Account, on_delete=models.CASCADE, editable=False, related_name="summary_scores")
+    # setable fields
+    enrollment = models.ForeignKey(ModuleEnrollment, on_delete=models.CASCADE, related_name="scores")
+    category = models.ForeignKey(TestCategory, on_delete=models.CASCADE, related_name="scores")
+    score = models.FloatField(editable=False)
+    data = models.JSONField(default=dict, blank=True, editable=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["enrollment", "category"], name="summaryscore_unique_enrollment_category"),
+        ]
+
+    def __str__(self):
+        """Make a displayable representation."""
+        return f"{self.enrollment.student}: {self.enrollment.module} ({self.category}) {self.score:.0f}%"
+
+    def clean(self):
+        """Sort out the npnn-editable fields."""
+        if self.enrollment.module != self.category.module:
+            raise ValidationError(
+                f"Enrollment module {self.enrollment.module} is not category module {self.category.module}"
+            )
+        self.module = self.enrollment.module
+        self.student = self.enrollment.student
+        super().clean()
+
+    def calculate(self):
+        """Calculate the score for the category.
+
+        First check to see whether we've got any custom methods injected for calculating virtual categories
+        like VITALs or tutorial attendance. Otherwise do a simple calculation of Tests passed/total Tests.
+
+        Calculate methods should also update the JSONField data with the data for constructing plots.
+        """
+        if hasattr(self, f"calculate_{self.category.text.lower()}"):
+            self.score = getattr(self, "calculate_{self.category.text.lower()}")()
+            return
+        tests = Test.objects.filter(category=self.category).distinct().exclude(status="Not Started")
+        if tests.count() == 0:
+            self.score = 0
+            self.data = {}
+        else:
+            passed = tests.filter(results__user=self.student, results__passed=True).count()
+            self.score = 100 * passed / tests.count()
+            data = {}
+            colours = []
+            taken = tests.filter(results__user=self.student, category=self.category).order_by("id")
+            tests = Test.objects.filter(pk__in=[x[0] for x in taken.values_list("id")]).order_by(
+                "id"
+            )  # do this to get the annotations
+            results = Test_Score.objects.filter(user=self.student, test__in=tests).order_by("test__id")
+            for test, test_score in zip(tests, results):
+                if test.status == "Not Started" and test_score.standing == "Missing":
+                    continue
+                try:
+                    attempted = test_score.attempts.count()
+                except ValueError:  # New test_score
+                    attempted = 0
+                for label, (attempts, colour) in settings.TESTS_ATTEMPTS_PROFILE[test_score.standing].items():
+                    if attempts < 0 or attempts >= attempted:
+                        if label not in data:
+                            colours.append(colour)
+                        data[label] = data.get(label, 0) + 1
+                        break
+            self.data = {"data": data, "colours": colours}
+
+    def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
+        """Set the module and account based on the enrollment and calculate the score."""
+        self.full_clean()
+        self.calculate()
+        super().save(force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)
+
+
 class Test_Manager(models.Manager):
     """Manager class for Test objects to support natural keys."""
 
@@ -404,13 +538,17 @@ class Test(models.Model):
     code_tasks = Test_Manager(type="code_task")
 
     # test_id is actually a composite of course_id and column_id
-    test_id = models.CharField(max_length=255, primary_key=True)
+    id = models.BigAutoField(primary_key=True)
+    test_id = models.CharField(max_length=255)
     module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name="tests")
     # Mandatory fields
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     suppress_numerical_score = models.BooleanField(
         default=False, blank=True, null=True, verbose_name="Do not reveal numerical score to students"
+    )
+    category = models.ForeignKey(
+        TestCategory, on_delete=models.SET_NULL, null=True, editable=False, related_name="tests"
     )
     type = models.CharField(max_length=10, choices=TEST_TYPES, default=TEST_TYPES[0][0])
     score_possible = models.FloatField(default=100, verbose_name="Maximum possible score")
@@ -419,7 +557,9 @@ class Test(models.Model):
     release_date = models.DateTimeField(blank=True, null=True, verbose_name="Test Available Date")
     recommended_date = models.DateTimeField(blank=True, null=True, verbose_name="Recomemnded Attempt Date")
     grading_attemptsAllowed = models.IntegerField(blank=True, null=True, verbose_name="Number of allowed attempts")
-    students = models.ManyToManyField("accounts.Account", through="Test_Score", related_name="tests")
+    students = models.ManyToManyField(
+        "accounts.Account", through="Test_Score", related_name="tests", through_fields=("test", "user")
+    )
     ignore_zero = models.BooleanField(
         default=False, blank=True, null=True, verbose_name="Zero grades are not attempts"
     )
@@ -487,10 +627,22 @@ class Test(models.Model):
         """Return string representation a natural key."""
         return str(self)
 
+    def clean(self):
+        """Ensure that all our columns have the same category and then set our category."""
+        categories = np.unique([x[0] for x in self.columns.all().values_list("category_id") if x[0] is not None])
+        match categories.size:
+            case 0:
+                pass
+            case 1:
+                self.category = TestCategory.objects.get(id=categories[0])
+            case _:
+                raise ValidationError(f"The columns for test {self} have different categories.")
+
     def save(
         self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None
     ):  # pylint: disable=arguments-differ
         """Check whether we need to update test_score passing fields."""
+        self.full_clean()
         if self.pk and self.results.count() > 0:
             orig = Test.objects.get(pk=self.pk)
             update_results = orig.passing_score != self.passing_score
@@ -514,7 +666,7 @@ class Test(models.Model):
         for column in self.columns.all():
             column.update_scoress()
 
-    def add_attempt(self, student, mark, date=None):
+    def add_attempt(self, student, mark, date=None, text=None):
         """Add a Test_Attempt, including Test_Score as necessary."""
         score, _ = self.results.get_or_create(user=student)
         if not score.score or score.score < mark:
@@ -522,15 +674,21 @@ class Test(models.Model):
         if date is None:
             date = tz.now()
         attempt_id = f"{self.test_id}_{student.number}_{date.strftime('%Y%m%d')}_{mark}"
+        if text is not None:
+            score.text = text
         score.save()
         try:
             attempt = score.attempts.get(attempt_id=attempt_id)
         except ObjectDoesNotExist:
             attempt = Test_Attempt(attempt_id=attempt_id, score=mark, test_entry=score)
+            attempt.created = tz.now()
         attempt.score = mark
+        if text is not None:
+            attempt.text = text
         attempt.attempted = date
         attempt.modified = tz.now()
         attempt.save()
+        return score, attempt
 
     @property
     def stats(self):
@@ -636,8 +794,14 @@ class GradebookColumn(models.Model):
     """A representation of a single column in Minerva Gradebook that links to a Test."""
 
     gradebook_id = models.CharField(max_length=255)
-    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="columns", blank=True, null=True)
+    test = models.ForeignKey(
+        Test, on_delete=models.CASCADE, to_field="id", related_name="columns", blank=True, null=True
+    )
     name = models.CharField(max_length=255, null=True)
+    category = models.ForeignKey(
+        TestCategory, on_delete=models.SET_NULL, blank=True, null=True, related_name="columns"
+    )
+    module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name="gradebook_columns")
 
     class Meta:
         ordering = ["test__module__code", "test__name"]
@@ -756,7 +920,7 @@ class GradebookColumn(models.Model):
                 new
                 or result.attempts.count() == 0
                 or "overridden" in data
-                or (score != result.best_score and score is not None)
+                or (score != result.score and score is not None)
             ):  # Need a new or override attempt entry
                 try:
                     attempt = Test_Attempt.objects.get(
@@ -786,6 +950,14 @@ class GradebookColumn(models.Model):
             column, _ = cls.objects.get_or_create(gradebook_id=column_data["id"], name=column_data["name"])
             if column.test is None:
                 column.test = Test.get_by_column_name(column.name, module)  # Attempt to assign column to a Terst
+            column.module = module
+            try:
+                column.category = TestCategory.objects.get(
+                    category_id=column_data["gradebookCategoryId"], module=module
+                )
+            except (TestCategory.DoesNotExist, KeyError):
+                pass
+
             column.save()
 
 
@@ -829,7 +1001,7 @@ class Test_Score(models.Model):
     objects = TestScoreManager()
     # ## Fields ###########################################################
     user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="test_results")
-    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="results")
+    test = models.ForeignKey(Test, on_delete=models.CASCADE, to_field="id", related_name="results")
     status = models.CharField(choices=SCORE_STATUS.items(), max_length=50, blank=True, null=True)
     text = models.TextField(blank=True, null=True)
     score = models.FloatField(null=True, blank=True)
@@ -930,15 +1102,8 @@ class Test_Score(models.Model):
     @property
     def best_score(self):
         """Figure out the best score from the attempts."""
-        best_score = None
-        if (attempts := self.attempts.filter(override=True)).count() == 0:
-            attempts = self.attempts.exclude(score=None)
-        scores = np.round(attempts.values_list("score"), 2)
-        if scores.size > 0:
-            best_score = np.nanmax(scores)
-        else:
-            best_score = False
-        return best_score
+        assert not settings.DEBUG, "best_score called - replace with direct read of score."
+        return self.score
 
     @property
     def student_score(self):
@@ -952,47 +1117,50 @@ class Test_Score(models.Model):
 
     def check_passed(self, orig=None):
         """Check whether the user has passed the test."""
-        # TODO replace this code when we have direct reading of gradescope scores
-        best_score = self.best_score
-        if self.attempts.exclude(status="NeedsGrading").count() == 0:  # Nothing to mark yet
+        if (
+            self.score is None or np.isnan(self.score) or self.attempts.exclude(status="NeedsGrading").count() == 0
+        ):  # Nothing to mark yet
             self.status = "NeedsGrading"
             if np.isnan(self.test.passing_score):
                 return None, True, not self.passed
             numerically_passed = False
             pass_changed = False
-            return best_score, numerically_passed, pass_changed
+            return self.score, numerically_passed, pass_changed
         numerically_passed = bool(  # deal with rouinding errors by checking with isclose as well as >=
-            best_score is not None
-            and (best_score >= self.test.passing_score or np.isclose(self.test.passing_score, best_score))
+            self.score >= self.test.passing_score or np.isclose(self.test.passing_score, self.score)
         )
         if orig:
             pass_changed = numerically_passed ^ orig.passed
         else:
             pass_changed = None
         self.status = "Graded"
-        return best_score, numerically_passed, pass_changed
+        return self.score, numerically_passed, pass_changed
 
     def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
         """Correct the passed flag if score is equal to or greater than test.passing_score."""
-        # TODO: revise code after we have gradescope scores directly available.
-        if self.pk is not None:
+        if self.pk is not None:  # Get the old version from db
             orig = Test_Score.objects.get(pk=self.pk)
-        else:
+        else:  # New entry, no original to compare
             orig = None
             super().save(force_insert, force_update, using, update_fields)
             force_insert = False
-        score, passed, send_signal = self.check_passed(orig)
+        score, passed, send_signal = self.check_passed(orig)  # Have we passed now?
         task_logger.debug(f"Saving Test_Score {self.test.name} {score=} {passed=} {send_signal=}")
-        self.score = score
+
         self.passed = passed
-        super().save(force_insert, force_update, using, update_fields)
+        super().save(force_insert, force_update, using, update_fields)  # Save to ensure pk is set
+
         update_vitals.delay(self.pk)
-        if self.test.type == "homework":
-            update_tests_score.delay(self.user.pk)
-        elif self.test.type == "lab_exp":
-            update_labs_score.delay(self.user.pk)
-        elif self.test.type == "code_task":
-            update_code_score.delay(self.user.pk)
+
+        if self.test.category:  # Update the summary score if we have a category
+            enrollment = ModuleEnrollment.objects.get(student=self.user, module=self.test.module)
+            ss, _ = SummaryScore.objects.get_or_create(
+                enrollment=enrollment, category=self.test.category, student=self.user
+            )
+            ss.calculate()  # Run the calculation of whether we have passed
+            ss.save()
+
+        self.user.update_vitals = bool(send_signal)
 
     def __str__(self):
         """Give us a more friendly string version."""
@@ -1015,16 +1183,6 @@ class Test_Attempt(models.Model):
     def __str__(self):
         """Make simple string representation."""
         return f"{self.attempt_id} - for {self.test_entry}"
-
-    def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
-        """Check whether saving this attempt changes the test passed or not."""
-        if not self.attempt_id:
-            self.attempt_id = f"{self.test_entry.test.name}:{self.test_entry.user.username}:{self.attempted}"
-        trigger_check = self.pk is None or self.test_entry.score != self.score
-        super().save(force_insert, force_update, using, update_fields)
-
-        if trigger_check:  # Every new attempt causes a save to the test_entry
-            self.test_entry.save()
 
 
 @patch_model(Account, prep=property)

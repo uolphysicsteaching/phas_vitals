@@ -16,6 +16,7 @@ class GroupLookup(LookupChannel):
     """Lockup for Group Objects."""
 
     model = Group
+    parameter_name = "name"
 
     def get_query(self, q, request):
         """Qyery on Group name only."""
@@ -41,6 +42,7 @@ class AcademicAccountLookup(LookupChannel):
     """Lookup user accounts that are academic staff."""
 
     model = Account
+    parameter_name = "name"
 
     def get_query(self, q, request):
         """Search on name,  username and email and limit to academic accounts."""
@@ -68,6 +70,7 @@ class TutorAccountLookup(AcademicAccountLookup):
     """Lookip tutor accounts - based on academic account lookup."""
 
     model = Account
+    parameter_name = "name"
 
     def get_query(self, q, request):
         """Search on name,  username and email and limit to tutor accounts."""
@@ -82,6 +85,7 @@ class StudentAccountLookup(AcademicAccountLookup):
     """Lookip tutor accounts - based on academic account lookup."""
 
     model = Account
+    parameter_name = "name"
 
     def get_query(self, q, request):
         """Search on name,  username and email and limit to tutor accounts."""

@@ -13,6 +13,7 @@ from django.urls import reverse
 # external imports
 import pandas as pd
 from accounts.admin import StudentListFilter
+from adminsortable2.admin import SortableAdminMixin
 from dal_admin_filters import AutocompleteFilter
 from import_export.admin import ImportExportModelAdmin
 from tinymce.widgets import TinyMCE
@@ -31,6 +32,7 @@ from .models import (
     Test,
     Test_Attempt,
     Test_Score,
+    TestCategory,
 )
 from .resource import (
     GradebookColumnResource,
@@ -39,6 +41,7 @@ from .resource import (
     StatusCodeResource,
     Test_AttemptResource,
     Test_ScoreResource,
+    TestCategoryResource,
     TestResource,
 )
 
@@ -46,6 +49,30 @@ from .resource import (
 update_vitals = celery_app.signature("minerva.tasks.update_vitals")
 
 logger = logging.getLogger("celery_tasks")
+
+
+class TestCategoryFilter(admin.SimpleListFilter):
+    """Filter that uses TestCategories."""
+
+    title = "Categpry"
+    parameter_name = "category_text"
+
+    def lookups(self, request, model_admin):
+        """Lookup TestCategory texts."""
+        texts = sorted(set([x[0] for x in TestCategory.objects.all().values_list("text")]))
+        return [(x, x) for x in texts]
+
+    def queryset(self, request, queryset):
+        """Filter on the text field."""
+        if self.value() is not None and self.value() != "":
+            if queryset.model is GradebookColumn:
+                queryset = queryset.filter(category__text=self.value())
+            elif queryset.model is Test:
+                queryset = queryset.filter(columns__category__text=self.value())
+            else:
+                raise TypeError("Unknown queryset model {queryset.model}")
+
+        return queryset
 
 
 class ModuleFilter(AutocompleteFilter):
@@ -98,6 +125,13 @@ class ModuleEnrollmentInline(admin.StackedInline):
     """Inline admin for module enrollments."""
 
     model = ModuleEnrollment
+    extra = 0
+
+
+class TestCategoryInline(admin.StackedInline):
+    """Inline admin for module enrollments."""
+
+    model = TestCategory
     extra = 0
 
 
@@ -237,7 +271,7 @@ class TestAdmin(ImportExportModelAdmin):
     ]
     list_filter = (
         "module",
-        "type",
+        TestCategoryFilter,
         "grading_due",
         "release_date",
         "recommended_date",
@@ -299,15 +333,43 @@ class TestAdmin(ImportExportModelAdmin):
         return TestResource
 
 
+@admin.register(TestCategory)
+class TestCategoryAdmin(SortableAdminMixin, ImportExportModelAdmin):
+    """Admin Interface for TestCategory."""
+
+    list_display = ["module", "text", "in_dashboard", "label", "category_id"]
+    list_display_links = ["text"]
+    list_filter = ["module", "text", "in_dashboard"]
+    search_fields = ["module__name", "module__code", "text", "label"]
+    list_editable = ["in_dashboard", "label"]
+    readonly_fields = ["module", "text", "category_id"]
+
+    def get_export_resource_class(self):
+        """Return the class for exporting objects."""
+        return TestCategoryResource
+
+    def get_import_resource_class(self):
+        """Return the class for importing objects."""
+        return TestCategoryResource
+
+
 @admin.register(GradebookColumn)
 class GradebookColumnAdmin(ImportExportModelAdmin):
     """Admin class for Gradebook columns."""
 
     form = GradebookColumnForm
 
-    list_display = ("gradebook_id", "name", "test")
-    list_filter = ["test"]
-    search_fields = ["gradebook_id", "name", "test__name", "test__test_id", "test__module__code", "test__module__name"]
+    list_display = ("gradebook_id", "name", "module", "test", "category")
+    list_filter = ["test", "module", TestCategoryFilter]
+    search_fields = [
+        "gradebook_id",
+        "name",
+        "test__name",
+        "test__test_id",
+        "module__code",
+        "module__name",
+        "category__text",
+    ]
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""

@@ -7,7 +7,7 @@ spell:
 	-find . -name '*.py' | xargs codespell -w
 
 black: isort
-	find . -name '*.py' | xargs black -l 119 -t py311
+	find . -name '*.py' | xargs black -l 119 -t py313
 
 djhtml:
 	djhtml apps/ templates/

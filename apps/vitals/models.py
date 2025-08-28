@@ -13,8 +13,10 @@ from django.utils import timezone as tz
 from django.utils.html import format_html
 
 # external imports
+import numpy as np
 import pandas as pd
 from accounts.models import Account
+from minerva.models import SummaryScore
 
 # Create your models here.
 from util.models import patch_model
@@ -37,7 +39,7 @@ class VITAL_Test_Map(models.Model):
 
     PASS_OPTIONS = [("pass", "Pass the test"), ("attempt", "Attempt the test")]
 
-    test = models.ForeignKey("minerva.Test", on_delete=models.CASCADE, related_name="vitals_mappings")
+    test = models.ForeignKey("minerva.Test", on_delete=models.CASCADE, to_field="id", related_name="vitals_mappings")
     vital = models.ForeignKey("VITAL", on_delete=models.CASCADE, related_name="tests_mappings")
     necessary = models.BooleanField(default=False)
     sufficient = models.BooleanField(default=True)
@@ -204,7 +206,9 @@ class VITAL(models.Model):
     module = models.ForeignKey(
         "minerva.Module", on_delete=models.CASCADE, related_name="VITALS", blank=True, null=True
     )
-    tests = models.ManyToManyField("minerva.Test", related_name="VITALS", through=VITAL_Test_Map)
+    tests = models.ManyToManyField(
+        "minerva.Test", related_name="VITALS", through=VITAL_Test_Map, through_fields=("vital", "test")
+    )
     students = models.ManyToManyField("accounts.Account", through=VITAL_Result, related_name="VITALS")
 
     class Meta:
@@ -296,9 +300,11 @@ class VITAL(models.Model):
         if not date_passed:
             date_passed = tz.now()
         result, _ = VITAL_Result.objects.get_or_create(vital=self, user=user)
-        result.passed = passed
-        if passed:
+        if passed and not result.passed:  # Update the pass status and date.
+            if date_passed is None:
+                date_passed = tz.now()
             result.date_passed = date_passed
+        result.passed = passed
         result.save()
 
     def check_vital(self, user):
@@ -327,6 +333,29 @@ class VITAL(models.Model):
     def __str__(self):
         """Use name and code as a string representation."""
         return f"{self.VITAL_ID}:{self.name} ({getattr(self.module, 'code', 'unassigned')}"
+
+
+@patch_model(SummaryScore)
+def calculate_vitals(self):
+    """Patch a function to create a summary score object for a VITALs."""
+    try:
+        untested = VITAL.objects.exclude(student_results__user=self.student).filter(status="Finished").count()
+        vitals = VITAL.objects.filter(student_results__user=self.student).exclude(status="Not Started")
+        passed = vitals.filter(student_results__passed=True).distinct().count()
+        failed = vitals.filter(student_results__passed=False) / distinct().count()
+        self.score = np.round(100.0 * passed / (vitals.count() + untested))
+    except (ValueError, ZeroDivisionError):
+        self.score = None
+    data = {}
+    colours = []
+    status = [x[0] for x in self.student.vital_results.all().values_list("status")]
+    status = np.array(status)
+    for stat, (label, colour) in settings.VITALS_RESULTS_MAPPING.items():
+        if count := status[status == stat].size:
+            data[label] = count
+            colours.append(colour)
+    self.data["data"] = data
+    self.data["colours"] = colours
 
 
 @patch_model(Account, prep=property)

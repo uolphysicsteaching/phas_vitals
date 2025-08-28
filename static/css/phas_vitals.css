@@ -20,12 +20,13 @@ header#masthead {
 div.local-header {
     background: #b31b1b;
     color: white;
+    padding-left: 10px;
 }
 
 div.local-header-title {
     display: table-cell;
     vertical-align: middle;
-    padding: 10px 40px 10px 0;
+    padding-left: 10px;
 }
 
 div.local-header a {
@@ -35,14 +36,20 @@ div.local-header a {
     text-decoration: none;
     margin: 0;
     font-family: freight-sans-pro,sans-serif;
-    font-size: 16px;
     border: 0;
     color: #fff;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    line-height: 1.42857;
+    font-weight: 400;
+    text-rendering: optimizeLegibility;
+    font-size: 1.6rem;
+    box-sizing: border-box;
 }
 
 
 button.bi-search, button.bi-chevron-double-up {
-    margin: 10px;
+    margin: 0px;
     font-size:16px;
     background: transparent;
     color: white;
@@ -74,16 +81,28 @@ div.navbar-inner {
 }
 
 li.nav-item a, nav-link a {
-    font-family: var(--bs-font-sans-serif);
-    font-size: 12pt;
-    font-weight: 400;
-    line-height: 1.5;
-    white-space: nowrap;
+    background-color: transparent;
+    color: #4a4a4a;
     display: block;
-    padding: .5rem 1rem;
+    font-family: freight-sans-pro,sans-serif;
+    font-feature-settings: "lnum";
+    font-size: 1rem;
+    font-variant-numeric: lining-nums;
+    font-weight: 400;
+    padding: 10px;
     text-decoration: none;
-    color: rgba(0,0,0,.85);
+    line-height: 1.42857;
+    text-decoration: none;
+    text-rendering: optimizeLegibility;
+    text-transform: uppercase;
+    transition: background .25s ease;
+    white-space: nowrap;
 }
+
+li.nav-item.dropdown > div {
+    font-size: 0.8rem;
+}
+
 main {
     background: white;
     padding-bottom: 10px;
@@ -125,7 +144,7 @@ footer ul.navbar-nav li.nav-item a,footer  a:visited, footer  a:hover  {
         font-size: 18px;
     }
     button.bi-search, button.bi-chevron-double-up {
-        margin: 12px;
+        margin: 0px;
         font-size:18px;
     }
     #btn__nav {
@@ -140,17 +159,17 @@ footer ul.navbar-nav li.nav-item a,footer  a:visited, footer  a:hover  {
         font-size: 20px;
     }
     button.bi-search, button.bi-chevron-double-up  {
-        margin: 12px;
+        margin: 0px;
         font-size: 24px;
     }
     nav#mainmenu {
         display: block;
     }
     li.nav-item a, nav-link a {
-        font-size: 14pt;
+        font-size: 1rem;
     }
 
     li.nav-item.dropdown a {
-        font-size: 12pt;
+        font-size: 0.,8rem;
     }
 }

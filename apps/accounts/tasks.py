@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 
 # Django imports
+from django.apps import apps
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.db import transaction
@@ -250,19 +251,23 @@ def update_activity(requests):
 
 @celery_app.task
 def update_all_users():
-    """Update all user accounts.
+    """Update all users marked as needing records updated.
 
-    This task should be run daily, probably after the minerva import task to update all the users with vurrent tests
-    and vitals.
-
-    Use celery-batches and DjangoTask to allow us to discard multiple requests for greater efficiency.
+    Find all users with Account.update_vitals==True and:
+        1. For each passed test, check that the associated VITALs are marked passed.
+        2. recalculate the scores for that user.
+        3. save the user record.
     """
     logger.debug("Running update all users task")
-    try:
-        for account in Account.objects.all():
-            update_tests_score.delay(account.pk, True)
-    except Exception as err:
-        logger.debug(f"Exception in update_all_users: {err}")
+    accounts = Account.objects.filter(update_vitals=True).fetch_related("test_results")
+    VITAL = apps.get_model("vitals", "vital")
+
+    accounts.update(update_vitals=False)
+    for account in accounts:
+        for vital in VITAL.objects.filter(tests_mappings__test__results__user__in=account):
+            vital.check_vital(account)
+        # TODO need to make the whole scores thing more flexible for more test types.
+        update_tests_score.delay(account, True)
 
 
 @shared_task()

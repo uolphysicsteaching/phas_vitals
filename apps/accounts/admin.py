@@ -5,6 +5,7 @@ import csv
 from io import StringIO
 
 # Django imports
+from django.apps import apps
 from django.contrib.admin import (
     SimpleListFilter,
     action,
@@ -20,7 +21,6 @@ from django.utils.translation import gettext_lazy as _
 
 # external imports
 from import_export.admin import ImportExportMixin, ImportExportModelAdmin
-from minerva.tasks import update_vitals
 
 # app imports
 from .forms import UserAdminForm
@@ -32,7 +32,7 @@ from .resource import (
     SectionResource,
     UserResource,
 )
-from .tasks import update_tests_score
+from .tasks import update_all_users, update_tests_score
 
 
 class StudentListFilter(SimpleListFilter):
@@ -208,7 +208,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
             _("Permissions"),
             {
                 "fields": (
-                    ("is_active", "override_vitals"),
+                    ("is_active", "update_vitals", "override_vitals"),
                     ("is_staff", "is_superuser"),
                     "groups",
                     "user_permissions",
@@ -326,11 +326,12 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
     @action(description="Rebuild VITALs results")
     def rebuild_vitals(self, request, queryset):
         """Remove all the VITAL results and then rebuild them from test results."""
-        for account in queryset.all():
-            if not account.override_vitals:  # Don't remove VITALs from students marked for manual VITAL allocations
-                account.vital_results.all().delete()
-            for test_result in account.test_results.all():
-                update_vitals.delay(test_result.pk)
+        accounts = queryset.exclude(override_vitals=True)
+        VITAL_Result = apps.get_model("vitals", "vital_result")
+        results = VITAL_Result.objects.filter(user__in=accounts)
+        accounts.update(update_vitals=True)
+        results.delete()
+        update_all_users.delay()
 
 
 @register(AccountGroup)

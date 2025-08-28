@@ -1,22 +1,36 @@
 """Subclass the standard django_auth_adfs backend for ourt purposes."""
 
 # Python imports
+import hashlib
+import hmac
 import logging
+import os
+from collections.abc import Mapping
 
 # Django imports
 from django.contrib.auth import get_user_model
-from django.core.exceptions import PermissionDenied
+from django.contrib.auth.models import AnonymousUser, Group
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
+from django.utils.encoding import force_bytes
 
 # external imports
+import jsondatetime as json
+import requests
 from django_auth_adfs import signals
 from django_auth_adfs.backend import AdfsAuthCodeBackend
 from django_auth_adfs.config import provider_config, settings
+from rest_framework.authentication import BaseAuthentication
+from rest_framework.exceptions import AuthenticationFailed
 
 # app imports
 from phas_vitals import celery_app
 
+# app imports
+from .models import APIKey
+
 update_account = celery_app.signature("accounts.tasks.update_user_from_graph")
 logger = logging.getLogger("django_auth_adfs")
+logger_drf = logging.getLogger("drf_authentication")
 
 
 class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
@@ -158,3 +172,80 @@ class LeedsAdfsBaseBackend(AdfsAuthCodeBackend):
 
             claim_groups.append(group_data["displayName"])
         return claim_groups
+
+
+class HMACAuthentication(BaseAuthentication):
+    """Implements an HMAC signature based token authentication scheme for Django REST Framework."""
+
+    keyword = "HMAC"
+
+    def authenticate(self, request):
+        """Check whether the request Authorization header matches the payload."""
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith(self.keyword + " "):
+            logger_drf.debug(f"No Authporization header on request to DRF endpoint {request.path}")
+            return None  # No attempt to authenticate
+
+        provided_signature = auth_header[len(self.keyword) + 1 :].strip()
+        payload = request.body
+
+        try:
+            payload_data = json.loads(payload)
+            if not isinstance(payload_data, (Mapping, list)):
+                raise json.JSONDecodeError("Bad JSON")
+        except json.JSONDecodeError:
+            logger_drf.warning("Badly encoded json payload for authentication.")
+            raise AuthenticationFailed(f"Failed to decode JSON payload for {request}")
+
+        username = payload_data.get("username")
+
+        # Try all keys
+        for key_obj in APIKey.objects.all():
+            key_bytes = force_bytes(key_obj.key)
+            computed = hmac.new(key_bytes, payload, hashlib.sha256).hexdigest()
+            if hmac.compare_digest(computed, provided_signature):
+                if not key_obj.is_active:
+                    logger_drf.warning(f"Call made to drf endpoint with in active HMAC key {request}")
+                    raise AuthenticationFailed("Deactivated key used for HMAC signature")
+                # Authenticated — return a dummy user or associate with key owner
+                user = get_user_model().objects.filter(username=username).first()
+                logger_drf.debug(f"Authenticated drf endpoint with token for {user}")
+                setattr(user, "hmac_authenticated", True)
+                return (user or AnonymousUser(), None)
+
+        logger_drf.warning(f"Out of date or unkrnown HMAC key ysed for {request}")
+
+        raise AuthenticationFailed("Invalid HMAC signature")
+
+
+def send_hmac_signed_request(payload, url=None, secret_key=None, headers=None):
+    """Sends a POST request with HMAC authentication.
+
+    Args:
+        url (str): The endpoint URL.
+        payload (dict): The JSON payload to send.
+        secret_key (str): Hex-encoded or raw bytes secret key.
+        headers (dict): Optional additional headers.
+
+    Returns:
+        requests.Response: The response object.
+    """
+    if secret_key is None:
+        secret_key = os.envuiron.get("PHAS_API_KEY")
+    # Serialize payload deterministically
+    body = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+
+    # Ensure key is bytes
+    key_bytes = bytes.fromhex(secret_key) if isinstance(secret_key, str) and len(secret_key) == 64 else secret_key
+
+    # Compute HMAC signature
+    signature = hmac.new(key_bytes, body, hashlib.sha256).hexdigest()
+
+    # Prepare headers
+    auth_headers = {"Content-Type": "application/json", "Authorization": signature}
+    if headers:
+        auth_headers.update(headers)
+
+    # Send request
+    response = requests.post(url, data=body, headers=auth_headers)
+    return response

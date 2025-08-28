@@ -7,10 +7,12 @@ from django.forms.widgets import Select
 
 # external imports
 from dal import autocomplete
+from htmx_views.widgets import HTMXSelectWidget
 from util.forms import get_mime
 
 # app imports
-from .models import GradebookColumn, Module, Test, Test_Score
+from . import lookups  # NoQA force early import of lookups
+from .models import GradebookColumn, Module, Test, Test_Score, TestCategory
 
 
 class TestImportForm(forms.Form):
@@ -133,7 +135,6 @@ class ModuleSelectPlusForm(forms.Form):
     module = forms.ModelChoiceField(
         required=False,
         queryset=Module.objects.annotate(tests_count=Count("tests")).filter(tests_count__gt=0),
-        widget=Select(attrs={"onChange": "this.form.submit();"}),
     )
 
     mode = forms.ChoiceField(
@@ -141,10 +142,26 @@ class ModuleSelectPlusForm(forms.Form):
         widget=Select(attrs={"onChange": "this.form.submit();"}),
     )
 
-    type = forms.ChoiceField(
-        choices=Test.TEST_TYPES,
-        widget=Select(attrs={"onChange": "this.form.submit();"}),
+    type = forms.ModelChoiceField(
+        TestCategory.objects.all(),
+        widget=HTMXSelectWidget(
+            lookup_channel="testcategory", parent="module", attrs={"onChange": "this.form.submit();"}
+        ),
     )
+
+    def __init__(self, *args, **kwargs):
+        """Prefilter the type of test we're after."""
+        super().__init__(*args, **kwargs)
+
+        # Get initial module value from bound data or initial
+        module = self.data.get("module") or self.initial.get("module")
+        if module:
+            try:
+                module_id = int(module)
+                queryset = self.fields["type"].queryset.filter(module_id=module_id, in_dashboard=True)
+                self.fields["type"].queryset = queryset
+            except (ValueError, TestCategory.DoesNotExist):
+                pass
 
 
 class ModuleSelectPlotForm(forms.Form):
@@ -156,9 +173,11 @@ class ModuleSelectPlotForm(forms.Form):
         widget=Select(attrs={"onChange": "this.form.submit();"}),
     )
 
-    type = forms.ChoiceField(
-        choices=Test.TEST_TYPES + [("vitals", "VITALs"), ("engagement", "Tutorial Attendance")],
-        widget=Select(attrs={"onChange": "this.form.submit();"}),
+    type = forms.ModelChoiceField(
+        TestCategory.objects.all(),
+        widget=HTMXSelectWidget(
+            lookup_channel="testcategory", parent="module", attrs={"onChange": "this.form.submit();"}
+        ),
     )
 
 

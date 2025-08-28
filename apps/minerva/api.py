@@ -1,16 +1,60 @@
 # -*- coding: utf-8 -*-
 """Django REST framework API file."""
 
+# Python imports
+from operator import attrgetter
+
 # Django imports
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Q
+from django.utils import timezone as tz
 
 # external imports
-from rest_framework import serializers, viewsets
+from accounts.models import Account
+from django_filters import rest_framework as filters
+from rest_framework import routers, serializers, status, viewsets
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import BasePermission
+from rest_framework.response import Response
+from rest_framework.schemas import get_schema_view
+from util.backend import HMACAuthentication
 
 # app imports
 from phas_vitals.api import router
 
 # app imports
 from .models import Module, Test, Test_Attempt, Test_Score
+
+
+class TenPerPagePagination(PageNumberPagination):
+    page_size = 10
+
+
+class CompoundSlugRelatedField(serializers.SlugRelatedField):
+    """Subclass a SlugRelatedField so it can optionall do multiple lookups"""
+
+    def to_internal_value(self, data):
+        queryset = self.get_queryset()
+        try:
+            slugs = self.slug_field.split("~")
+            data = data.split("~")
+            query = {k: v for k, v in zip(slugs, data)}
+            return queryset.get(**query)
+        except ObjectDoesNotExist:
+            self.fail("does_not_exist", slug_name=self.slug_field, value=smart_str(data))
+        except (TypeError, ValueError):
+            self.fail("invalid")
+
+    def to_representation(self, obj):
+        slugs = self.slug_field.split("~")
+        out = []
+        for slug in slugs:
+            if "__" in slug:
+                # handling nested relationship if defined
+                slug = slug.replace("__", ".")
+            out.append(attrgetter(slug)(obj))
+        return "~".join(out)
+
 
 ###### Serializers define the API representation. ########
 
@@ -78,7 +122,141 @@ class TestScoreViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = TestScoreSerializer
 
 
+class FeedbackPermission(BasePermission):
+    """Ensure nobody has permissions to delete stuff via the API."""
+
+    def has_permission(self, request, view):
+        """Allow read and write, but block delete."""
+        if request.method == "DELETE":
+            return False
+        return request.user and request.user.is_authenticated
+
+
+class IsSuperuserOrHMACAuthenticated(BasePermission):
+    """Enforce that the user making the request is either a superuser, or the request is singed with a valid key."""
+
+    def has_permission(self, request, view):
+        """Do the permission check."""
+        user = request.user
+        # Allow if user is a superuser
+        if user and user.is_superuser:
+            return True
+        # Allow if HMACAuthentication has successfully authenticated the user
+        return user and user.is_authenticated and getattr(user, "hmac_authenticated", False)
+
+
+# Serializers define the API representation.
+class FeedbackSerializer(serializers.ModelSerializer):
+    """Serialize/Deserialize Feedback items."""
+
+    student = serializers.SlugRelatedField(slug_field="username", queryset=Account.objects.all(), source="user")
+    assignment_name = CompoundSlugRelatedField(
+        slug_field="module__code~name", queryset=Test.objects.all(), source="test"
+    )
+    comment = serializers.CharField(required=False)
+    date = serializers.DateTimeField(required=False)
+
+    class Meta:
+        model = Test_Score
+        fields = ("student", "assignment_name", "comment", "score", "date")
+
+    def get_unique_together_constraints(self, model):
+        """Hack to stop the Serialiser thinking we've got unique constraints."""
+        yield from []
+
+    def get_existing_instance(self, validated_data):
+        """Get an instance if it already exists."""
+        return Test_Score.objects.filter(user=validated_data["user"], test=validated_data["test"]).first()
+
+    def create(self, validated_data):
+        """Add new tags - uses the test.add_attempt() method."""
+        test = validated_data["test"]
+        instance, attempt = test.add_attempt(
+            validated_data["user"],
+            validated_data["score"],
+            date=validated_data["date"],
+            text=validated_data["comment"],
+        )
+        instance.status = "Graded"
+        instance.save()
+        attempt.status = "Completed"
+        attempt.save()
+
+        return instance
+
+    def update(self, instance, validated_data):
+        instance.comment = validated_data["comment"]
+        instance.score = validated_data["score"]
+        instance.date = validated_data["date"]
+        instance.save()
+        return instance
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        last = instance.attempts.last()
+        if last:
+            data["comment"] = last.text
+            data["date"] = last.attempted
+        return data
+
+
+class FeedbackFilters(filters.FilterSet):
+
+    class Meta:
+        model = Test_Score
+        fields = ["user", "test", "score"]
+
+    score = filters.NumberFilter(field_name="score", lookup_expr="gte")
+    user = filters.CharFilter(method="filter_student")
+    test = filters.CharFilter(method="filter_test")
+
+    def filter_student(self, queryset, name, value):
+        try:
+            value = int(value)
+            return queryset.filter(Q(user__pk=value))
+        except (ValueError, TypeError):
+            return queryset.filter(
+                Q(user__username__icontains=value)
+                | Q(user__first_name__icontains=value)
+                | Q(user__last_name__icontains=value)
+            )
+
+    def filter_test(self, queryset, name, value):
+        try:
+            value = int(value)
+            return queryset.filter(Q(test__pk=value))
+        except (ValueError, TypeError):
+            return queryset.filter(
+                Q(test__test_id__icontains=value)
+                | Q(test_name__icontains=value)
+                | Q(test__category__text__icontains=value)
+            )
+
+
+class FeednackViewSet(viewsets.ModelViewSet):
+    serializer_class = FeedbackSerializer
+    queryset = Test_Score.objects.all()
+    filterset_class = FeedbackFilters
+    #    filterset_fields = ["supervisor","cohort","groups","type"]
+    search_fields = ["assignment_name", "comment", "student__last_name", "student__username"]
+    lookup_field = "id"
+    permission_classes = [FeedbackPermission, IsSuperuserOrHMACAuthenticated]
+    pagination_class = TenPerPagePagination
+
+    def get_objkect(self):
+        """Partially deserialise the data to get an object instance."""
+        serializer = FeedbackSerializer(data=self.request.data)
+        serializer.is_valid(raise_exception=True)
+
+    def paginate_queryset(self, queryset):
+        if self.request.accepted_renderer.format == "json":
+            return None  # disables pagination
+        return super().paginate_queryset(queryset)
+
+
+router.register(r"feedback", FeednackViewSet, basename="feedback")
 router.register(r"modules", ModuleViewSet)
 router.register(r"tests", TestViewSet)
 router.register(r"test_attempts", TestAttemptViewSet)
 router.register(r"test_scores", TestScoreViewSet)
+schema_view = get_schema_view(title="VITALs API")
