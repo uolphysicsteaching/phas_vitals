@@ -22,8 +22,6 @@ from .resource import (
     VITALResource,
 )
 
-update_vitals = celery_app.signature("minerva.tasks.update_vitals")
-
 logger = logging.getLogger("celery_tasks")
 
 
@@ -96,37 +94,14 @@ add_inlines("minerva.Test", VITAL_Test_MapInline, "vitals_mappings")
 add_inlines("minerva.Module", VITALInline, "VITALS")
 
 
-@admin.action(description="Force Update of VITALs")
-def update_user_vitals(modelAdmin, request, queryset):
-    """Force an update of all VITALs for the selected users."""
-    test_pks = set()
-    for user in queryset.all():
-        test_pks |= set([x[0] for x in user.test_results.all().values_list("pk")])
-    logger.debug(f"Triggering update_vitals for the following test_results: {test_pks}")
-    update_vitals.delay(list(test_pks))
-
-
 @admin.action(description="Force Update of VITAL")
 def update_vital_users(modelAdmin, request, queryset):
     """Force an update of all users for the selected VITALs."""
-    test_scores = set()
     for vital in queryset.all():
-        students = [x[0] for x in vital.module.module_enrollments.values_list("student")]
-        tests = vital.tests.all()
-        if tests:
-            test_scores |= set(
-                [
-                    x[0]
-                    for x in tests.first()
-                    .results.model.objects.filter(user__pk__in=students, test__in=tests)
-                    .values_list("pk")
-                ]
-            )
-    logger.debug(f"Triggering update_vitals for the following test_results: {test_scores}")
-    update_vitals.delay(list(test_scores))
-
-
-add_action("accounts.Account", update_user_vitals)
+        for student in vital.module.students.all():
+            vital.passed(student)
+            ss = student.summaries.filter(module=vital.module, category__text="VITALs").first()
+            ss.save()
 
 
 @admin.register(VITAL)

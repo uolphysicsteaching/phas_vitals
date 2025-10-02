@@ -161,6 +161,7 @@ TEMPLATES = [
             "builtins": [
                 "django.templatetags.static",
                 "mathfilters.templatetags.mathfilters",
+                "phas_vitals.templatetags.phas_tags",
             ],
         },
     }
@@ -188,6 +189,7 @@ AUTH_USER_MODEL = "accounts.Account"
 
 LOGIN_URL = "django_auth_adfs:login"
 LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
 
 # Only allow manual creation of new users
 AUTH_LDAP_CREATE_USER_ON_FLY = False
@@ -315,6 +317,7 @@ LOGGING = {
             "level": "DEBUG",
             "class": "logging.FileHandler",
             "filename": str(PROJECT_ROOT_PATH / "logs" / "django.log"),
+            "formatter": "verbose",
         },
         "htmx_file": {
             "level": "DEBUG",
@@ -333,9 +336,8 @@ LOGGING = {
         "mail_admins": {"level": "ERROR", "class": "django.utils.log.AdminEmailHandler"},
     },
     "formatters": {"verbose": {"format": "%(asctime)s %(levelname)-8s [%(name)s:%(lineno)s] %(message)s"}},
-    "root": {"handlers": ["file"], "level": "DEBUG", "propagate": True},
+    "root": {"handlers": ["file"], "level": "DEBUG"},
     "loggers": {
-        "": {"handlers": ["file"], "level": "DEBUG", "propagate": True},
         "auth": {"handlers": ["file"], "level": "INFO", "propagate": True},
         "django_auth_adfs": {"handlers": ["file_debug"], "level": "DEBUG", "propagate": True},
         "celery_tasks": {"handlers": ["file_debug"], "level": "DEBUG", "propagate": True},
@@ -343,9 +345,9 @@ LOGGING = {
         "django.security": {"handlers": ["mail_admins"], "level": "ERROR", "propagate": True},
         "phys_utils.middleware": {
             "handlers": ["file_info"],
-            "propagate": False,
+            "propagate": True,
         },
-        "htmx_views.views": {"handlers": ["htmx_file"], "level": "DEBUG", "propagate": False},
+        "htmx_views.views": {"handlers": ["htmx_file"], "level": "DEBUG", "propagate": True},
     },
 }
 

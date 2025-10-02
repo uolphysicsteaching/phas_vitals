@@ -13,6 +13,7 @@ from django.urls import reverse
 # external imports
 import pandas as pd
 from accounts.admin import StudentListFilter
+from accounts.models import Cohort, TermDate
 from adminsortable2.admin import SortableAdminMixin
 from dal_admin_filters import AutocompleteFilter
 from import_export.admin import ImportExportModelAdmin
@@ -46,9 +47,24 @@ from .resource import (
 )
 
 # Register your models here.
-update_vitals = celery_app.signature("minerva.tasks.update_vitals")
-
 logger = logging.getLogger("celery_tasks")
+
+
+class ModuleListFilter(admin.SimpleListFilter):
+
+    title = "Module"
+    parameter_name = "module"
+
+    def lookups(self, request, model_admin):
+        """Lookup Module lists."""
+        return [(x.code, str(x)) for x in Module.objects.all().order_by("code")]
+
+    def queryset(self, request, queryset):
+        """Get the module by code."""
+        if self.value():
+            if "module" in [field.name for field in queryset.model._meta.get_fields()]:
+                queryset = queryset.filter(module__code=self.value())
+        return queryset
 
 
 class TestCategoryFilter(admin.SimpleListFilter):
@@ -156,7 +172,15 @@ class ModuleAdmin(ImportExportModelAdmin):
     iniines = [
         ModuleEnrollmentInline,
     ]
-    actions = ["generate_marksheet", "update_tests", "update_columns", "mapping_export", "refresh_vitals"]
+    actions = [
+        "generate_marksheet",
+        "update_all",
+        "update_enrollments",
+        "update_columns",
+        "update_tests",
+        "update_grades",
+        "mapping_export",
+    ]
 
     fieldsets = (
         (
@@ -193,17 +217,36 @@ class ModuleAdmin(ImportExportModelAdmin):
         )
         queryset.update(status="p")
 
-    @admin.action(description="Generate Tests for module")
-    def update_tests(self, request, queryset):
-        """Call the Tests generation from json method for the selected module."""
+    @admin.action(description="Update the categories for module")
+    def update_categries(self, request, queryset):
         for module in queryset.all():
-            Test.create_or_update_from_json(module)
+            module.update_from_json(categories=True, grades=False)
 
-    @admin.action(description="Generate Gradescope Columns for module")
+    @admin.action(description="Update the Grades for module")
+    def update_grades(self, request, queryset):
+        for module in queryset.all():
+            module.update_from_json(grades=True)
+
+    @admin.action(description="Update the enrollments for module")
+    def update_enrollments(self, request, queryset):
+        for module in queryset.all():
+            module.update_from_json(enrollments=True, grades=False)
+
+    @admin.action(description="Update Tests for module")
+    def update_tests(self, request, queryset):
+        for module in queryset.all():
+            module.update_from_json(tests=True, grades=False)
+
+    @admin.action(description="Update Gradescope Columns for module")
     def update_columns(self, request, queryset):
         """Call the GradescopoeColumns generation from json method for the selected module."""
         for module in queryset.all():
-            GradebookColumn.create_or_update_from_json(module)
+            module.update_from_json(columns=True, grades=False)
+
+    @admin.action(description="Full update of categories, columns, tests and grades for Module")
+    def update_all(self, request, queryset):
+        for module in queryset.all():
+            module.update_from_json(tests=True, grades=True, columns=True, categories=True, enrollments=True)
 
     @admin.action(description="Generate Tests-VITAL mapping for module")
     def mapping_export(self, request, queryset):
@@ -228,14 +271,6 @@ class ModuleAdmin(ImportExportModelAdmin):
         df.to_excel(response)
         return response
 
-    @admin.action(description="Refresh VITALs from test results")
-    def refresh_vitals(self, request, queryset):
-        """Fire off async tasks to update vital results for all the test results from a module."""
-        for module in queryset.all():
-            for test in module.tests.all():
-                pks = [x[0] for x in test.results.all().values_list("pk")]
-                update_vitals.delay(pks)
-
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
         return ModuleResource
@@ -253,7 +288,7 @@ class TestAdmin(ImportExportModelAdmin):
         "test_id",
         "module",
         "name",
-        "type",
+        "category",
         "score_possible",
         "passing_score",
         "grading_due",
@@ -262,7 +297,6 @@ class TestAdmin(ImportExportModelAdmin):
         "grading_attemptsAllowed",
     )
     list_editable = [
-        "type",
         "score_possible",
         "passing_score",
         "grading_due",
@@ -270,13 +304,13 @@ class TestAdmin(ImportExportModelAdmin):
         "recommended_date",
     ]
     list_filter = (
-        "module",
+        ModuleListFilter,
         TestCategoryFilter,
         "grading_due",
         "release_date",
         "recommended_date",
     )
-    search_fields = ["name", "module__name", "module__year__name"]
+    search_fields = ["name", "module__name", "module__year__name", "category__text"]
     inlines = [
         GradebookColumnInline,
         Test_ScoreInline,
@@ -291,12 +325,12 @@ class TestAdmin(ImportExportModelAdmin):
                         "module",
                     ),
                     (
-                        "type",
+                        "category",
                         "name",
                     ),
                     "description",
                     ("score_possible", "passing_score", "suppress_numerical_score"),
-                    ("grading_attemptsAllowed", "ignore_zero"),
+                    ("grading_attemptsAllowed", "ignore_zero", "ignore_waiting"),
                 ),
                 "classes": [
                     "baton-tabs-init",
@@ -313,16 +347,19 @@ class TestAdmin(ImportExportModelAdmin):
             },
         ),
     )
-    actions = ["refresh_vitals"]
+    actions = ["update_dates"]
 
-    @admin.action(description="Refresh VITALs from test results")
-    def refresh_vitals(self, request, queryset):
-        """Fire off async tasks to update vital results for all the test results from a column."""
-        logger.debug("Sending test results for {queryset.count()} tests.")
-        for test in queryset.all():
-            test_scores_pk = [x[0] for x in test.results.all().values_list("pk")]
-            logger.debug(f"Updating {len(test_scores_pk)} test results for {test}")
-            update_vitals.delay(test_scores_pk)
+    @admin.action(description="Update dates for current cohort.")
+    def update_dates(self, request, queryset):
+        """Increment all test dates for the current year."""
+        for obj in queryset.all():
+            try:
+                obj.release_date = TermDate.next_year(obj.release_date, Cohort.current).datetime
+                obj.recommended_date = TermDate.next_year(obj.recommended_date, cohort=Cohort.current).datetime
+                obj.grading_due = TermDate.next_year(obj.grading_due, cohort=Cohort.current).datetime
+                obj.save()
+            except ValueError:
+                pass
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
@@ -337,11 +374,11 @@ class TestAdmin(ImportExportModelAdmin):
 class TestCategoryAdmin(SortableAdminMixin, ImportExportModelAdmin):
     """Admin Interface for TestCategory."""
 
-    list_display = ["module", "text", "in_dashboard", "label", "category_id"]
+    list_display = ["module", "text", "in_dashboard", "dashboard_plot", "label", "search", "weighting"]
     list_display_links = ["text"]
-    list_filter = ["module", "text", "in_dashboard"]
+    list_filter = [ModuleListFilter, "text", "in_dashboard", "dashboard_plot"]
     search_fields = ["module__name", "module__code", "text", "label"]
-    list_editable = ["in_dashboard", "label"]
+    list_editable = ["in_dashboard", "dashboard_plot", "label", "weighting"]
     readonly_fields = ["module", "text", "category_id"]
 
     def get_export_resource_class(self):
@@ -360,7 +397,7 @@ class GradebookColumnAdmin(ImportExportModelAdmin):
     form = GradebookColumnForm
 
     list_display = ("gradebook_id", "name", "module", "test", "category")
-    list_filter = ["test", "module", TestCategoryFilter]
+    list_filter = ["test", ModuleListFilter, TestCategoryFilter]
     search_fields = [
         "gradebook_id",
         "name",
@@ -482,7 +519,7 @@ class ModuleEnrollmentAdmin(ImportExportModelAdmin):
 
     list_display = ("module", "student", "status")
     list_editable = ("status",)
-    list_filter = (ModuleFilter, StudentListFilter, "status")
+    list_filter = (ModuleListFilter, StudentListFilter, "status")
     search_fields = [
         "module__name",
         "module__code",

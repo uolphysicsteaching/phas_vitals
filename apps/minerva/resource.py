@@ -1,5 +1,8 @@
 """Import Export Admin Resources for the minerva app models."""
 
+# Python imports
+import logging
+
 # external imports
 import numpy as np
 from accounts.models import Account
@@ -18,7 +21,32 @@ from .models import (
     TestCategory,
 )
 
+logger = logging.getLogger(__name__)
 # Register your models here.
+
+
+class TestsWidget(widgets.ManyToManyWidget):
+    """Import Export Widge for reading Tests that understands the natural key for a test."""
+
+    def clean(self, value, row=None, **kwargs):
+        """Split the value by separator and then lookup natural keys."""
+        if not value:
+            return self.model.objects.none()
+        if self.separator in value:
+            values = [x.strip() for x in value.split(self.separator) if x.strip() != ""]
+        else:
+            values = [value]
+        ret = []
+        for v in values:
+            ret.append(self.model.objects.get_by_natural_key(v))
+        return ret
+
+    def render(self, value, obj=None, **kwargs):
+        """Render using natural keys."""
+        if value is None:
+            return ""
+        ids = [str(obj) for obj in value.all()]
+        return self.separator.join(ids)
 
 
 class ModuleResource(resources.ModelResource):
@@ -64,7 +92,7 @@ class TestResource(resources.ModelResource):
             "test_id",
             "module",
             "name",
-            "type",
+            "category",
             "description",
             "externalGrade",
             "score_possible",
@@ -79,10 +107,17 @@ class TestResource(resources.ModelResource):
     module = fields.Field(
         column_name="module",
         attribute="module",
-        widget=widgets.ForeignKeyWidget(Module, "id"),
+        widget=widgets.ForeignKeyWidget(Module, "code"),
+    )
+
+    module = fields.Field(
+        column_name="category",
+        attribute="category",
+        widget=widgets.ForeignKeyWidget(TestCategory, "text"),
     )
 
     def before_import_row(self, row, row_number=None, **kwargs):
+        logger.debug(f"{row=}")
         super().before_import_row(row, row_number=row_number, **kwargs)
         if not row["test_id"]:
             row["test_id"] = f"_{np.random.randint(1E6)}_X"

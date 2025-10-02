@@ -7,6 +7,7 @@ from itertools import chain
 
 # Django imports
 from django.apps import apps
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone as tz
@@ -296,7 +297,11 @@ class VITAL(models.Model):
         return self.tests.model.objects.filter(vitals_mappings__in=mappings).distinct(), output
 
     def passed(self, user, passed=True, date_passed=None):
-        """Record the user as having passed this vital."""
+        """Record the user as having passed this vital.
+
+        Returns:
+            True if user is updated, else False.
+        """
         if not date_passed:
             date_passed = tz.now()
         result, _ = VITAL_Result.objects.get_or_create(vital=self, user=user)
@@ -304,8 +309,11 @@ class VITAL(models.Model):
             if date_passed is None:
                 date_passed = tz.now()
             result.date_passed = date_passed
-        result.passed = passed
-        result.save()
+        if result.passed ^ passed:
+            result.passed = passed
+            result.save()
+            return True
+        return False
 
     def check_vital(self, user):
         """Check whether a VITAL has been passed by a user."""
@@ -328,6 +336,10 @@ class VITAL(models.Model):
             and user.test_results.filter(test__vitals_mappings__in=necessary).distinct().count() >= needed
         ):
             return self.passed(user)
+        if (
+            user.test_results.filter(test__vitals_mappings__in=self.tests_mappings.all()).count() == 0
+        ):  # No test results
+            return False
         return self.passed(user, False)
 
     def __str__(self):
@@ -339,23 +351,36 @@ class VITAL(models.Model):
 def calculate_vitals(self):
     """Patch a function to create a summary score object for a VITALs."""
     try:
-        untested = VITAL.objects.exclude(student_results__user=self.student).filter(status="Finished").count()
-        vitals = VITAL.objects.filter(student_results__user=self.student).exclude(status="Not Started")
-        passed = vitals.filter(student_results__passed=True).distinct().count()
-        failed = vitals.filter(student_results__passed=False) / distinct().count()
+        untested = (
+            VITAL.objects.exclude(student_results__user=self.student)
+            .filter(module__in=self.student.modules.all())
+            .filter(status="Finished")
+            .count()
+        )
+        vitals = self.student.vital_results.filter(vital__module=self.module)
+        passed = vitals.filter(passed=True).count()
+        failed = vitals.filter(passed=False).count()
         self.score = np.round(100.0 * passed / (vitals.count() + untested))
     except (ValueError, ZeroDivisionError):
-        self.score = None
+        self.score = np.nan
     data = {}
-    colours = []
-    status = [x[0] for x in self.student.vital_results.all().values_list("status")]
+    colours = {}
+    status = [x.status for x in vitals.all()]
     status = np.array(status)
     for stat, (label, colour) in settings.VITALS_RESULTS_MAPPING.items():
         if count := status[status == stat].size:
             data[label] = count
-            colours.append(colour)
+            colours[label] = colour
     self.data["data"] = data
     self.data["colours"] = colours
+    return self.score
+
+
+@patch_model(Account, prep=property)
+def vitals_score(self):
+    """Get VITALs score from Summary Score."""
+    summary = np.array(self.summary_scores.filter(category__text="VITALs").values_list("module__credits", "score"))
+    return float(summary.prod(axis=1).sum() / summary[:, 0].sum())
 
 
 @patch_model(Account, prep=property)

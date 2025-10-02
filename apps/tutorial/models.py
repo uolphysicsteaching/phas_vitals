@@ -18,13 +18,13 @@ from django.utils.text import slugify
 import numpy as np
 from accounts.models import Account, Cohort, academic_Q, students_Q
 from constance import config
+from minerva.models import SummaryScore
 from tinymce.models import HTMLField
 from util.models import colour, contrast, patch_model
 
 # app imports
 from phas_vitals import celery_app
 
-update_engagement = celery_app.signature("accounts.tasks.update_engagement")
 task_logger = logging.getLogger("celery_tasks")
 
 
@@ -337,8 +337,9 @@ class Attendance(models.Model):
     ):  # pylint: disable=arguments-differ
         """Save the model and then signal to update the student's attendance reocrd."""
         super().save(force_insert, force_update, using, update_fields)
-        task_logger.debug(f"Posting update user task for {self}")
-        update_engagement.delay_on_commit(self.student.pk, True)
+        for ss in self.student.summary_scores.filter(category__text="Tutorial"):
+            ss.calculate()
+            ss.save()
 
 
 class MeetingAttendanceManager(models.Manager):
@@ -407,6 +408,54 @@ class Meeting(models.Model):
     def slug(self) -> str:
         """Create a slug for meething."""
         return slugify(self.name)
+
+
+@patch_model(SummaryScore)
+def calculate_tutorial(self):
+    """Patch a function to create a summary score object for a VITALs."""
+    data = {}
+    colours = {}
+    scores = self.student.engagement_scores()
+    for (score, label, _), col in zip(
+        settings.TUTORIAL_MARKS, ["silver", "tomato", "springgreen", "mediumseagreen", "forestgreen"]
+    ):
+        if count := scores[np.isclose(scores, score)].size:
+            data[label] = count
+            colours[label] = col
+    self.data["data"] = data
+    self.data["colours"] = colours
+    try:
+        record = (
+            np.array(
+                self.enrollment.student.tutorial_sessions.filter(session__cohort=self.student.cohort)
+                .order_by("-session__start")
+                .values_list("score")
+            )
+            .ravel()
+            .astype(float)
+        )
+        if record.size > 0:
+            record = np.where(record < 0, np.nan, record)
+            record = np.where(record == 2, 3, record)  # Good and excellent engagement should count the same
+            weight = np.exp(-np.arange(len(record)) / config.ENGAGEMENT_TC)
+            perfect = (3 * np.ones_like(record) * weight)[~np.isnan(record)].sum()
+            actual = (record * weight)[~np.isnan(record)].sum()
+            result = np.round(100 * actual / perfect, 1)
+        else:
+            result = None
+
+        self.score = result
+    except (ValueError, ZeroDivisionError):
+        self.score = None
+    return self.score
+
+
+@patch_model(Account, prep=property)
+def engagement(self):
+    """Get engagement score from Summary Score."""
+    summary = np.array(self.summary_scores.filter(category__text="Tutorial").values_list("module__credits", "score"))
+    summary = summary.astype(float)
+    return float(np.nansum(np.nanprod(summary, axis=1)) / np.nansum(summary[:, 0]))
 
 
 @patch_model(Account, prep=property)
@@ -492,11 +541,31 @@ def engagement_scores(self, cohort: Optional[Cohort] = None, semester: Optional[
     if semester is None:
         semester = 1 if tz.now().month >= 8 else 2
     ret = np.array(
-        self.tutorial_sessions.filter(session__cohort=cohort, session__semester=semester).values_list("score")
-    )
+        self.tutorial_sessions.filter(session__cohort=cohort).order_by("session__start").values_list("score")
+    )[-11:]
     if ret.size == 0:
         return np.array([])
     return ret.T[0].astype(float)
+
+
+@patch_model(Account, prep=property)
+def engagement_label(self) -> str:
+    """Monkey patched property for attendance ranking to a string."""
+    translation = {
+        "Excellent ": (90.0, 100.0),
+        "Good": (60.0, 90.0),
+        "Could be better": (40.0, 60.0),
+        "Must Improve": (20.0, 40.0),
+        "Unsatisfactory": (0, 20.0),
+    }
+
+    score = self.engagement
+    if not isinstance(score, (float, int)):
+        return "No Data"
+    for name, (low, high) in translation.items():
+        if low <= score <= high:
+            return name
+    return "Unknown"
 
 
 @patch_model(Account)

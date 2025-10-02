@@ -3,17 +3,21 @@
 
 # Python imports
 import os
+import pathlib
 from copy import deepcopy
+from mimetypes import guess_type
 
 # Django imports
 import django.utils.timezone as tz
 from django import forms
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.files import File
 from django.core.files.storage import FileSystemStorage
 from django.http import HttpResponseRedirect
 
 # external imports
+import magic
 import numpy as np
 import pandas as pd
 from dateutil import parser
@@ -22,6 +26,38 @@ from util.views import IsStaffViewMixin, get_encoding
 
 # app imports
 from .forms import UploadGradecentreForm
+
+
+def get_mime(content):
+    """Get the mime type of the current file as a string.
+
+    if content is None, use self.content as the file."""
+
+    if content is None or not content:
+        return ""
+
+    if isinstance(content, (str, pathlib.Path)):
+        content = File(open(content, "rb"))
+        closeme = True
+    else:
+        closeme = False
+
+    try:
+        with magic.Magic(flags=magic.MAGIC_MIME_TYPE) as mimemagic:
+            for chunk in content.chunks():
+                mime = mimemagic.id_buffer(chunk)
+                break
+    except AttributeError:
+        mime = guess_type(content.name)[0]
+    except TypeError:
+        for chunk in content.chunks():
+            mime = magic.from_buffer(chunk, mime=True)
+            break
+    finally:
+        if closeme:
+            content.close()
+
+    return mime
 
 
 class ColumnAssignmentForm(forms.Form):
@@ -70,8 +106,15 @@ class GradebookImport(IsStaffViewMixin, SessionWizardView):
         if step == "columns":
             module = self.get_cleaned_data_for_step("file")["module"]
             fname = self.get_cleaned_data_for_step("file")["gradecentre"]._name
-            enc = get_encoding(os.path.join(settings.MEDIA_ROOT, "tmp", fname))
-            df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, "tmp", fname), encoding=enc["encoding"])
+            mime_type = get_mime(os.path.join(settings.MEDIA_ROOT, "tmp", fname))
+            match mime_type:
+                case "text/csv":
+                    enc = get_encoding(os.path.join(settings.MEDIA_ROOT, "tmp", fname))
+                    df = pd.read_csv(os.path.join(settings.MEDIA_ROOT, "tmp", fname), encoding=enc["encoding"])
+                case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                    df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, "tmp", fname))
+                case _:
+                    assert False
             return self.construct_form(module, df, data, files)
         else:
             return super().get_form(step, data, files)
@@ -80,7 +123,12 @@ class GradebookImport(IsStaffViewMixin, SessionWizardView):
         """Do the actual import operation."""
         fname = self.get_cleaned_data_for_step("file")["gradecentre"]._name
         fname = os.path.join(settings.MEDIA_ROOT, "tmp", fname)
-        df = pd.read_csv(fname)
+        mime_type = get_mime(fname)
+        match mime_type:
+            case "text/csv":
+                df = pd.read_csv(fname)
+            case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                df = pd.read_excel(fname)
         module = self.get_cleaned_data_for_step("file")["module"]
 
         cols = self.get_cleaned_data_for_step("columns")

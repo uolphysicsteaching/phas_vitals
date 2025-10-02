@@ -36,7 +36,7 @@ class HTMXSelectWidget(Select):
 
         self.lookup_channel = lookup_channel
         if parent is None:
-            parent = getattr(self.lookup, "paramater_name", None)
+            parent = getattr(self.lookup_class, "paramater_name", None)
         if parent is None:
             raise ImproperlyConfigured(
                 f"Creating an htmx_views widget for {lookup_channel} without knowing the trigger."

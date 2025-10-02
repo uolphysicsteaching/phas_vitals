@@ -4,31 +4,10 @@
 # external imports
 from import_export import fields, resources, widgets
 from minerva.models import Module, Test
+from minerva.resource import TestsWidget
 
 # app imports
 from .models import VITAL, VITAL_Result, VITAL_Test_Map
-
-
-class TestsWidget(widgets.ManyToManyWidget):
-    """Import Export Widge for reading Tests that understands the natural key for a test."""
-
-    def clean(self, value, row=None, **kwargs):
-        """Split the value by separator and then lookup natural keys."""
-        if not value:
-            return self.model.objects.none()
-        if self.separator in value:
-            values = [x.strip() for x in value.split(self.separator) if x.strip() != ""]
-        else:
-            values = [value]
-        ret = []
-        for v in values:
-            ret.append(self.model.objects.get_by_natural_key(v))
-        return ret
-
-    def render(self, value, obj=None):
-        """Render using natural keys."""
-        ids = [str(obj) for obj in value.all()]
-        return self.separator.join(ids)
 
 
 class VITALResource(resources.ModelResource):

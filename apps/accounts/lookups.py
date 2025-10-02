@@ -8,7 +8,7 @@ from django.db.models import Q
 from ajax_select import LookupChannel, register
 
 # app imports
-from .models import Account, academic_Q, students_Q, tutor_Q
+from .models import Account, Section, academic_Q, students_Q, tutor_Q
 
 
 @register("groups")
@@ -21,6 +21,32 @@ class GroupLookup(LookupChannel):
     def get_query(self, q, request):
         """Qyery on Group name only."""
         name = Q(name__istartswith=q)
+        return self.model.objects.filter(name)
+
+    def format_item_display(self, item):
+        """Group name is the display text."""
+        return item.name
+
+    def format_match(self, item):
+        """Match on Group.name."""
+        return item.name
+
+    def check_auth(self, request):
+        """Require a logged in user."""
+        if not request.user.is_authenticated:
+            raise PermissionDenied
+
+
+@register("sections")
+class SectionLookup(LookupChannel):
+    """Lockup for Group Objects."""
+
+    model = Section
+    parameter_name = "name"
+
+    def get_query(self, q, request):
+        """Qyery on Group name only."""
+        name = Q(name__icontains=q) | Q(code__istartswith=q)
         return self.model.objects.filter(name)
 
     def format_item_display(self, item):

@@ -2,12 +2,14 @@
 """Django REST framework API file."""
 
 # Python imports
+import logging
 from operator import attrgetter
 
 # Django imports
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from django.utils import timezone as tz
+from django.utils.encoding import smart_str
 
 # external imports
 from accounts.models import Account
@@ -24,6 +26,9 @@ from phas_vitals.api import router
 
 # app imports
 from .models import Module, Test, Test_Attempt, Test_Score
+
+logger = logging.getLogger("drf_authentication")
+logger.debug("*" * 80)
 
 
 class TenPerPagePagination(PageNumberPagination):
@@ -127,9 +132,11 @@ class FeedbackPermission(BasePermission):
 
     def has_permission(self, request, view):
         """Allow read and write, but block delete."""
+        logger.debug(f"Checking for allowed method - {request.method=}")
         if request.method == "DELETE":
+            logger.debug("Tried calling a DELETE method - not allowed!")
             return False
-        return request.user and request.user.is_authenticated
+        return True
 
 
 class IsSuperuserOrHMACAuthenticated(BasePermission):
@@ -138,10 +145,14 @@ class IsSuperuserOrHMACAuthenticated(BasePermission):
     def has_permission(self, request, view):
         """Do the permission check."""
         user = request.user
+        logger.debug("Checking User permissions:")
         # Allow if user is a superuser
-        if user and user.is_superuser:
+        if user and user.is_superuser and not getattr(user, "hmac_authenticated", False):
+            logger.debug("User is super user with non HMAC call")
             return True
         # Allow if HMACAuthentication has successfully authenticated the user
+        logger.debug("Checking for HMAC authentication")
+        logger.debug(f"{user=} {user.is_authenticated=} {getattr(user, 'hmac_authenticated', False)=} ")
         return user and user.is_authenticated and getattr(user, "hmac_authenticated", False)
 
 
@@ -234,19 +245,16 @@ class FeedbackFilters(filters.FilterSet):
 
 
 class FeednackViewSet(viewsets.ModelViewSet):
+    """Viewset for the Feedback Objects."""
+
     serializer_class = FeedbackSerializer
     queryset = Test_Score.objects.all()
     filterset_class = FeedbackFilters
-    #    filterset_fields = ["supervisor","cohort","groups","type"]
     search_fields = ["assignment_name", "comment", "student__last_name", "student__username"]
     lookup_field = "id"
     permission_classes = [FeedbackPermission, IsSuperuserOrHMACAuthenticated]
+    authentication_classes = [HMACAuthentication]
     pagination_class = TenPerPagePagination
-
-    def get_objkect(self):
-        """Partially deserialise the data to get an object instance."""
-        serializer = FeedbackSerializer(data=self.request.data)
-        serializer.is_valid(raise_exception=True)
 
     def paginate_queryset(self, queryset):
         if self.request.accepted_renderer.format == "json":

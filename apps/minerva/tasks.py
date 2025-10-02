@@ -26,7 +26,7 @@ from phas_vitals import celery_app
 from phas_vitals.tasks import PHASTask
 
 # app imports
-from .models import GradebookColumn
+from .models import GradebookColumn, SummaryScore, TestCategory
 
 logger = logging.getLogger("celery_tasks")
 
@@ -42,19 +42,27 @@ def import_gradebook():
     for module in Module.objects.all():
         logger.debug(f"Attempting to import {module.key}")
         if not module.data_ready:
-            logger.debug(f"Module {module.key} data not ready.")
+            logger.debug(f"Module {module.key} data not ready or not being recorded.")
+            continue
+        TestCategory.update_from_json(module)
         logger.debug(f"Cleaning up dead columns and creating new ones.")
         module.remove_columns_not_in_json()
         try:
             GradebookColumn.create_or_update_from_json(module)
         except OSError:  # Probably no JSON File
             continue
-        if module.update_from_json() is None:
-            logger.info(f"Failed import for {module.name}")
-        else:
-            imported_modules.append(module.key)
-            config.LAST_MINERVA_UPDATE = module.json_updated
-            logger.debug(f"Imported {module.key} {module.json_updated}")
+        try:
+            if (
+                module.update_from_json(categories=True, tests=True, enrollments=True, columns=True, grades=True)
+                is None
+            ):
+                logger.info(f"Failed import for {module.name}")
+            else:
+                imported_modules.append(module.key)
+                config.LAST_MINERVA_UPDATE = module.json_updated
+                logger.debug(f"Imported {module.key} {module.json_updated}")
+        except Exception as error:
+            raise RuntimeError(f"Issues processing json for {module=}") from error
 
     logger.debug("Updated constance.config")
     update_all_users.delay()
@@ -62,22 +70,18 @@ def import_gradebook():
 
 
 @shared_task()
-def take_time_series(module_code="PHAS1000"):
+def take_time_series():
     """Load DataFrames and add new row for the current date."""
-    datapath = Path(settings.MEDIA_ROOT) / "data"
-    attrs = ["activity_score", "tests_score", "labs_score", "coding_score", "vitals_score", "engagement"]
-    try:
-        module = Module.objects.get(code=module_code)
-    except ObjectDoesNotExist:
-        logger.debug("Failed to run time series collection for module {module_code}")
-    data = module.students.all()
     date = datetime.combine(tz.now().date(), time(0, 0, 0))
-    for attr in attrs:
-        if (filepath := (datapath / f"time_series_{attr}.xlsx")).exists():
-            df = pd.read_excel(filepath).set_index("Date")
+    for category in TestCategory.objects.filter(dashboard_plot=True):
+        module = category.module
+        data = SummaryScore.objects.filter(category=category)
+        if category.xlsx.exists():
+            df = pd.read_excel(category.xlsx).set_index("Date")
         else:
+            category.datadir.mkdir(parents=True, exist_ok=True)
             df = pd.DataFrame(columns=["Date"]).set_index("Date")
-        row = {entry.number: getattr(entry, attr, np.nan) for entry in data}
+        row = {entry.student.number: entry.score for entry in data}
         if date in df.index:  # Check for double running on the same day!
             for k, v in row.items():
                 df.loc[date, k] = v
@@ -85,7 +89,7 @@ def take_time_series(module_code="PHAS1000"):
             row["Date"] = date
             row_df = pd.DataFrame([row]).set_index("Date")
             df = pd.concat((df, row_df))
-        df.to_excel(filepath)
+        df.to_excel(category.xlsx)
     make_gifs.delay()
 
 
@@ -115,25 +119,18 @@ def _animate(frame, axes, data, legend):
 @shared_task()
 def make_gifs():
     """Create an animated gif from the activity data."""
-    pth = Path(settings.MEDIA_ROOT) / "data"
-    attrs = {
-        "activity_score": "Overall Activity",
-        "tests_score": "Homework Assignments",
-        "labs_score": "Lab Activities",
-        "coding_score": "Code Tasks",
-        "vitals_score": "VITALs Progress",
-        "engagement": "Tutorial Enghagement",
-    }
-    for key, label in attrs.items():
-        datafile = pth / f"time_series_{key}.xlsx"
-        data = pd.read_excel(datafile).set_index("Date")
+    for category in TestCategory.objects.filter(dashboard_plot=True):
+        module = category.module
+        if not (category.xlsx).exists():
+            continue
+        data = pd.read_excel(category.xlsx).set_index("Date")
         inactive = set([x[0] for x in Account.objects.filter(is_active=False).values_list("number")])
         ignore = list(set(data.columns) & inactive)
         data = data.drop(labels=ignore, axis="columns")
 
         plt.close("all")
-        anim, fig = _prepare(data, label)
+        anim, fig = _prepare(data, f"{category.module.code}:{category.label}")
 
         ani = animation.FuncAnimation(fig, anim, len(data.index), interval=500, repeat_delay=1500)
 
-        ani.save(pth / f"{key}.gif")
+        ani.save(category.gif)

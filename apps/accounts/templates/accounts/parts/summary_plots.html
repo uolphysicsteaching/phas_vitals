@@ -1,28 +1,86 @@
-<div class="row">
-    <div class="col-lg-4">
-        <h3 class="text-center">Homework {% if user.tests_score is not None %}{{ user.tests_score }}%{% endif %}</h3>
-        <img class="pie"  src='{{ homework_plot.data }}' alt="{{ homework_plot.alt }}" />
-    </div>
-    <div class="col-lg-4">
-        <h3 class="text-center">Labs {% if user.labs_score is not None %}{{ user.labs_score }}%{% endif %}</h3>
-        <img class="pie"  src='{{ lab_plot.data }}' alt="{{ lab_plot.alt }}" />
-    </div>
-    <div class="col-lg-4">
-        <h3 class="text-center">Coding {% if user.coding_score is not None %}{{ user.coding_score }}%{% endif %}</h3>
-        <img class="pie col-md-12"  src='{{ code_plot.data }}' alt="{{ code_plot.alt }}" />
-    </div>
-</div>
-<div class="row">
-
-    <div class="col-lg-4">
-        <h3 class="text-center">VITALs {% if user.vitals_score is not None %}{{ user.vitals_score }}%{% endif %}</h3>
-        <img class="pie" src='{{ vitals_plot.data }}' alt="{{ vitals_plot.alt }}" />
-    </div>
-    <div class="col-lg-4">
-        &nbsp;
-    </div>
-    <div class="col-lg-4">
-        <h3 class="text-center">Tutorials {% if user.engagement is not None %}{{ user.engagement }}%{% endif %}</h3>
-        <img class="pie"  src='{{ tutorial_plot.data }}' alt="{{ tutorial_plot.alt }}" />
-    </div>
-</div>
+{% for row_cats in plot_categories|reshape:3 %}
+  <div class="row">
+    {% with remainder=row_cats|length %}
+      {% if forloop.last %}
+        {% if remainder == 1 %}
+          {% with cat=row_cats|last %}
+            <div class="col-md-4">&nbsp;</div>
+            <div class="col-md-4">
+              <div class="card mb-3">
+                <div class="card-body">
+                  {% with tag=cat.tag %}
+                    {% with plot=plots|index:tag score=scores|index:tag %}
+                      <h5 class="card-title text-center">{{ cat.text }}{% if score is not None %}: {{ score|floatformat }}%{% endif %}</h5>
+                      <img class="pie"  src='{{ plot.data }}' alt="{{ plot.alt }}" />
+                    {% endwith %}
+                  {% endwith %}
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">&nbsp;</div>
+          {% endwith %}
+        {% elif remainder == 2 %}
+          <div class="col-md-4">
+            {% with cat=row_cats|first %}
+              <div class="card mb-3">
+                <div class="card-body">
+                  {% with tag=cat.tag %}
+                    {% with plot=plots|index:tag score=scores|index:tag %}
+                      <h5 class="card-title text-center">{{ cat.text }}{% if score is not None %}: {{ score|floatformat }}%{% endif %}</h5>
+                      <img class="pie"  src='{{ plot.data }}' alt="{{ plot.alt }}" />
+                    {% endwith %}
+                  {% endwith %}
+                </div>
+              </div>
+            {% endwith %}
+          </div>
+          <div class="col-md-4"></div>
+          <div class="col-md-4">
+            {% with cat=row_cats|last %}
+              <div class="card mb-3">
+                <div class="card-body">
+                  {% with tag=cat.tag %}
+                    {% with plot=plots|index:tag score=scores|index:tag %}
+                      <h5 class="card-title text-center">{{ cat.text }}{% if score is not None %}: {{ score|floatformat }}%{% endif %}</h5>
+                      <img class="pie"  src='{{ plot.data }}' alt="{{ plot.alt }}" />
+                    {% endwith %}
+                  {% endwith %}
+                </div>
+              </div>
+            {% endwith %}
+          </div>
+        {% elif remainder == 3 %}
+          {% for cat in row_cats %}
+            <div class="col-md-4">
+              <div class="card mb-3">
+                <div class="card-body">
+                  {% with tag=cat.tag %}
+                    {% with plot=plots|index:tag score=scores|index:tag %}
+                      <h5 class="card-title text-center">{{ cat.text }}{% if score is not None %}: {{ score|floatformat }}%{% endif %}</h5>
+                      <img class="pie"  src='{{ plot.data }}' alt="{{ plot.alt }}" />
+                    {% endwith %}
+                  {% endwith %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% else %}
+        {% for cat in row_cats %}
+          <div class="col-md-4">
+            <div class="card mb-3">
+              <div class="card-body">
+                {% with tag=cat.tag %}
+                  {% with plot=plots|index:tag score=scores|index:tag %}
+                    <h5 class="card-title text-center">{{ cat.text }}{% if score is not None %}: {{ score|floatformat }}%{% endif %}</h5>
+                    <img class="pie"  src='{{ plot.data }}' alt="{{ plot.alt }}" />
+                  {% endwith %}
+                {% endwith %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+{% endfor %}

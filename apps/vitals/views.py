@@ -117,7 +117,9 @@ class BaseShowvitalResults(SingleTableMixin, HTMXProcessMixin, FormView):
         """Update self.module with the module selected in the form."""
         self.module = form.cleaned_data["module"]
         if self.module is not None:
-            self.vitals = VITAL.objects.filter(module=self.module).order_by("tests__type", "start_date", "name")
+            self.vitals = VITAL.objects.filter(module=self.module).order_by(
+                "tests__category__order", "start_date", "name"
+            )
         self.page = int(self.request.GET.get("page", 1))
         return self.render_to_response(self.get_context_data())
 

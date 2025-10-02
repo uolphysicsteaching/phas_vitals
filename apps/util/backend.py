@@ -6,6 +6,7 @@ import hmac
 import logging
 import os
 from collections.abc import Mapping
+from json import JSONDecodeError
 
 # Django imports
 from django.contrib.auth import get_user_model
@@ -181,28 +182,40 @@ class HMACAuthentication(BaseAuthentication):
 
     def authenticate(self, request):
         """Check whether the request Authorization header matches the payload."""
-        auth_header = request.headers.get("Authorization")
+        try:
+            auth_header = request.headers["Authorization"]
+            logger_drf.debug("Got {auth_header=}")
+        except KeyError:
+            logger_drf.debug(f"No Authorization header {request.headers=}")
         if not auth_header or not auth_header.startswith(self.keyword + " "):
-            logger_drf.debug(f"No Authporization header on request to DRF endpoint {request.path}")
+            logger_drf.debug(f"No Authorization header on request to DRF endpoint {request.path}")
             return None  # No attempt to authenticate
 
         provided_signature = auth_header[len(self.keyword) + 1 :].strip()
+        logger_drf.debug(f"{provided_signature=}")
         payload = request.body
+        logger_drf.debug(f"{payload=}")
 
         try:
             payload_data = json.loads(payload)
-            if not isinstance(payload_data, (Mapping, list)):
-                raise json.JSONDecodeError("Bad JSON")
-        except json.JSONDecodeError:
+            logger_drf.debug(f"{payload_data=}")
+        except JSONDecodeError:
             logger_drf.warning("Badly encoded json payload for authentication.")
             raise AuthenticationFailed(f"Failed to decode JSON payload for {request}")
+        except Exception as e:
+            logger_drf.debug(f"Error={e}")
 
-        username = payload_data.get("username")
+        username = payload_data.get("student")
 
         # Try all keys
         for key_obj in APIKey.objects.all():
-            key_bytes = force_bytes(key_obj.key)
+            key_bytes = (
+                bytes.fromhex(key_obj.key) if isinstance(key_obj.key, str) and len(key_obj.key) == 128 else key_obj.key
+            )
             computed = hmac.new(key_bytes, payload, hashlib.sha256).hexdigest()
+            logger_drf.debug(f"{key_obj.key=}")
+            logger_drf.debug(f"{provided_signature=}")
+            logger_drf.debug(f"{computed=}")
             if hmac.compare_digest(computed, provided_signature):
                 if not key_obj.is_active:
                     logger_drf.warning(f"Call made to drf endpoint with in active HMAC key {request}")
@@ -231,18 +244,23 @@ def send_hmac_signed_request(payload, url=None, secret_key=None, headers=None):
         requests.Response: The response object.
     """
     if secret_key is None:
-        secret_key = os.envuiron.get("PHAS_API_KEY")
+        secret_key = os.envuiron.get("PHAS_API_KEY").decode()
     # Serialize payload deterministically
     body = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
 
     # Ensure key is bytes
-    key_bytes = bytes.fromhex(secret_key) if isinstance(secret_key, str) and len(secret_key) == 64 else secret_key
+    key_bytes = bytes.fromhex(secret_key) if isinstance(secret_key, str) and len(secret_key) == 128 else secret_key
 
     # Compute HMAC signature
     signature = hmac.new(key_bytes, body, hashlib.sha256).hexdigest()
 
     # Prepare headers
-    auth_headers = {"Content-Type": "application/json", "Authorization": signature}
+    auth_headers = {
+        "Content-Type": "application/json",
+        "Authorization": signature,
+        "User-Agent": "curl/7.88.1",
+        "Accept": "*/*",
+    }
     if headers:
         auth_headers.update(headers)
 

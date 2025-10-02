@@ -18,7 +18,7 @@ from ajax_select import urls as ajax_select_urls
 # app imports
 from .api import router
 from .settings.production import PROJECT_ROOT
-from .views import E403View, E404View, E500View, HomeView
+from .views import E403View, E404View, E500View, HomeView, HtmxLogoutView
 
 # Set Error handlers
 handler404 = E404View.as_view()
@@ -36,7 +36,7 @@ urlpatterns = [
     path("api-auth/", include("rest_framework.urls")),
     path("baton/", include("baton.urls")),
     path(r"isteach/", auth_views.LoginView.as_view(), name="core_login"),
-    path(r"imigh/", auth_views.LogoutView.as_view(next_page="/"), name="core_logout"),
+    path(r"imigh/", HtmxLogoutView.as_view(next_page="/"), name="core_logout"),
     path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
     path("oauth2/", include("django_auth_adfs.urls")),
     path("tinymce/", include("tinymce.urls")),

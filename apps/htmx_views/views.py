@@ -91,17 +91,24 @@ class HTMXProcessMixin:
                     logger.debug(elem)
                 yield elem
 
+    def get_context_data_function(self, **kwargs):
+        """Return a handler for get_context_data."""
+        for elem in self.htmx_elements():
+            handler = getattr(self, f"get_context_data_{elem}", False)
+            if handler:
+                break
+        return handler
+
     def get_context_data(self, **kwargs):
         """Get context data being aware of htmx views."""
         if not getattr(self.request, "htmx", False) or self._htmx_get_context_data:  # Default behaviour
             return super().get_context_data(**kwargs)
 
         # Look for a request specific to the element involved.
-        for elem in self.htmx_elements():
-            handler = getattr(self, f"get_context_data_{elem}", False)
-            if handler:
-                with temp_attr(self, "_htmx_get_context_data", True):
-                    return handler(**kwargs)
+        handler = self.get_context_data_function(**kwargs)
+        if handler:
+            with temp_attr(self, "_htmx_get_context_data", True):
+                return handler(**kwargs)
         return super().get_context_data(**kwargs)
 
     def get_context_object_name(self, object_list):

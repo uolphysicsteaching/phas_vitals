@@ -431,7 +431,7 @@ class BaseShowTestResultsView(SingleTableMixin, HTMXProcessMixin, FormView):
         """Construct instance variables."""
         self.module = None
         self.mode = "scor3e"
-        self.type = "homework"
+        self.category = None
         self.tests = []
         self._entries = []
         super().__init__(*args, **kargs)
@@ -472,15 +472,15 @@ class BaseShowTestResultsView(SingleTableMixin, HTMXProcessMixin, FormView):
     def form_invalid(self, form):
         """Pick up bad form data."""
         data = form.errors
-        assert False
+        return super().form_invalid(form)
 
     def form_valid(self, form):
         """Update self.module with the module selected in the form."""
         self.module = form.cleaned_data["module"]
         self.mode = form.cleaned_data.get("mode", "score")
-        self.type = form.cleaned_data.get("type")
+        self.category = form.cleaned_data.get("type")
         if self.module is not None:
-            self.tests = self.module.tests.filter(category=self.type).order_by("release_date", "name")
+            self.tests = self.module.tests.filter(category=self.category).order_by("release_date", "name")
         self.page = int(self.request.GET.get("page", 1))
         return self.render_to_response(self.get_context_data())
 
@@ -498,6 +498,7 @@ class BaseShowTestResultsView(SingleTableMixin, HTMXProcessMixin, FormView):
         """Get the cohort into context from the slug."""
         context = super().get_context_data(**kwargs)
         context["module"] = self.module
+        context["category"] = self.category
         return context
 
     def get_context_data_next_batch(self, **kwargs):
@@ -677,9 +678,12 @@ class TestDetailView(IsStudentViewixin, DetailView):
         fig2, hist = plt.subplots(figsize=(4, 3.5))
         data = test.stats
         colours = ["green", "red", "dimgrey", "black"]
-        _, texts = pie.pie(list(data.values()), labels=list(data.keys()), colors=colours, labeldistance=0.3)
-        for text in texts:
-            text.set_bbox({"facecolor": (1, 1, 1, 0.75), "edgecolor": (1, 1, 1, 0.25)})
+        try:
+            _, texts = pie.pie(list(data.values()), labels=list(data.keys()), colors=colours, labeldistance=0.3)
+            for text in texts:
+                text.set_bbox({"facecolor": (1, 1, 1, 0.75), "edgecolor": (1, 1, 1, 0.25)})
+        except ValueError:
+            pass
         with plot_context("seaborn-v0_8-bright"):
             counts, _, _ = hist.hist(
                 test.scores, bins=np.linspace(0.0, test.score_possible, int(min(test.score_possible, 21)))
@@ -744,18 +748,18 @@ class TestResultsBarChartView(IsStaffViewMixin, FormView):
         """Construct instance variables."""
         self.module = None
         self.mode = "scor3e"
-        self.type = "homework"
+        self.category = "homework"
         self.tests = []
         super().__init__(*args, **kargs)
 
     def form_valid(self, form):
         """Update self.module with the module selected in the form."""
         self.module = form.cleaned_data["module"]
-        self.type = form.cleaned_data.get("type", "homework")
+        self.category = form.cleaned_data.get("type")
         if self.module is not None:
-            if self.type in ["homework", "lab_exp", "code_task"]:
-                self.tests = self.module.tests.filter(type=self.type).order_by("release_date", "name")
-            elif self.type == "vitals":
+            if self.category.text.lower() in ["homework", "lab experiment", "code tasks"]:
+                self.tests = self.module.tests.filter(category=self.category).order_by("release_date", "name")
+            elif self.category.text.lower() == "vitals":
                 m = self.module
                 ids = [x.student.pk for x in m.student_enrollments.all()]
                 self.tests = (
@@ -763,7 +767,7 @@ class TestResultsBarChartView(IsStaffViewMixin, FormView):
                     .distinct()
                     .order_by("start_date")
                 )
-            elif self.type == "engagement":
+            elif self.category.text.lower() == "tutorial":
                 self.tests = self.module.tutorial_sessions.distinct().order_by("semester", "week")
         return self.render_to_response(self.get_context_data())
 
@@ -794,4 +798,4 @@ class TestResultsBarChartView(IsStaffViewMixin, FormView):
         ax.set_ylabel("# Students")
         fig = ax.figure
         plt.close("all")
-        return ImageData(svg_data(fig, base64=True), alt=f"Summary pass/fail for all {self.type}")
+        return ImageData(svg_data(fig, base64=True), alt=f"Summary pass/fail for all {self.category.text}")

@@ -2,6 +2,7 @@
 """Import-Export Admin Resources for accounts."""
 
 # Python imports
+import logging
 import re
 
 # Django imports
@@ -12,7 +13,9 @@ from django.db.models import Q
 from import_export import fields, resources, widgets
 
 # app imports
-from .models import Account, Cohort, Programme, Section
+from .models import Account, Cohort, Programme, Section, TermDate, Year
+
+logger = logging.getLogger(__name__)
 
 
 def _none(value):
@@ -47,12 +50,143 @@ def _lname_from_name(value):
     return words[-1].title()
 
 
+class UsernameFKWidget(widgets.ForeignKeyWidget):
+    """Foreign Key widget that allows a callback inside clean() method."""
+
+    name_pat = re.compile(r"\((.*)\)")
+
+    def __init__(self, *args, **kargs):
+        """Add a hook for a function to process each element on import."""
+        self.process = kargs.pop("process", self.name2username)
+        super().__init__(*args, **kargs)
+
+    def clean(self, value, row=None, *args, **kwargs):
+        """Clean the value by trying to match each possible scheme."""
+        value = self.process(value)
+        return super().clean(value, row, *args, **kwargs)
+
+    def name2username(self, name):
+        """Try various ways to get a valid username.
+
+        1) Look for some () and assume that contains a username
+        2) Look for a comma and assume that that divides first name from last name
+        3) Look for words and if more than 1 word, assume that it is first anem last name
+        4) If only 1 word, assume it is a user id.
+        """
+        name = str(name)
+        match = self.name_pat.search(name)
+        if match:
+            return match.group(1).lower()
+        try:
+            name = int(name)
+            if name < 200000000:
+                raise ValueError("numeric id < 2 billion not a student number")
+            student = Account.objects.get(number=name)
+            return student.username
+        except ValueError:
+            pass
+        if "," in name:
+            parts = name.split(",")
+            firstname = parts[1].strip()
+            surname = parts[0].strip()
+        else:
+            parts = [x for x in name.split(" ") if x != ""]
+            if len(parts) < 2:
+                return str.lower(name)
+            if parts[0] in ["Mr", "Mrs", "Dr", "Prof", "Miss", "Ms"]:
+                parts = parts[1:]
+            firstname = parts[0]
+            surname = parts[-1]
+        possible = Account.objects.filter(first_name=firstname, last_name__contains=surname)
+        logger.debug(f"{firstname=} {surname=} {possible.count()=}")
+        if possible.count() == 1:
+            return possible.first().username
+        elif possible.count() == 2:
+            return possible.filter(is_superuser=False).first().username
+        else:
+            return name
+
+    def render(self, value, obj=None, **kwargs):
+        """Save the user as display name."""
+        if value is None:
+            return ""
+        return getattr(value, "display_name", "Oops!")
+
+
+def name2username(name):
+    """Try various ways to get a valid username.
+
+    1) Look for some () and assume that contains a username
+    2) Look for a comma and assume that that divides first name from last name
+    3) Look for words and if more than 1 word, assume that it is first anem last name
+    4) If only 1 word, assume it is a user id.
+    """
+    name_pat = re.compile(r"\((.*)\)")
+    name = str(name)
+    match = name_pat.search(name)
+    if match:
+        return match.group(1).lower()
+    try:
+        name = int(name)
+        if name < 200000000:
+            raise ValueError("numeric id < 2 billion not a student number")
+        student = Account.objects.get(number=name)
+        return student.username
+    except ValueError:
+        pass
+
+    if "," in name:
+        parts = name.split(",")
+        firstname = parts[1].strip()
+        surname = parts[0].strip()
+    else:
+        parts = [x for x in name.split(" ") if x != ""]
+        if len(parts) < 2:
+            return str.lower(name)
+        if parts[0] in ["Mr", "Mrs", "Dr", "Prof", "Miss", "Ms"]:
+            parts = parts[1:]
+        firstname = parts[0]
+        surname = parts[-1]
+    possible = Account.objects.filter(first_name=firstname, last_name__contains=surname)
+    if possible.count() == 1:
+        return possible.all()[0].username
+    else:
+        return name
+
+
 class StrippedCharWidget(widgets.CharWidget):
     """Hacked to make sure usernames don't have leading or trailing space spaces."""
 
     def clean(self, value, row=None, *args, **kwargs):
         """Simply strips white space from the FKey before calling the parent."""
         return super().clean(value, row, *args, **kwargs).strip()
+
+
+class NaturalKeyForeignKeyWidget(widgets.ForeignKeyWidget):
+    """Generic ForeginKeyWidget that uses a model's natural key from the django serialisation code."""
+
+    def clean(self, value, row=None, *args, **kwargs):
+        """Do a lookup attempting to match code or name."""
+        return Year.objects.get_by_natural_key(value)
+
+    def render(self, value, obj=None, **kwargs):
+        """Export an object by it's natural key."""
+        if value is None:
+            return ""
+        nk = value.natural_key()
+        match nk:
+            case str():
+                return nk
+            case tuple(), list():
+                return "|".join(str(part) for part in value.natural_key())
+            case _:
+                raise TypeError(f"Cannot work out how to format natural_key {nk} for {value}")
+
+
+class YearWidget(NaturalKeyForeignKeyWidget):
+    """Import export ediget that looks up programmes by name or code."""
+
+    pass
 
 
 class ProgrammeWidget(widgets.ForeignKeyWidget):
@@ -246,6 +380,12 @@ class UserResource(resources.ModelResource):
         attribute="programme",
         widget=ProgrammeWidget(Programme, "code"),
     )
+    year = fields.Field(
+        column_name="year",
+        attribute="year",
+        widget=YearWidget(Year, "id"),
+    )
+
     apt = fields.Field(
         column_name="apt",
         attribute="apt",
@@ -273,6 +413,7 @@ class UserResource(resources.ModelResource):
             "is_superuser",
             "number",
             "programme",
+            "year",
             "section",
             "registration_status",
         )
@@ -302,6 +443,7 @@ class UserResource(resources.ModelResource):
             "Student Name": _lname_from_name,
         },
         "programme": {"programme": _none, "Programme": _none},
+        "year": {"year": _none, "Class": _none},
         "section": {"section": _none, "Section": _none},
         "registtration_status": {"registtration_status": _none, "Registration Status": _none, "ESTS_Code": _none},
         #        "apt": {"apt": _none, "tutor": _none, "Tutor Name": _none},
@@ -353,6 +495,13 @@ class ProgrammeResource(resources.ModelResource):
         import_id_fields = ["code"]
 
 
+class YearResource(resources.ModelResource):
+
+    class Meta:
+        model = Year
+        import_id_fields = ["status", "name"]
+
+
 class CohortResource(resources.ModelResource):
     """Import Export Resource classes for Cohort objects."""
 
@@ -369,3 +518,18 @@ class SectionResource(resources.ModelResource):
         model = Section
         fields = ("name", "group_code", "group_set")
         import_id_fields = ["name"]
+
+
+class TermDateResource(resources.ModelResource):
+    """Import Export Resource for TermDate Objects."""
+
+    class Meta:
+        model = TermDate
+        fields = ["id", "cohort", "week", "start"]
+        import_id_fields = ["id"]
+
+    cohort = fields.Field(
+        column_name="cohort",
+        attribute="cohort",
+        widget=widgets.ForeignKeyWidget(Cohort, "name"),
+    )

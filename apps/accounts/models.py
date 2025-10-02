@@ -3,7 +3,9 @@
 from __future__ import unicode_literals
 
 # Python imports
+import logging
 import string
+from datetime import date, datetime, time, timedelta
 
 # Django imports
 from django.conf import settings
@@ -17,6 +19,7 @@ from django.utils.functional import classproperty
 # external imports
 import numpy as np
 from constance import config
+from dateutil.parser import parse
 from six import string_types
 from util.models import colour
 from util.validators import RangeValueValidator
@@ -31,6 +34,7 @@ tutor_Q = Q(groups__name="Grader") | Q(groups__name="Teaching Assistant") | Q(is
 students_Q = Q(groups__name="Student")
 markers_Q = models.Q(groups__name="Grader") | models.Q(is_staff=True) | models.Q(is_superuser=True)
 
+logger = logging.getLogger(__name__)
 
 DEGREE_LEVEL = [("B", "Bachelors"), ("MB", "Integrated Masters"), ("PGT", "Taught Masters"), ("O", "Other")]
 
@@ -63,6 +67,13 @@ class Cohort(models.Model):
         except ValueError:
             return self.name
 
+    def __int__(self):
+        """Convert the name to an integer year."""
+        try:
+            return int(self.name)
+        except (ValueError, TypeError):
+            return None
+
     @classproperty
     def current(cls):
         """Try to return the Cohort for the current academic year."""
@@ -81,6 +92,19 @@ class Cohort(models.Model):
         except (ObjectDoesNotExist, MultipleObjectsReturned):
             return None
 
+    @classmethod
+    def get(cls, search):
+        """Try to interpret search as a Cohort name and get the Cohort."""
+        match search:
+            case Cohort():
+                return cls.objects.get(name=search.name)
+            case str():
+                return cls.objects.get(name=search.replace("/", ""))
+            case int():
+                return cls.objects.get(name=str(search))
+            case _:
+                raise TypeError(f"Can't interpret {search} as a Cohort.")
+
 
 class Programme(models.Model):
     """Represents a programme of study that a student might be on."""
@@ -98,6 +122,40 @@ class Programme(models.Model):
     def __str__(self):
         """Represent Programme by name and code."""
         return f"{self.name} ({self.code})"
+
+
+class YearManager(models.Manager):
+    def get_by_natural_key(self, natural_key):
+        """Get object by a natural Key of <label>,<status>."""
+        if "," in natural_key:
+            name, status = (x.strip() for x in natural_key.split(","))
+        else:
+            name = natural_key
+            status = "UG"
+        logger.debug(f"{name=},{status=}")
+        return self.get(name=name, status=status)
+
+
+class Year(models.Model):
+    """Represent the year of study/level of a student."""
+
+    STATUS_VALS = {"UG": "Undergraduate", "PGT": "PostGraduate", "None": "Not a student"}
+    objects = YearManager()
+
+    name = models.CharField(max_length=20, null=False, blank=False)
+    status = models.CharField(max_length=4, default="None", choices=STATUS_VALS)
+    level = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["status", "level"]
+        constraints = [models.UniqueConstraint(fields=["name", "status"], name="year_unique_name_status")]
+
+    def __str__(self):
+        return f"{self.name}, {self.status}"
+
+    def natural_key(self):
+        """Return a natural key of name,status."""
+        return f"{self.name}, {self.status}"
 
 
 class ActiveStudents(UserManager):
@@ -133,17 +191,15 @@ class Account(AbstractUser):
         verbose_name="Current Level of Study",
         choices=LEVEL_OF_STUDY,
     )
+    year = models.ForeignKey(
+        Year, on_delete=models.SET_NULL, blank=True, null=True, related_name="students", verbose_name="Year of Study"
+    )
     givenName = models.CharField(max_length=128, blank=True, null=True, verbose_name="MS account given name")
     registration_status = models.CharField(max_length=10, blank=True, null=True, default="")
     section = models.ForeignKey("Section", on_delete=models.SET_NULL, blank=True, null=True, related_name="students")
     override_vitals = models.BooleanField(default=False, verbose_name="VITAL awards manually overridden")
     update_vitals = models.BooleanField(default=False, verbose_name="VITALs need an update")
     # Fields updated by celery tasks
-    tests_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
-    labs_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
-    coding_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
-    vitals_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
-    engagement = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
     activity_score = models.FloatField(editable=False, null=True, validators=[RangeValueValidator((0.0, 100.0))])
 
     def natural_key(self):
@@ -254,43 +310,6 @@ class Account(AbstractUser):
         """Monkeypatch a routine to convert engagement scaore into a hex colour."""
         return colour(self.activity_score)
 
-    @property
-    def engagement_label(self) -> str:
-        """Monkey patched property for attendance ranking to a string."""
-        translation = {
-            "Excellent ": (90.0, 100.0),
-            "Good": (60.0, 90.0),
-            "Could be better": (40.0, 60.0),
-            "Must Improve": (20.0, 40.0),
-            "Unsatisfactory": (0, 20.0),
-        }
-
-        score = self.engagement
-        if not isinstance(score, (float, int)):
-            return "No Data"
-        for name, (low, high) in translation.items():
-            if low <= score <= high:
-                return name
-        return "Unknown"
-
-    @property
-    def lab_engagement_label(self) -> str:
-        """Monkey patched property for attendance ranking to a string."""
-        translation = {
-            "No Issues": (60.0, 100.0),
-            "Could be better": (40.0, 60.0),
-            "Must Improve": (20.0, 40.0),
-            "Unsatisfactory": (0, 20.0),
-        }
-
-        score = self.lab_engagement
-        if not isinstance(score, (float, int)):
-            return "No Data"
-        for name, (low, high) in translation.items():
-            if low <= score <= high:
-                return name
-        return "Unknown"
-
 
 class Section(models.Model):
     """Represent a student's lab groups for managing Gradescope."""
@@ -307,6 +326,151 @@ class Section(models.Model):
     def __str__(self):
         """Ensure string reporesentation is the name."""
         return self.name
+
+
+class TermDate(models.Model):
+    """Record term dates for mapping dates to semester/week/day."""
+
+    cohort = models.ForeignKey(Cohort, on_delete=models.CASCADE, related_name="termdates")
+    start = models.DateField()
+    week = models.IntegerField()
+
+    class Meta:
+        ordering = ["start"]
+
+    def __str__(self):
+        """Make string representation"""
+        return f"{self.cohort} W{self.week} {self.start}"
+
+    @property
+    def next(self):
+        """Get a new TermDate for this date for the next year."""
+        return TermDate.next_year(self)
+
+    @property
+    def date(self):
+        """Return the date part."""
+        return getattr(self, "_date", self.start)
+
+    @date.setter
+    def date(self, value):
+        """Sores the date."""
+        self._date = value
+
+    @property
+    def time(self):
+        """Store the time part."""
+        return getattr(self, "_time", time.min)
+
+    @time.setter
+    def time(self, value):
+        """Store the time part."""
+        self._time = value
+
+    @property
+    def datetime(self):
+        """Get a datetime from the date and time arts."""
+        return datetime.combine(self.date, self.time)
+
+    @datetime.setter
+    def datetime(self, value):
+        """Store the datetime as date and time parts."""
+        match value:
+            case datetime():
+                self.date = value.date()
+                self.time = value.time()
+            case date():
+                self.date = value
+                self.time = time.min
+            case time():
+                self.date = self.start
+                self.time = value
+            case TermDate():
+                self.date = value.date
+                self.time = value.time
+            case _:
+                raise TypeError(f"Can't interpret {value} as a date time.")
+
+    @classmethod
+    def find(cls, target):
+        """Return the TermDate object that matches the target,"""
+        match target:
+            case date():
+                target = datetime.combine(target, time.min)
+            case str():
+                target = parse(target)
+            case datetime():
+                pass
+            case cls():
+                return target
+            case _:
+                raise TypeError(f"Cannot interpret {target} as a date.")
+
+        possible = cls.objects.filter(start__lte=target).order_by("start").last()
+        if not possible:
+            raise ValueError(f"No TermDates before {target}")
+        extent = target - datetime.combine(possible.start, time.min)
+        possible.week += extent.days // 7
+        possible.day = extent.days % 7
+        possible.date = target.date()
+        possible.time = target.time()
+        if possible.pk != cls.reverse(possible.cohort, possible.week, possible.day).pk:
+            raise ValueError(f"Date {target} appears to be outside of a term dates.")
+        return possible
+
+    @classmethod
+    def reverse(cls, cohort, week, day):
+        """Return a TermDate object for a given cohort, week and date."""
+        cohort = Cohort.get(cohort)
+        ret = cls.objects.filter(cohort=cohort, week__lte=week).order_by("start").last()
+        delta_days = (week - ret.week) * 7 + day
+        ret.week = week
+        ret.day = day
+        ret.date = (datetime.combine(ret.start, time.min) + timedelta(days=delta_days)).date()
+        ret.time = time.min
+        return ret
+
+    @classmethod
+    def next_year(cls, target, cohort=None):
+        """Lookup a target date and remap to the next academic year."""
+        target = cls.find(target)
+        if cohort is None:
+            cohort = int(target.cohort) + 101
+        ret = cls.reverse(cohort, target.week, target.day)
+        ret.time = target.time
+        return ret
+
+    @classmethod
+    def start_s1(cls, cohort=None):
+        """Return the start date/time of the start of semester 1"""
+        if cohort is None:
+            cohort = Cohort.current
+        ret = cls.reverse(cohort, 1, 0)
+        return ret.datetime
+
+    @classmethod
+    def end_s1(cls, cohort=None):
+        """Return the start date/time of the start of semester 1"""
+        if cohort is None:
+            cohort = Cohort.current
+        ret = cls.reverse(cohort, 11, 5)
+        return ret.datetime
+
+    @classmethod
+    def start_s2(cls, cohort=None):
+        """Return the start date/time of the start of semester 1"""
+        if cohort is None:
+            cohort = Cohort.current
+        ret = cls.reverse(cohort, 14, 0)
+        return ret.datetime
+
+    @classmethod
+    def end_s2(cls, cohort=None):
+        """Return the start date/time of the start of semester 1"""
+        if cohort is None:
+            cohort = Cohort.current
+        ret = cls.reverse(cohort, 24, 5)
+        return ret.datetime
 
 
 class AccountGroup(Group):

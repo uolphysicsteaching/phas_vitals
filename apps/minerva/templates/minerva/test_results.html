@@ -43,12 +43,12 @@
             });
             $(".student").click(function () {
                 var id=$(this).children(":first").attr("id");
-                window.location.href = "/accounts/detail/"+id+"/#tests";
+                window.location.href = "/accounts/detail/"+id+"/{{ category.hashtag }}";
             });
             htmx.on("htmx:afterSwap", function() {
                 $(".student").click(function () {
                     var id=$(this).children(":first").attr("id");
-                    window.location.href = "/accounts/detail/"+id+"/#tests";
+                    window.location.href = "/accounts/detail/"+id+"/{{ category.hashtag }}";
                 });
             })
 

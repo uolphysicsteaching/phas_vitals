@@ -72,7 +72,7 @@ class TutorialAssignmentAdmin(ImportExportModelAdmin):
     search_fields = [
         "student__first_name",
         "student__last_name",
-        "studnet_givenName",
+        "student__givenName",
         "student__username",
         "student__number",
         "tutorial__code",

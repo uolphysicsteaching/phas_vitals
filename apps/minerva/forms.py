@@ -6,6 +6,8 @@ from django.db.models import Count, Q
 from django.forms.widgets import Select
 
 # external imports
+from accounts import lookups  # NoQA force early import of lookups
+from accounts.models import Section
 from dal import autocomplete
 from htmx_views.widgets import HTMXSelectWidget
 from util.forms import get_mime
@@ -91,6 +93,7 @@ class TestHistoryImportForm(forms.Form):
 
 HAS_VITALS = Q(vitals_count__gt=0)
 HAS_SUBMODS = Q(sub_mods_count__gt=0)
+HAS_TESTS = Q(tests_count__gt=0)
 
 
 class ModuleSelectForm(forms.Form):
@@ -98,9 +101,11 @@ class ModuleSelectForm(forms.Form):
 
     module = forms.ModelChoiceField(
         required=False,
-        queryset=Module.objects.annotate(vitals_count=Count("VITALS"), sub_mods_count=Count("sub_modules")).filter(
-            HAS_VITALS | HAS_SUBMODS
-        ),
+        queryset=Module.objects.annotate(
+            vitals_count=Count("VITALS"), sub_mods_count=Count("sub_modules"), tests_count=Count("tests")
+        )
+        .filter(HAS_VITALS | HAS_SUBMODS | HAS_TESTS)
+        .order_by("code"),
         widget=Select(attrs={"onChange": "this.form.submit();"}),
     )
 
@@ -110,9 +115,9 @@ class VITALsModuleSelectForm(forms.Form):
 
     module = forms.ModelChoiceField(
         required=False,
-        queryset=Module.objects.annotate(vitals_count=Count("VITALS"), sub_mods_count=Count("sub_modules")).filter(
-            HAS_VITALS
-        ),
+        queryset=Module.objects.annotate(vitals_count=Count("VITALS"), sub_mods_count=Count("sub_modules"))
+        .filter(HAS_VITALS)
+        .order_by("code"),
         widget=Select(attrs={"onChange": "this.form.submit();"}),
     )
 
@@ -122,9 +127,7 @@ class AssessmentModuleSelectForm(forms.Form):
 
     module = forms.ModelChoiceField(
         required=False,
-        queryset=Module.objects.annotate(vitals_count=Count("VITALS"), sub_mods_count=Count("sub_modules")).filter(
-            HAS_SUBMODS
-        ),
+        queryset=Module.objects.annotate(tests_count=Count("tests")).filter(HAS_TESTS).order_by("code"),
         widget=Select(attrs={"onChange": "this.form.submit();"}),
     )
 
@@ -134,7 +137,7 @@ class ModuleSelectPlusForm(forms.Form):
 
     module = forms.ModelChoiceField(
         required=False,
-        queryset=Module.objects.annotate(tests_count=Count("tests")).filter(tests_count__gt=0),
+        queryset=Module.objects.annotate(tests_count=Count("tests")).filter(HAS_TESTS).order_by("code"),
     )
 
     mode = forms.ChoiceField(
@@ -159,6 +162,7 @@ class ModuleSelectPlusForm(forms.Form):
             try:
                 module_id = int(module)
                 queryset = self.fields["type"].queryset.filter(module_id=module_id, in_dashboard=True)
+                queryset = queryset.annotate(count=Count("tests")).filter(count__gt=0)
                 self.fields["type"].queryset = queryset
             except (ValueError, TestCategory.DoesNotExist):
                 pass
@@ -169,8 +173,7 @@ class ModuleSelectPlotForm(forms.Form):
 
     module = forms.ModelChoiceField(
         required=False,
-        queryset=Module.objects.annotate(tests_count=Count("tests")).filter(tests_count__gt=0),
-        widget=Select(attrs={"onChange": "this.form.submit();"}),
+        queryset=Module.objects.annotate(tests_count=Count("tests")).filter(HAS_TESTS).order_by("code"),
     )
 
     type = forms.ModelChoiceField(
@@ -179,6 +182,21 @@ class ModuleSelectPlotForm(forms.Form):
             lookup_channel="testcategory", parent="module", attrs={"onChange": "this.form.submit();"}
         ),
     )
+
+    def __init__(self, *args, **kwargs):
+        """Prefilter the type of test we're after."""
+        super().__init__(*args, **kwargs)
+
+        # Get initial module value from bound data or initial
+        module = self.data.get("module") or self.initial.get("module")
+        if module:
+            try:
+                module_id = int(module)
+                queryset = self.fields["type"].queryset.filter(module_id=module_id, in_dashboard=True)
+                queryset = queryset.annotate(count=Count("tests")).filter(count__gt=0)
+                self.fields["type"].queryset = queryset
+            except (ValueError, TestCategory.DoesNotExist):
+                pass
 
 
 class Test_ScoreForm(forms.ModelForm):

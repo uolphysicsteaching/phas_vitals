@@ -82,6 +82,13 @@
                     {% sitetree_menu from "menu" include "trunk" template "sitetree/menu_bootstrap5.html" %}
                 </div>
             </div>
+            <form id="logout-form"
+                  hx-post="{% url 'core_logout' %}"
+                  hx-trigger="click from:#navitem-logout-of-admin"
+                  hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                  hx-location="/"
+                  style="display:none;">
+            </form>
             <main class="container-lg">
                 {% if config.SHOWCASE_MODE %}
                     <div class="alert alert-danger"><p>The site is currently being showcased. All student identification has been changed.

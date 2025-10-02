@@ -6,6 +6,7 @@ import re
 
 # external imports
 from accounts.models import Account, Cohort
+from accounts.resource import UsernameFKWidget
 from import_export import fields, resources, widgets
 from six import string_types
 
@@ -62,112 +63,11 @@ class SessionFKWidget(widgets.ForeignKeyWidget):
         value = self.process(value)
         return super().clean(value, row, *args, **kwargs)
 
-    def render(self, value, obj=None):
+    def render(self, value, obj=None, **kwargs):
         """Save the session as a sensible value."""
         if value is None:
             return ""
         return f"{value.cohort.name}-S{value.semester}-{value.name}"
-
-
-class UsernameFKWidget(widgets.ForeignKeyWidget):
-    """Foreign Key widget that allows a callback inside clean() method."""
-
-    name_pat = re.compile(r"\((.*)\)")
-
-    def __init__(self, *args, **kargs):
-        """Add a hook for a function to process each element on import."""
-        self.process = kargs.pop("process", self.name2username)
-        super().__init__(*args, **kargs)
-
-    def clean(self, value, row=None, *args, **kwargs):
-        """Clean the value by trying to match each possible scheme."""
-        value = self.process(value)
-        return super().clean(value, row, *args, **kwargs)
-
-    def name2username(self, name):
-        """Try various ways to get a valid username.
-
-        1) Look for some () and assume that contains a username
-        2) Look for a comma and assume that that divides first name from last name
-        3) Look for words and if more than 1 word, assume that it is first anem last name
-        4) If only 1 word, assume it is a user id.
-        """
-        name = str(name)
-        match = self.name_pat.search(name)
-        if match:
-            return match.group(1).lower()
-        try:
-            name = int(name)
-            if name < 200000000:
-                raise ValueError("numeric id < 2 billion not a student number")
-            student = Account.objects.get(number=name)
-            return student.username
-        except ValueError:
-            pass
-        if "," in name:
-            parts = name.split(",")
-            firstname = parts[1].strip()
-            surname = parts[0].strip()
-        else:
-            parts = [x for x in name.split(" ") if x != ""]
-            if len(parts) < 2:
-                return str.lower(name)
-            if parts[0] in ["Mr", "Mrs", "Dr", "Prof", "Miss", "Ms"]:
-                parts = parts[1:]
-            firstname = parts[0]
-            surname = parts[-1]
-        possible = Account.objects.filter(first_name=firstname, last_name__contains=surname)
-        if possible.count() == 1:
-            return possible.all()[0].username
-        else:
-            return name
-
-    def render(self, value, obj=None):
-        """Save the user as display name."""
-        if value is None:
-            return ""
-        return getattr(value, "display_name", "Oops!")
-
-
-def name2username(name):
-    """Try various ways to get a valid username.
-
-    1) Look for some () and assume that contains a username
-    2) Look for a comma and assume that that divides first name from last name
-    3) Look for words and if more than 1 word, assume that it is first anem last name
-    4) If only 1 word, assume it is a user id.
-    """
-    name_pat = re.compile(r"\((.*)\)")
-    name = str(name)
-    match = name_pat.search(name)
-    if match:
-        return match.group(1).lower()
-    try:
-        name = int(name)
-        if name < 200000000:
-            raise ValueError("numeric id < 2 billion not a student number")
-        student = Account.objects.get(number=name)
-        return student.username
-    except ValueError:
-        pass
-
-    if "," in name:
-        parts = name.split(",")
-        firstname = parts[1].strip()
-        surname = parts[0].strip()
-    else:
-        parts = [x for x in name.split(" ") if x != ""]
-        if len(parts) < 2:
-            return str.lower(name)
-        if parts[0] in ["Mr", "Mrs", "Dr", "Prof", "Miss", "Ms"]:
-            parts = parts[1:]
-        firstname = parts[0]
-        surname = parts[-1]
-    possible = Account.objects.filter(first_name=firstname, last_name__contains=surname)
-    if possible.count() == 1:
-        return possible.all()[0].username
-    else:
-        return name
 
 
 class TutorialsResource(resources.ModelResource):

@@ -2,9 +2,11 @@
 
 # Python imports
 from collections import namedtuple
+from functools import partial
 from pathlib import Path
 
 # Django imports
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.views import PasswordChangeView
@@ -52,12 +54,16 @@ ImageData = namedtuple("ImageData", ["data", "alt"], defaults=["", ""])
 
 def pie_chart(data, colours):
     """Make a Pie chart for the student dashboard."""
-    fig, ax = plt.subplots()
-    fig.set_figwidth(4.5)
-    _, texts = ax.pie(list(data.values()), labels=list(data.keys()), colors=colours, labeldistance=0.3)
-    for text in texts:
-        text.set_bbox({"facecolor": (1, 1, 1, 0.75), "edgecolor": (1, 1, 1, 0.25)})
-    plt.tight_layout()
+    if any([x > 0 for x in data.values()]):
+        fig, ax = plt.subplots()
+        fig.set_figwidth(4.5)
+        _, texts = ax.pie(list(data.values()), labels=list(data.keys()), colors=colours, labeldistance=0.3)
+        for text in texts:
+            text.set_bbox({"facecolor": (1, 1, 1, 0.75), "edgecolor": (1, 1, 1, 0.25)})
+        plt.tight_layout()
+    else:
+        fig = plt.figure()
+        fig.set_figwidth(4.5)
     data = svg_data(fig, base64=True)
     plt.close()
     return data
@@ -96,162 +102,32 @@ class TutorGroupEmailsView(IsSuperuserViewMixin, FormView):
         return super().form_valid(form)
 
 
-class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
-    """View class to provide students with summary."""
+class StudentSummaryPageView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
+    """View class to provide one page of the student summary."""
 
-    template_name = "accounts/summary.html"
-    template_name_dashboard = "accounts/parts/summary_plots.html"
-    template_name_tests = "accounts/parts/summary_tests.html"
-    template_name_labs = "accounts/parts/summary_labs.html"
-    template_name_code = "accounts/parts/summary_code.html"
-    template_name_vitals = "accounts/parts/summary_vitals.html"
-    template_name_required = "accounts/parts/summary_required.html"
+    def get_template_names(self):
+        """Swich templates based on the page we're looking at."""
+        match self.kwargs.get("category", "dashboard"):
+            case "dashboard":
+                return "accounts/parts/summary_plots.html"
+            case "vitals":
+                return "accounts/parts/summary_vitals.html"
+            case "required_work":
+                return "accounts/parts/summary_required.html"
+            case _:
+                return "accounts/parts/summary_category.html"
 
-    def get_context_data_tests(self, **kwargs):
-        """Get the context data for the tests page only."""
-        context = super().get_context_data(**kwargs)
-        if "username" in self.kwargs:
-            self.user = (
-                Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
-            )
-        else:
-            self.user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
-        modules = self.user.modules.all()
-        Tests = self.user.tests.model.homework.filter(module__in=modules).order_by("release_date", "name")
-        test_scores = {}
-        for test in Tests:
-            try:
-                test_scores[test] = self.user.test_results.get(test=test)
-            except ObjectDoesNotExist:
-                new_tr = self.user.test_results.model(user=self.user, test=test, passed=False, score=None)
-                new_tr.test_status = new_tr.manual_test_satus
-                new_tr.standing = "Missing"
-                test_scores[test] = new_tr
-        required = {}
-        context |= {
-            "user": self.user,
-            "modules": modules,
-            "Tests": Tests,
-            "scores": test_scores,
-            "tab": self.kwargs.get("selected_tab", "#tests"),
-        }
-        return context
+    def get_context_data_function(self, **kwargs):
+        """Return a handler for get_context_data.
 
-    def get_context_data_labs(self, **kwargs):
-        """Get the context data for the tests page only."""
-        context = super().get_context_data(**kwargs)
-        if "username" in self.kwargs:
-            self.user = (
-                Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
-            )
-        else:
-            self.user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
-        modules = self.user.modules.all()
-        Labs = self.user.tests.model.labs.filter(module__in=modules).order_by("release_date", "name")
-        lab_scores = {}
-        for lab in Labs:
-            try:
-                lab_scores[lab] = self.user.test_results.get(test=lab)
-            except ObjectDoesNotExist:
-                new_tr = self.user.test_results.model(user=self.user, test=lab, passed=False, score=None)
-                new_tr.test_status = new_tr.manual_test_satus
-                new_tr.standing = "Missing"
-                lab_scores[lab] = new_tr
-        context |= {
-            "user": self.user,
-            "modules": modules,
-            "Labs": Labs,
-            "lab_scores": lab_scores,
-            "tab": self.kwargs.get("selected_tab", "#labs"),
-        }
-        return context
+        If the parent method doesn't work, then divert to our general category handler.
+        """
+        handler = super().get_context_data_function(**kwargs)
+        if not handler:
+            handler = getattr(self, "get_context_data_category")
+        return handler
 
-    def get_context_data_code(self, **kwargs):
-        """Get the context data for the tests page only."""
-        context = super().get_context_data(**kwargs)
-        if "username" in self.kwargs:
-            self.user = (
-                Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
-            )
-        else:
-            self.user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
-        modules = self.user.modules.all()
-        Code_tasks = self.user.tests.model.code_tasks.filter(module__in=modules).order_by("release_date", "name")
-        code_scores = {}
-        for code in Code_tasks:
-            try:
-                code_scores[code] = self.user.test_results.get(test=code)
-            except ObjectDoesNotExist:
-                new_tr = self.user.test_results.model(user=self.user, test=code, passed=False, score=None)
-                new_tr.test_status = new_tr.manual_test_satus
-                new_tr.standing = "Missing"
-                code_scores[code] = new_tr
-        context |= {
-            "user": self.user,
-            "modules": modules,
-            "Code_tasks": Code_tasks,
-            "code_scores": code_scores,
-            "tab": self.kwargs.get("selected_tab", "#code"),
-        }
-        return context
-
-    def get_context_data_vitals(self, **kwargs):
-        """Get the context data for the tests page only."""
-        context = super().get_context_data(**kwargs)
-        if "username" in self.kwargs:
-            self.user = (
-                Account.objects.filter(username=self.kwargs["username"]).prefetch_related("vital_results").first()
-            )
-        else:
-            self.user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("vital_results").first()
-        modules = self.user.modules.all()
-        VITALS = self.user.VITALS.model.objects.filter(module__in=modules).order_by("module", "start_date", "VITAL_ID")
-        vitals_results = {}
-        for vital in VITALS:
-            try:
-                vitals_results[vital.module] = vitals_results.get(vital.module, []) + [
-                    self.user.vital_results.get(vital=vital)
-                ]
-            except ObjectDoesNotExist:
-                new_vr = self.user.vital_results.model(user=self.user, vital=vital, passed=False)
-                vitals_results[vital.module] = vitals_results.get(vital.module, []) + [new_vr]
-        context |= {
-            "user": self.user,
-            "modules": modules,
-            "VITALS": VITALS,
-            "vitals_results": vitals_results,
-            "tab": self.kwargs.get("selected_tab", "#vitals"),
-        }
-        return context
-
-    def get_context_data_required(self, **kwargs):
-        """Get the context data for the tests page only."""
-        context = super().get_context_data(**kwargs)
-        if "username" in self.kwargs:
-            self.user = (
-                Account.objects.filter(username=self.kwargs["username"]).prefetch_related("test_results").first()
-            )
-        else:
-            self.user = Account.objects.filter(number=self.kwargs["number"]).prefetch_related("test_results").first()
-        modules = self.user.modules.all()
-        required = {}
-        for test in self.user.required_tests.all():
-            try:
-                required[test] = self.user.test_results.get(test=test)
-            except ObjectDoesNotExist:
-                new_tr = self.user.test_results.model(user=self.user, test=test, passed=False, score=None)
-                new_tr.test_status = new_tr.manual_test_satus
-                new_tr.standing = "Missing"
-                required[test] = new_tr
-        context |= {
-            "user": self.user,
-            "modules": modules,
-            "required": required,
-            "tab": self.kwargs.get("selected_tab", "#required"),
-        }
-        return context
-
-    def get_context_data_dashboard(self, **kwargs):
+    def get_context_data(self, **kwargs):
         """Get data for the student view."""
         if "username" in self.kwargs:
             self.user = (
@@ -265,48 +141,30 @@ class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
                 .prefetch_related("test_results", "vital_results")
                 .first()
             )
-        modules = self.user.modules.all()
-        VITALS = self.user.VITALS.model.objects.filter(module__in=modules).order_by("module", "start_date", "VITAL_ID")
-        Tests = self.user.tests.model.homework.filter(module__in=modules).order_by("release_date", "name")
-        Labs = self.user.tests.model.labs.filter(module__in=modules).order_by("release_date", "name")
-        Code_tasks = self.user.tests.model.code_tasks.filter(module__in=modules).order_by("release_date", "name")
+        self.modules = self.user.modules.all()
+        # TODO - make this work for multiple modules and update template
+        categories = []
 
-        test_scores = {}
-        for test in Tests:
-            try:
-                test_scores[test] = self.user.test_results.get(test=test)
-            except ObjectDoesNotExist:
-                new_tr = self.user.test_results.model(user=self.user, test=test, passed=False, score=None)
-                new_tr.test_status = new_tr.manual_test_satus
-                new_tr.standing = "Missing"
-                test_scores[test] = new_tr
-        lab_scores = {}
-        required = {}
-        for test in self.user.required_tests.all():
-            try:
-                required[test] = self.user.test_results.get(test=test)
-            except ObjectDoesNotExist:
-                new_tr = self.user.test_results.model(user=self.user, test=test, passed=False, score=None)
-                new_tr.test_status = new_tr.manual_test_satus
-                new_tr.standing = "Missing"
-                required[test] = new_tr
-        for lab in Labs:
-            try:
-                lab_scores[lab] = self.user.test_results.get(test=lab)
-            except ObjectDoesNotExist:
-                new_tr = self.user.test_results.model(user=self.user, test=lab, passed=False, score=None)
-                new_tr.test_status = new_tr.manual_test_satus
-                new_tr.standing = "Missing"
-                lab_scores[lab] = new_tr
-        code_scores = {}
-        for code in Code_tasks:
-            try:
-                code_scores[code] = self.user.test_results.get(test=code)
-            except ObjectDoesNotExist:
-                new_tr = self.user.test_results.model(user=self.user, test=code, passed=False, score=None)
-                new_tr.test_status = new_tr.manual_test_satus
-                new_tr.standing = "Missing"
-                code_scores[code] = new_tr
+        TestCategory = apps.get_model("minerva", "TestCategory")
+        categories = {x.tag: x for x in TestCategory.objects.filter(module__in=self.modules, in_dashboard=True)}
+        category = self.kwargs.get("category", "dashboard")
+        self.category = categories.get(category)
+
+        context = super().get_context_data(**kwargs)
+        context |= {
+            "user": self.user,
+            "modules": self.modules,
+            "categories": categories.values(),
+            "category": self.category,
+        }
+        return context
+
+    def get_context_data_vitals(self, **kwargs):
+        """Get the context data for the tests page only."""
+        context = super().get_context_data(**kwargs)
+        VITALS = self.user.VITALS.model.objects.filter(module__in=self.modules).order_by(
+            "module", "start_date", "VITAL_ID"
+        )
         vitals_results = {}
         for vital in VITALS:
             try:
@@ -316,27 +174,115 @@ class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
             except ObjectDoesNotExist:
                 new_vr = self.user.vital_results.model(user=self.user, vital=vital, passed=False)
                 vitals_results[vital.module] = vitals_results.get(vital.module, []) + [new_vr]
-        context = super().get_context_data(**kwargs)
         context |= {
-            "user": self.user,
-            "modules": modules,
             "VITALS": VITALS,
-            "Tests": Tests,
-            "Labs": Labs,
-            "Code_tasks": Code_tasks,
-            "required": required,
-            "scores": test_scores,
-            "lab_scores": lab_scores,
-            "code_scores": code_scores,
             "vitals_results": vitals_results,
-            "tab": self.kwargs.get("selected_tab", "#tests"),
-            "tutorial_plot": self.tutorial_plot(self.user),
-            "homework_plot": self.test_plot("Homework"),
-            "lab_plot": self.test_plot("Lab Experiment"),
-            "code_plot": self.test_plot("Code Tasks"),
-            "vitals_plot": self.vitals_plot(vitals_results),
+            "tab": self.kwargs.get("selected_tab", "#vitals"),
         }
         return context
+
+    def get_context_data_required_work(self, **kwargs):
+        """Get the context data for the tests page only."""
+        context = super().get_context_data(**kwargs)
+        required = {}
+        for test in self.user.required_tests.all():
+            try:
+                required[test] = self.user.test_results.get(test=test)
+            except ObjectDoesNotExist:
+                new_tr = self.user.test_results.model(user=self.user, test=test, passed=False, score=None)
+                new_tr.test_status = new_tr.manual_test_satus
+                new_tr.standing = "Missing"
+                required[test] = new_tr
+        context |= {
+            "required": required,
+            "tab": self.kwargs.get("selected_tab", "#required"),
+        }
+        return context
+
+    def get_context_data_dashboard(self, **kwargs):
+        """Get data for the student view."""
+        context = super().get_context_data(**kwargs)
+        # get my categories for pie charts.
+        TestCategory = apps.get_model("minerva", "testcategory")
+        cat_ids = set(
+            [x[0] for x in self.user.summary_scores.filter(category__dashboard_plot=True).values_list("category")]
+        )
+        categories = {
+            x.text: x for x in TestCategory.objects.filter(pk__in=cat_ids, dashboard_plot=True).order_by("order")
+        }
+        context["plot_categories"] = list(categories.values())
+        context["plots"] = {}
+        context["scores"] = {}
+        for category in categories.values():
+            plotter = getattr(self, f"{category.tag}_plot", partial(self.test_plot, category.text))
+            context["plots"][category.tag] = plotter()
+            context["scores"][category.tag] = self.user.category_score(category.text)
+
+        context |= {
+            "user": self.user,
+            "tab": self.kwargs.get("selected_tab", "#tests"),
+        }
+        return context
+
+    def get_context_data_category(self, **kwargs):
+        """Get the context data for the tests page only."""
+        context = super().get_context_data(**kwargs)
+        Tests = self.user.tests.model.objects.filter(
+            module__in=self.modules, category__text=self.category.text
+        ).order_by("release_date", "name")
+        test_scores = {}
+        for test in Tests:
+            try:
+                test_scores[test] = self.user.test_results.get(test=test)
+            except ObjectDoesNotExist:
+                new_tr = self.user.test_results.model(user=self.user, test=test, passed=False, score=None)
+                new_tr.test_status = new_tr.manual_test_satus
+                new_tr.standing = "Missing"
+                test_scores[test] = new_tr
+        context |= {
+            "tests": Tests,
+            "scores": test_scores,
+            "tab": self.kwargs.get("selected_tab", f"{self.category.hashtag}"),
+        }
+        return context
+
+    def tutorial_plot(self):
+        """Make piechart for a student's engagement scores."""
+        data = {}
+        colours = []
+        scores = self.user.engagement_scores()
+        for (score, label, _), col in zip(
+            settings.TUTORIAL_MARKS, ["silver", "tomato", "springgreen", "mediumseagreen", "forestgreen"]
+        ):
+            if count := scores[np.isclose(scores, score)].size:
+                data[label] = count
+                colours.append(col)
+        alt = "Tutproal attendance" + " ".join([f"{label}:{count}" for label, count in data.items()])
+        return ImageData(pie_chart(data, colours), alt)
+
+    def test_plot(self, category_name):
+        """Make a pie chart plot from the summary_scores."""
+        data = {}
+        colours = {}
+        # Get all summary scores with the same category label and merge them 0 allows for multiple modules
+        # with the same category labels.
+        for ss in self.user.summary_scores.filter(category__text=category_name):
+            for k, value in ss.data.get("data", {}).items():
+                data[k] = data.get(k, 0) + value
+                colours[k] = ss.data.get("colours", {}).get(k, "white")
+        colours = [colours.get(x, "white") for x in data]
+        alt = f"{category_name.title()} results" + " ".join([f"{label}:{count}" for label, count in data.items()])
+        try:
+            image = pie_chart(data, colours)
+        except ValueError:
+            image = bytes([])
+        return ImageData(image, alt)
+
+
+class StudentSummaryView(IsStudentViewixin, TemplateView):
+    """View class to provide students with summary."""
+
+    template_name = "accounts/summary.html"
 
     def get_context_data(self, **kwargs):
         """Get data for the student view."""
@@ -353,53 +299,24 @@ class StudentSummaryView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
                 .first()
             )
         modules = self.user.modules.all()
+        # TODO - make this work for multiple modules and update template
+        TestCategory = apps.get_model("minerva", "testcategory")
+        categories = {}
+        for category in TestCategory.objects.filter(module__in=modules, in_dashboard=True).order_by("order"):
+            category.path = f"/accounts/detail/{self.user.number}/{category.tag}/"
+            categories[category.text] = (
+                category  # NB template needs to only use category attributes that are not module dependent.
+            )
+
         context = super().get_context_data(**kwargs)
         context |= {
             "user": self.user,
             "modules": modules,
+            "categories": categories,
+            "dashboard_path": f"/accounts/detail/{self.user.number}/dashboard/",
+            "tab": "dashboard",
         }
         return context
-
-    def tutorial_plot(self, student):
-        """Make piechart for a student's engagement scores."""
-        data = {}
-        colours = []
-        scores = student.engagement_scores()
-        for (score, label, _), col in zip(
-            settings.TUTORIAL_MARKS, ["silver", "tomato", "springgreen", "mediumseagreen", "forestgreen"]
-        ):
-            if count := scores[np.isclose(scores, score)].size:
-                data[label] = count
-                colours.append(col)
-        alt = "Tutproal attendance" + " ".join([f"{label}:{count}" for label, count in data.items()])
-        return ImageData(pie_chart(data, colours), alt)
-
-    def test_plot(self, category_name):
-        """Make a pie chart plot from the summary_scores."""
-        try:
-            ss = self.user.summary_scores.get(category__text=category_name)
-            data = ss.data.get("data", {})
-            colours = ss.data.get("colours", [])
-            alt = f"{category_name.title()} results" + " ".join([f"{label}:{count}" for label, count in data.items()])
-            return ImageData(pie_chart(data, colours), alt)
-        except ObjectDoesNotExist:
-            pass
-
-    def vitals_plot(self, vitals_results):
-        """Make a pier chart for passing vitals."""
-        data = {}
-        colours = []
-        status = []
-        for results in vitals_results.values():
-            for result in results:
-                status.append(result.status)
-        status = np.array(status)
-        for stat, (label, colour) in settings.VITALS_RESULTS_MAPPING.items():
-            if count := status[status == stat].size:
-                data[label] = count
-                colours.append(colour)
-        alt = "VITALs results" + " ".join([f"{label}:{count}" for label, count in data.items()])
-        return ImageData(pie_chart(data, colours), alt)
 
 
 class StudentAutocomplete(autocomplete.Select2QuerySetView):
@@ -456,8 +373,16 @@ class CohortFilterActivityScoresView(IsSuperuserViewMixin, FormListView):
             return self.model.objects.none()
 
         data = self.form.cleaned_data
-        query_arg = {f"{data['what']}__{data['how']}": data["value"]}
-        return self.model.students.filter(modules=data["module"], **query_arg).distinct().order_by(data["what"])
+        if data["what"] == "activity_score":
+            query_arg = {f"activity_score__{data['how']}": data["value"]}
+            return self.model.students.filter(modules=data["module"], **query_arg).distinct().order_by(data["what"])
+        TestCategory = apps.get_model("minerva", "testcategory")
+        SummaryScore = apps.get_model("minerva", "summaryscore")
+        if cat := TestCategory.objects.filter(module=data["module"], text=data["what"]).first():
+            query_args = {"category": cat, f"score__{data['how']}": data["value"]}
+            student_ids = set([x[0] for x in SummaryScore.objects.filter(**query_args).values_list("student")])
+            return self.model.objects.filter(pk__in=student_ids)
+        return self.model.objects.none()
 
 
 class CohortFilterActivityScoresExportView(CohortFilterActivityScoresView):

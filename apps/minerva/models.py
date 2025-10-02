@@ -5,11 +5,12 @@ import logging
 import re
 from datetime import datetime, timedelta
 from os import path
+from pathlib import Path
 
 # Django imports
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import DEFAULT_DB_ALIAS, models
+from django.db import DEFAULT_DB_ALIAS, models, transaction
 from django.db.models import F, Q
 from django.forms import ValidationError
 from django.utils import timezone as tz
@@ -28,12 +29,6 @@ from phas_vitals import celery_app
 
 # app imports
 from . import json
-
-update_vitals = celery_app.signature("minerva.tasks.update_vitals")
-update_tests_score = celery_app.signature("accounts.tasks.update_tests_score")
-update_labs_score = celery_app.signature("accounts.tasks.update_labs_score")
-update_code_score = celery_app.signature("accounts.tasks.update_coding_score")
-
 
 logger = logging.getLogger(__name__)
 task_logger = logging.getLogger("celery_tasks")
@@ -63,16 +58,30 @@ def module_validator(value):
         raise ValidationError(f"Module code must be {config.SUBJECT_PREFIX} module code")
 
 
-def match_name(name):
-    """Match the name to column naming patterns."""
-    lab_pattern = re.compile(config.LAB_PATTERN)
-    homework_pattern = re.compile(config.HOMEWORK_PATTERN)
-    code_pattern = re.compile(config.CODE_PATTERN)
-    for pattern in (homework_pattern, code_pattern, lab_pattern):
-        if match := pattern.match(name):
-            name = match.groupdict()["name"]
-            break
-    return name
+def locate_named_group(pattern_str, group_name, sub=None):
+    """Locate a named group within a pattern and return the start and end indices of the pattern."""
+    search_pattern = rf"\(\?P<{group_name}>"
+    match = re.search(search_pattern, pattern_str)
+    if not match:
+        raise ValueError(f"Named group '{group_name}' not found")
+
+    start = match.start()
+    i = match.end()
+    depth = 1
+
+    # Balance parentheses to find the end of the group
+    while i < len(pattern_str):
+        if pattern_str[i] == "(":
+            depth += 1
+        elif pattern_str[i] == ")":
+            depth -= 1
+            if depth == 0:
+                break
+        i += 1
+
+    if sub is None:
+        return start, i + 1  # Return start and end index of the group
+    return pattern_str[: start + 1] + sub + pattern_str[i:]
 
 
 def vital_qs_to_html(queryset, user):
@@ -187,6 +196,14 @@ class Module(models.Model):
         client = json.get_blob_client(self.course_json)
         return client.get_blob_properties()["last_modified"]
 
+    @property
+    def column_data(self):
+        """Extract the column data from the json file and present as a dictionary."""
+        if not self.data_ready:
+            raise RuntimeError(f"{self}'s json data is not available.")
+        data = {x["id"]: x for x in json.get_blob_by_name(self.columns_json)}
+        return data
+
     def generate_spreadsheet(self):
         """Generate a spreadsheet object instance for this module."""
         spreadsheet = Spreadsheet(path.join(TEMPLATE_ROOT, "Module_Template.xlsx"), blank=True)
@@ -260,37 +277,90 @@ class Module(models.Model):
     def update_enrollments(self):
         """Get the mapping between SIDs and Blackboard IDs and update the enrollment table."""
         data = dict(sorted(self.get_member_id_map().items()))
-        qs = self.student_enrollments.filter(student__number__in=data.keys()).order_by("student__number")
-        # First check whether we need to add some new enrollments
-        add = list(set(data.keys()) - set([x[0] for x in qs.values_list("student__number")]))
-        if add:
-            students = Account.objects.filter(number__in=add, is_staff=False)  # GFet the student Accounbts to add
-            for student in students:
-                self.student_enrollments.model.objects.get_or_create(student=student, module=self)
-            qs = self.student_enrollments.filter(student__number__in=data.keys()).order_by("student__number")
-        if qs.count() < len(data):  # See if there are still accounts in Minerva that we haven't enrolled here
-            # These could be staff users for example.
-            enrolled = [x[0] for x in qs.values_list("student__number")]
-            for number in list(data.keys()):
-                if number not in enrolled:
-                    del data[number]
-        # Do the actual update.
-        updates = []
-        for enrollment in qs.all():
+        # Update retained user's user_ids - keep only students who are in the same level as the module.
+        keep = (
+            self.student_enrollments.filter(student__number__in=data.keys(), student__year__level=F("module__level"))
+            .order_by("student__number")
+            .select_related("student")
+        )
+        for enrollment in keep:
             enrollment.user_id = data[enrollment.student.number]
-            updates.append(enrollment)
-        qs.bulk_update(updates, ["user_id"])
+        with transaction.atomic():
+            keep.bulk_update(keep, ["user_id"])
 
-    def update_from_json(self):
+        # Calculate accounts to add and to drop - the inverse of accounts to keep
+        drop = (
+            self.student_enrollments.exclude(student__number__in=data.keys(), student__year__level=F("module__level"))
+            .order_by("student__number")
+            .exclude(student__is_staff=True)
+            .exclude(student__is_superuser=True)
+        )
+        add = (
+            Account.objects.filter(number__in=data.keys())
+            .exclude(modules=self)
+            .exclude(is_staff=True)
+            .exclude(is_superuser=True)
+            .filter(year__level=F("module__level"))
+        )
+        if drop:  # Drop registrations in this and sub-modules
+            for module in self.sub_modules.all():
+                sub_drop = (
+                    module.student_enrollments.exclude(
+                        student__number__in=data.keys(), student__year__level=F("module__level")
+                    )
+                    .order_by("student__number")
+                    .exclude(student__is_staff=True)
+                    .exclude(student__is_superuser=True)
+                )
+                logger.debug(f"Dropping {sub_drop.count()} enrollments from {module}")
+                sub_drop.delete()
+            logger.debug(f"Dropping {drop.count()} enrollments from {self}")
+            drop.delete()
+        if add:  # Bulk create new enrollments in submodules and this -
+            # but only add if the student and module are the correct levels
+            enrollemnts = []
+            for module in self.sub_modules.all():
+                sub_add = (
+                    Account.objects.filter(number__in=data.keys())
+                    .exclude(modules=module)
+                    .exclude(is_staff=True)
+                    .exclude(is_superuser=True)
+                    .filter(year__level=F("module_level"))
+                )
+                enrollemnts.extend(
+                    [
+                        ModuleEnrollment(student=account, module=module, user_id=data[account.number])
+                        for account in sub_add.all()
+                    ]
+                )
+            enrollemnts.extend(
+                [ModuleEnrollment(student=account, module=self, user_id=data[account.number]) for account in add.all()]
+            )
+            with transaction.atomic():
+                logger.debug("Adding {len(enrollemnts)} enrollments to {self}")
+                ModuleEnrollment.objects.bulk_create(enrollemnts)
+
+    def update_from_json(self, categories=False, tests=False, enrollments=False, columns=False, grades=True):
         """Update the module from json data."""
+        if not self.data_ready:
+            return None
         try:
-            self.update_enrollments()
-            self.create_test_categories_from_json()
+            if enrollments:
+                self.update_enrollments()
+            if categories:
+                self.create_test_categories_from_json()
+            if columns:
+                self.remove_columns_not_in_json()
+                GradebookColumn.create_or_update_from_json(self)
+            if tests:
+                Test.create_or_update_from_json(self)
         except (OSError, IOError):
             return None
         try:
-            for test in self.tests.all():
-                test.attempts_from_columns()
+            if grades:
+                for test in self.tests.all():
+                    test.grades_from_columns()
+                    test.attempts_from_columns()
         except (OSError, IOError):
             return None
         return True
@@ -325,7 +395,10 @@ class TestCategory(models.Model):
         db_index=True,
     )
     in_dashboard = models.BooleanField(default=False, help_text="Include scores in student dashboard")
+    dashboard_plot = models.BooleanField(default=False, help_text="Include piechart in student dashboard")
     label = models.CharField(max_length=40, null=True, blank=True, help_text="Label for dashboard")
+    search = models.CharField(max_length=60, default=r"(?P<name>.*)", help_text="Regular expression to identify tests")
+    weighting = models.FloatField(default=1.0)
 
     class Meta:
         ordering = ["order"]
@@ -334,17 +407,63 @@ class TestCategory(models.Model):
         """Generate a string representation."""
         return f"{self.text} ({self.module.code})"
 
+    @property
+    def tag(self):
+        """Convert the category name into an HTML safe tag."""
+        tag = self.text.lower().strip().replace(" ", "_")
+        return tag
+
+    @property
+    def hashtag(self):
+        """Return tag with a leading #."""
+        return f"#{self.tag}"
+
+    @property
+    def datadir(self):
+        """Return a pathlib.Path to a folder where this category's data dump is kept."""
+        return Path(settings.MEDIA_ROOT) / "data" / f"{self.module.code}"
+
+    @property
+    def xlsx(self):
+        """Return a pathlib.Path to a spreadsheet file for this category."""
+        return self.datadir / f"{self.tag}_time_series.xlsx"
+
+    @property
+    def gif(self):
+        """Return a path to a gif file of the data from this category."""
+        return self.datadir / f"{self.tag}_animation.gif"
+
     @classmethod
     def update_from_json(cls, module, json_blob=None):
-        """Read the json blob and create or removecategories."""
+        """Read the json blob and create or removecategories.
+
+        Handles cases where categories have been given new IDs but old names or
+        new nmames for old IDs.
+        """
         if json_blob is None:
             json_blob = module.categories_json
         if (json_data := json.get_blob_by_name(json_blob, False)) is None:
             raise IOError(f"No JSON file for {module}")
         categories = {x["id"]: x["title"] for x in json_data}
+        rev_catgegories = {v: k for k, v in categories.items()}
+
+        # First look for categories that have changed id for this module e.g. after roll over
+        named = cls.objects.filter(module=module, text__in=rev_catgegories.keys())
+        for x in named:
+            x.category_id = rev_catgegories[x.text]
+        named.bulk_update(named, ["category_id"])
+
+        # Now look for categories that have been renamed, with the same ID
+        renamed = cls.objects.filter(module=module, category_id__in=categories.keys())
+        for x in renamed:
+            x.text = categories[x.category_id]
+        renamed.bulk_update(renamed, ["text"])
+
         # Remove goneaway categories
         gone = [x.pk for x in cls.objects.filter(module=module) if x.category_id not in categories]
         cls.objects.filter(pk__in=gone).delete()
+
+        # Create new category objects
         for category_id, title in categories.items():
             category, _ = cls.objects.get_or_create(module=module, category_id=category_id)
             category.text = title
@@ -411,6 +530,10 @@ class ModuleEnrollment(models.Model):
             return None
         return vitals.count() == passed.count()
 
+    def __str__(self):
+        """Prettier representation of the enrollment."""
+        return f"{self.module.code}:{self.student.display_name}"
+
 
 class SummaryScore(models.Model):
     """Store a summary score and related data."""
@@ -421,7 +544,7 @@ class SummaryScore(models.Model):
     # setable fields
     enrollment = models.ForeignKey(ModuleEnrollment, on_delete=models.CASCADE, related_name="scores")
     category = models.ForeignKey(TestCategory, on_delete=models.CASCADE, related_name="scores")
-    score = models.FloatField(editable=False)
+    score = models.FloatField(editable=False, null=True, blank=True)
     data = models.JSONField(default=dict, blank=True, editable=False)
 
     class Meta:
@@ -431,6 +554,8 @@ class SummaryScore(models.Model):
 
     def __str__(self):
         """Make a displayable representation."""
+        if self.score is None:
+            return f"{self.enrollment.student}: {self.enrollment.module} ({self.category}) No Score"
         return f"{self.enrollment.student}: {self.enrollment.module} ({self.category}) {self.score:.0f}%"
 
     def clean(self):
@@ -452,21 +577,28 @@ class SummaryScore(models.Model):
         Calculate methods should also update the JSONField data with the data for constructing plots.
         """
         if hasattr(self, f"calculate_{self.category.text.lower()}"):
-            self.score = getattr(self, "calculate_{self.category.text.lower()}")()
+            self.score = getattr(self, f"calculate_{self.category.text.lower()}")()
             return
         tests = Test.objects.filter(category=self.category).distinct().exclude(status="Not Started")
         if tests.count() == 0:
-            self.score = 0
+            self.score = np.nan
             self.data = {}
         else:
-            passed = tests.filter(results__user=self.student, results__passed=True).count()
-            self.score = 100 * passed / tests.count()
+            taken = tests.filter(results__user=self.student).distinct().order_by("id")
+            not_taken = tests.exclude(results__user=self.student).distinct().filter(status="Overdue").order_by("id")
+
+            passed = taken.filter(results__passed=True).count()
+            failed = taken.exclude(results__passed=True).count()
+            if taken.count() + not_taken.count() == 0:
+                self.score = np.nan
+            else:
+                self.score = 100 * passed / (taken.count() + not_taken.count())
             data = {}
-            colours = []
-            taken = tests.filter(results__user=self.student, category=self.category).order_by("id")
-            tests = Test.objects.filter(pk__in=[x[0] for x in taken.values_list("id")]).order_by(
-                "id"
-            )  # do this to get the annotations
+            colours = {}
+
+            for label, (attempts, colour) in settings.TESTS_ATTEMPTS_PROFILE.get("Missing", {}).items():
+                colours[label] = colour
+                data[label] = not_taken.count()
             results = Test_Score.objects.filter(user=self.student, test__in=tests).order_by("test__id")
             for test, test_score in zip(tests, results):
                 if test.status == "Not Started" and test_score.standing == "Missing":
@@ -477,15 +609,14 @@ class SummaryScore(models.Model):
                     attempted = 0
                 for label, (attempts, colour) in settings.TESTS_ATTEMPTS_PROFILE[test_score.standing].items():
                     if attempts < 0 or attempts >= attempted:
-                        if label not in data:
-                            colours.append(colour)
+                        colours[label] = colour
                         data[label] = data.get(label, 0) + 1
                         break
             self.data = {"data": data, "colours": colours}
 
     def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
         """Set the module and account based on the enrollment and calculate the score."""
-        self.full_clean()
+        self.clean()
         self.calculate()
         super().save(force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)
 
@@ -497,15 +628,15 @@ class Test_Manager(models.Manager):
 
     def __init__(self, *args, **kargs):
         """Record the type filter."""
-        self.type = kargs.pop("type", None)
+        self.category_text = kargs.pop("type", None)
         super().__init__(*args, **kargs)
 
     def get_queryset(self):
         """Annotate the query set with additional information based on the time."""
         zerotime = timedelta(0)
         qs = super().get_queryset()
-        if self.type:
-            qs = qs.filter(type=self.type)
+        if self.category_text:
+            qs = qs.filter(category__text=self.category_text)
         qs = qs.annotate(
             from_release=tz.now() - models.F("release_date"),
             from_recommended=tz.now() - models.F("recommended_date"),
@@ -533,9 +664,9 @@ class Test(models.Model):
     TEST_TYPES = [("homework", "Homework"), ("lab_exp", "Lab Experiment"), ("code_task", "Coding Task")]
 
     objects = Test_Manager()
-    homework = Test_Manager(type="homework")
-    labs = Test_Manager(type="lab_exp")
-    code_tasks = Test_Manager(type="code_task")
+    homework = Test_Manager(type="Homework")
+    labs = Test_Manager(type="Lab Experiment")
+    code_tasks = Test_Manager(type="Code Tasks")
 
     # test_id is actually a composite of course_id and column_id
     id = models.BigAutoField(primary_key=True)
@@ -547,10 +678,7 @@ class Test(models.Model):
     suppress_numerical_score = models.BooleanField(
         default=False, blank=True, null=True, verbose_name="Do not reveal numerical score to students"
     )
-    category = models.ForeignKey(
-        TestCategory, on_delete=models.SET_NULL, null=True, editable=False, related_name="tests"
-    )
-    type = models.CharField(max_length=10, choices=TEST_TYPES, default=TEST_TYPES[0][0])
+    category = models.ForeignKey(TestCategory, on_delete=models.SET_NULL, null=True, related_name="tests")
     score_possible = models.FloatField(default=100, verbose_name="Maximum possible score")
     passing_score = models.FloatField(default=80, verbose_name="Passing score")
     grading_due = models.DateTimeField(blank=True, null=True, verbose_name="Minerva Due Date")
@@ -562,6 +690,13 @@ class Test(models.Model):
     )
     ignore_zero = models.BooleanField(
         default=False, blank=True, null=True, verbose_name="Zero grades are not attempts"
+    )
+    ignore_waiting = models.BooleanField(
+        default=False,
+        blank=True,
+        null=True,
+        help_text="Grades awaiting marking do not overwrite existing scores",
+        verbose_name="Doin't replace grades with ungraded attempts",
     )
 
     class Meta:
@@ -629,6 +764,8 @@ class Test(models.Model):
 
     def clean(self):
         """Ensure that all our columns have the same category and then set our category."""
+        if self.pk is None:
+            return
         categories = np.unique([x[0] for x in self.columns.all().values_list("category_id") if x[0] is not None])
         match categories.size:
             case 0:
@@ -648,7 +785,7 @@ class Test(models.Model):
             update_results = orig.passing_score != self.passing_score
         else:
             update_results = False
-        super().save(force_insert, force_update, using, update_fields)
+        super().save(using=using, update_fields=update_fields)
         if update_results:  # Propagate change in pass mark to test scores
             for test_score in self.results.all():  # Update all test_scores for both passes and fails
                 test_score.save()
@@ -656,15 +793,15 @@ class Test(models.Model):
     def attempts_from_columns(self):
         """Create a test attempts and test scores from the individual column hjson files."""
         for column in self.columns.all():
-            column.update_attempts()
-            logger.debug(f"Updated attempts for column {column}")
             column.update_grades()
             logger.debug(f"Updated grades for column {column}")
+            column.update_attempts()
+            logger.debug(f"Updated attempts for column {column}")
 
     def grades_from_columns(self):
         """Create test scores from each columns json files."""
         for column in self.columns.all():
-            column.update_scoress()
+            column.update_grades()
 
     def add_attempt(self, student, mark, date=None, text=None):
         """Add a Test_Attempt, including Test_Score as necessary."""
@@ -688,6 +825,8 @@ class Test(models.Model):
         attempt.attempted = date
         attempt.modified = tz.now()
         attempt.save()
+        score.check_passed()
+        score.save()
         return score, attempt
 
     @property
@@ -732,29 +871,58 @@ class Test(models.Model):
         return test
 
     @classmethod
-    def create_or_update_from_json(cls, module):
-        """Create Test objects based on matching column names from a module's columns JSON file."""
-        json_data = module.columns_json
-        if (json_data := json.get_blob_by_name(module.columns_json, False)) is None:
-            raise IOError(f"No JSON file for {module}")
-        data = {x["id"]: x for x in json_data}
-
-        new_data = {}
-        for _, dictionary in data.items():
-            name = match_name(dictionary["name"])  # get the column name
-            new_data[name] = new_data.get(name, []) + [dictionary]  # Can have more than one JSON file per test
-        data_ids = set(new_data.keys())
-        for k in list(data_ids):  # Run through the keys that match tests
-            for dictionary in new_data[k]:  # Run through the JSON files for each test
+    def create_or_update_from_json(cls, module, column=None):
+        """Create Test objects based on matching column names from a module's columns."""
+        column_data = module.column_data
+        if column is None:
+            columns = module.gradebook_columns.all()
+        else:
+            columns = [column]
+        for column in columns:
+            if column.category is None:  # No category on column, so can't be assigned to a test automatically.
+                continue
+            if (dictionary := column_data.get(column.gradebook_id)) is None:  # No JSON column
+                continue
+            # First try to match column to existing Test
+            search = column.category.search
+            # Django's ORM doesn't support named groups, so rewrite regex to remove them.
+            # Firsttry to locate an ID int he name:
+            match = re.search(search, column.name)
+            if "(?P<id>" in search and match:  # Substitute the matched test ID back into the pattern.
+                regex_search = locate_named_group(search, "id", match.groupdict()["id"])
+                regex_search = re.sub(r"\(\?P\<[^\>]+\>", "(", regex_search)
+            else:  # No test ID suibpatten
+                regex_search = re.sub(r"\(\?P\<[^\>]+\>", "(", search)
+            possible = module.tests.filter(name__iregex=regex_search)
+            test = None
+            if column.test:  # Existing test found
+                test = column.test
+            elif possible.count() == 1:  # We have one matching test already
+                test = possible.first()
+            elif possible.count() == 0 and match:  # New test needed.
                 try:
-                    test = cls.objects.get(module=module, name=k)
-                except ObjectDoesNotExist:
-                    test = cls(test_id=dictionary["id"], module=module, name=k)
+                    test = cls.objects.get(module=module, name=column.name)
+                except ObjectDoesNotExist:  # Workoput our test id already exists
+                    match = dict(match.groupdict())
+                    testid = match.get("id", match.get("name"))
+                    if test := cls.objects.filter(test_id=testid, module=module).first():  # Yes, so use that test
+                        pass
+                    else:  # No, create new test and assign category.
+                        test = cls(test_id=testid, module=module, name=column.name, category=column.category)
+                        test.category = column.category
+            else:  # May have more than one possible - see if we can match on an ID subfield of the name
+                # Columns which have a category, but not a good name will have None for match - will need manaual
+                # allocation.
+                if match and (testid := match.groupdict().get("id")):
+                    for query in [Q(test_id=testid), Q(name__contains=testid)]:
+                        possible = Test.objects.filter(query)
+                        if possible.count() == 1:
+                            test = possible.first()
+                            break
+            if test:  # We found, or created a test, so update test properties
                 test.grading_attemptsAllowed = dictionary["grading"]["attemptsAllowed"]
                 test.score_possible = dictionary["score"]["possible"]
                 test.save()
-                column, _ = GradebookColumn.objects.get_or_create(gradebook_id=dictionary["id"])
-                column.name = dictionary["name"]
                 column.test = test
                 column.save()
 
@@ -770,24 +938,6 @@ class Test(models.Model):
                 else:
                     column.test = None
                     column.save()
-
-    @classmethod
-    def get_by_column_name(cls, name, module=None):
-        """Pattern match the name to see if we can locate a matching Test."""
-        name = match_name(name)
-        search = {"name": name}
-        if module:
-            search["module"] = module
-        try:
-            return cls.objects.get(**search)
-        except cls.DoesNotExist:
-            pass
-        del search["name"]
-        search["columns__name"] = name
-        try:
-            return cls.objects.get(**search)
-        except cls.DoesNotExist:
-            return None
 
 
 class GradebookColumn(models.Model):
@@ -811,19 +961,24 @@ class GradebookColumn(models.Model):
         return f"{self.name} ({self.gradebook_id})"
 
     @property
+    def has_json(self):
+        """Return True if this column has json data."""
+        return self.module and self.json_file in json.get_blob_list()
+
+    @property
     def json_file(self):
         """Return the name of the JSON column file."""
-        return self.test.module.key + f"_Grade_Columns_Attempt_{self.gradebook_id}.json"
+        return self.module.key + f"_Grade_Columns_Attempt_{self.gradebook_id}.json"
 
     @property
     def json_attempts_file(self):
         """Return the name of the JSON column file."""
-        return self.test.module.key + f"_Grade_Columns_Attempt_{self.gradebook_id}.json"
+        return self.module.key + f"_Grade_Columns_Attempt_{self.gradebook_id}.json"
 
     @property
     def json_grades_file(self):
         """Return the name of the JSON column file."""
-        return self.test.module.key + f"_Column_Grades_{self.gradebook_id}.json"
+        return self.module.key + f"_Column_Grades_{self.gradebook_id}.json"
 
     @property
     def json_properties(self):
@@ -840,10 +995,11 @@ class GradebookColumn(models.Model):
         """Get the current entries in the JSON file and match to users."""
         json_data = json.get_blob_by_name(self.json_attempts_file)
         if json_data is None:
-            raise IOError(f"No json blob {self.attemps_json}")
+            logger.debugr(f"No json blob {self.attemps_json}")
+            return []
         json_data = {x["userId"]: x for x in json_data}
         qs = (
-            self.test.module.student_enrollments.filter(user_id__in=set(json_data.keys()))
+            self.module.student_enrollments.filter(user_id__in=set(json_data.keys()))
             .prefetch_related("student")
             .order_by("student__last_name", "student__first_name")
         )
@@ -857,10 +1013,11 @@ class GradebookColumn(models.Model):
         """Get the current scores  in the JSON file and match to users."""
         json_data = json.get_blob_by_name(self.json_grades_file)
         if json_data is None:
-            raise IOError(f"No json blob {self.attemps_json}")
+            logger.debugr(f"No json blob {self.json_grades_file}")
+            return []
         json_data = {x["userId"]: x for x in json_data}
         qs = (
-            self.test.module.student_enrollments.filter(user_id__in=set(json_data.keys()))
+            self.module.student_enrollments.filter(user_id__in=set(json_data.keys()))
             .prefetch_related("student")
             .order_by("student__last_name", "student__first_name")
         )
@@ -899,6 +1056,8 @@ class GradebookColumn(models.Model):
     def update_grades(self):
         """Update the TestAttempts from this Gradebook column."""
         for data in self.current_json_scores:
+            if data is None:  # No data for this enrollment for some reason
+                continue
             match data:
                 case {"score": score}:
                     pass
@@ -907,15 +1066,17 @@ class GradebookColumn(models.Model):
                 case _:
                     score = None
 
-            if data is None:  # No data for this enrollment for some reason
-                continue
             if self.test.ignore_zero and score == 0:  # By pass zero scores if we're ignoring them
                 continue
             if "status" not in data and score is None:
                 continue
+            if score is None and self.test.ignore_waiting:
+                continue
             if score is not None and score > self.test.score_possible:  # Looks like core>max score
                 continue  # so bypass this attempt
             result, new = Test_Score.objects.get_or_create(user=data["student"], test=self.test)
+            result.score = score
+            result.save()
             if (
                 new
                 or result.attempts.count() == 0
@@ -947,9 +1108,9 @@ class GradebookColumn(models.Model):
         if (json_data := json.get_blob_by_name(module.columns_json, False)) is None:
             raise IOError(f"No JSON file for {module}")
         for column_data in json_data:
-            column, _ = cls.objects.get_or_create(gradebook_id=column_data["id"], name=column_data["name"])
-            if column.test is None:
-                column.test = Test.get_by_column_name(column.name, module)  # Attempt to assign column to a Terst
+            column, _ = cls.objects.get_or_create(
+                gradebook_id=column_data["id"], name=column_data["name"], module=module
+            )
             column.module = module
             try:
                 column.category = TestCategory.objects.get(
@@ -957,6 +1118,10 @@ class GradebookColumn(models.Model):
                 )
             except (TestCategory.DoesNotExist, KeyError):
                 pass
+            if column.test is None or column.test.module != column.module:
+                column.test = Test.create_or_update_from_json(
+                    module, column=column
+                )  # Attempt to assign column to a Terst
 
             column.save()
 
@@ -1150,15 +1315,16 @@ class Test_Score(models.Model):
         self.passed = passed
         super().save(force_insert, force_update, using, update_fields)  # Save to ensure pk is set
 
-        update_vitals.delay(self.pk)
-
         if self.test.category:  # Update the summary score if we have a category
-            enrollment = ModuleEnrollment.objects.get(student=self.user, module=self.test.module)
-            ss, _ = SummaryScore.objects.get_or_create(
-                enrollment=enrollment, category=self.test.category, student=self.user
-            )
-            ss.calculate()  # Run the calculation of whether we have passed
-            ss.save()
+            try:
+                enrollment = ModuleEnrollment.objects.get(student=self.user, module=self.test.module)
+                ss, _ = SummaryScore.objects.get_or_create(
+                    enrollment=enrollment, category=self.test.category, student=self.user
+                )
+                ss.save()
+            except ModuleEnrollment.DoesNotExist:  # Student de-registered from module!
+                self.delete()
+                return
 
         self.user.update_vitals = bool(send_signal)
 
@@ -1243,3 +1409,44 @@ def failed_coding(self):
 def untested_coding(self):
     """Return the set of vitals passed by the current user."""
     return Test.code_tasks.exclude(results__user=self).exclude(status__in=["Released", "Not Started"])
+
+
+@patch_model(Account)
+def category_score(self, category):
+    """Calculate the test summary from summary scores.
+
+    Args:
+        category (TestCategory, str):
+            Category to get summary scores for (match single category if not str, otherwise match text).
+
+    Returns:
+        (float):
+            credit weighted average of the summary scores for the categories with the matching names.
+    """
+    if isinstance(category, TestCategory):
+        summaries = self.summary_scores.filter(category=category)
+    else:
+        summaries = self.summary_scores.filter(category__text=category)
+    summary = np.array(summaries.values_list("module__credits", "score"))
+    if summary.size == 0:  # No results must be a zero score
+        return 0.0
+    summary = summary.astype(float)
+    return float(np.nansum(np.nanprod(summary, axis=1)) / np.nansum(summary[:, 0]))
+
+
+@patch_model(Account, prep=property)
+def tests_score(self):
+    """Calculate the test summary from summary scores."""
+    return getattr(self, "category_score")("Homework")
+
+
+@patch_model(Account, prep=property)
+def labs_score(self):
+    """Calculate the test summary from summary scores."""
+    return getattr(self, "category_score")("Lab Experiment")
+
+
+@patch_model(Account, prep=property)
+def coding_score(self):
+    """Calculate the test summary from summary scores."""
+    return getattr(self, "category_score")("Code Tasks")

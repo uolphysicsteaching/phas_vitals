@@ -15,7 +15,7 @@ from django.contrib.admin import (
 )
 from django.contrib.auth.admin import GroupAdmin, UserAdmin
 from django.contrib.auth.models import Group
-from django.db.models import Case, F, When
+from django.db.models import Case, Count, F, When
 from django.http import StreamingHttpResponse
 from django.utils.translation import gettext_lazy as _
 
@@ -24,15 +24,25 @@ from import_export.admin import ImportExportMixin, ImportExportModelAdmin
 
 # app imports
 from .forms import UserAdminForm
-from .models import Account, AccountGroup, Cohort, Programme, Section
+from .models import (
+    Account,
+    AccountGroup,
+    Cohort,
+    Programme,
+    Section,
+    TermDate,
+    Year,
+)
 from .resource import (
     CohortResource,
     GroupResource,
     ProgrammeResource,
     SectionResource,
+    TermDateResource,
     UserResource,
+    YearResource,
 )
-from .tasks import update_all_users, update_tests_score
+from .tasks import update_all_users
 
 
 class StudentListFilter(SimpleListFilter):
@@ -61,6 +71,28 @@ class StudentListFilter(SimpleListFilter):
             return queryset.filter(user__username=self.value())
         elif "student" in fields:
             return queryset.filter(student__username=self.value())
+
+
+class TutorialListFilter(SimpleListFilter):
+    """Filter accounts by tutorial group."""
+
+    title = "Tutorial Group"
+    parameter_name = "tutorial"
+
+    def lookups(self, request, model_admin):
+        """Get a list of tutorial groups."""
+        Tutorial = apps.get_model("tutorial", "tutorial")
+        ret = [("Not Assigned", "Not assigned")]
+        ret.extend([(x.pk, x.code) for x in Tutorial.objects.all()])
+        return ret
+
+    def queryset(self, request, queryset):
+        """Return accounts queryset based on tutorigal group membership."""
+        if self.value() is None:
+            return queryset
+        if self.value() == "Not assigned":
+            return queryset.annotate(tg_count=Count("tutorial_group")).filter(tg_count=0)
+        return queryset.filter(tutorial_group__pk=self.value())
 
 
 class CohortListFilter(SimpleListFilter):
@@ -92,6 +124,24 @@ class CohortListFilter(SimpleListFilter):
 site.unregister(Group)
 
 # Register your models here.
+
+
+@register(Year)
+class YearAdmin(ImportExportModelAdmin):
+    """Admin interface for managing student year objects."""
+
+    list_display = ("id", "name", "status", "level")
+    list_filter = list_display[1:]
+    search_fields = ["name"]
+    list_editable = list_display[1:]
+
+    def get_export_resource_class(self):
+        """Return the class for exporting objects."""
+        return YearResource
+
+    def get_import_resource_class(self):
+        """Return the class for importing objects."""
+        return YearResource
 
 
 @register(Programme)
@@ -193,7 +243,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
                     ("username", "number"),
                     ("title", "first_name", "givenName", "last_name"),
                     ("email"),
-                    ("programme", "registration_status", "section"),
+                    ("programme", "registration_status", "year", "section"),
                 ],
                 "classes": [
                     "order-0",
@@ -231,13 +281,25 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
         "givenName",
         "last_name",
         "number",
+        "year",
         "programme",
         "is_staff",
-        "is_superuser",
+        "tutorial",
         "section",
+        "activity_score",
     ]
-    list_editable = ["number", "programme", "is_staff", "is_superuser"]
-    list_filter = ("groups", CohortListFilter, "programme", "is_staff", "is_superuser", "is_active", "section")
+    list_editable = ["number", "programme", "is_staff"]
+    list_filter = (
+        "groups",
+        CohortListFilter,
+        "programme",
+        "year",
+        "is_staff",
+        "is_superuser",
+        "is_active",
+        "section",
+        TutorialListFilter,
+    )
     search_fields = (
         "username",
         "first_name",
@@ -246,6 +308,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
         "groups__name",
         "programme__name",
         "section__name",
+        "number",
     )
     actions = ["rebuild_vitals", "export_roster", "export_groups"]
 
@@ -256,6 +319,10 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
     def get_import_resource_class(self):
         """Return the class for importing objects."""
         return UserResource
+
+    def tutorial(self, obj):
+        """List the tutorial group for this student."""
+        return obj.tutorial_group.all().first()
 
     @action(description="Export Gradescope roster")
     def export_roster(self, request, queryset):
@@ -332,6 +399,24 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
         accounts.update(update_vitals=True)
         results.delete()
         update_all_users.delay()
+
+
+@register(TermDate)
+class TermDateAdmin(ImportExportModelAdmin):
+    """Admin interface class for TermDates."""
+
+    list_display = ["id", "cohort", "week", "start"]
+    list_filter = [CohortListFilter, "week", "start"]
+    list_editable = ["cohort", "week", "start"]
+    search_fields = ["cohort__name"]
+
+    def get_export_resource_class(self):
+        """Return the class for exporting objects."""
+        return TermDateResource
+
+    def get_import_resource_class(self):
+        """Return the class for importing objects."""
+        return TermDateResource
 
 
 @register(AccountGroup)

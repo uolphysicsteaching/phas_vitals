@@ -68,9 +68,12 @@ class TutorStudentEngagementSummary(IsStaffViewMixin, HTMXProcessMixin, FormMixi
 
     def get_queryset(self):
         """Get the Tutorial queryset, filtered as needed."""
-        cohort = self.get_initial()["cohort"]
-        ret = Tutorial.objects.filter(cohort=cohort).order_by("tutor__last_name")
-        ret = ret.filter(tutor=self.request.user)
+        cohort = self.get_initial().get("cohort")
+        if cohort:
+            ret = Tutorial.objects.filter(cohort=cohort).order_by("tutor__last_name")
+            ret = ret.filter(tutor=self.request.user)
+        else:
+            ret = Tutorial.objects.filter(tutor=self.request.user).order_by("-cohort__name")
         return ret
 
     def get_context_data(self, **kwargs):
@@ -112,7 +115,8 @@ class TutorStudentEngagementSummary(IsStaffViewMixin, HTMXProcessMixin, FormMixi
         """Handle the user changing Cohort."""
         form = self.form_class(self.request.POST)
         if form.is_valid():
-            self.kwargs["cohort"] = form.cleaned_data["cohort"].name
+            if form.cleaned_data["cohort"] is not None:
+                self.kwargs["cohort"] = form.cleaned_data["cohort"].name
         return self.get(request, *args, **kargs)
 
 

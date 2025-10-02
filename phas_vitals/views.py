@@ -5,7 +5,10 @@ import logging
 import sys
 
 # Django imports
+from django.conf import settings
+from django.contrib.auth.views import LogoutView
 from django.utils.decorators import classonlymethod
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.debug import technical_500_response
 from django.views.generic import TemplateView
 
@@ -38,6 +41,35 @@ class HomeView(RedirectView):
 
     superuser_view = ShowAllTestResultsViiew
     staff_view = TutorStudentEngagementSummary
+
+
+class HtmxLogoutView(LogoutView):
+    """Override standard django.contrib.auth lohgout to handle logouts via an HTMX driven POST request."""
+
+    def get_next_page(self):
+        """Try to collect a next-page."""
+        if next_url := self.kwargs.get("next_page"):
+            return next_url
+        if next_url := self.request.POST.get("next_page"):
+            return next_url
+        if next_url := self.request.GET.get("next_page"):
+            return new_url
+        return None
+
+    def htmx_post(self, request, *args, **kwargs):
+        """Add the extra header to the response."""
+        response = super().post(request, *args, **kwargs)
+
+        # Determine redirect target
+        next_url = self.get_next_page()
+        if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+            next_url = settings.LOGOUT_REDIRECT_URL or "/"
+
+        # Inject HX-Location header if HTMX request
+        response.status_code = 200  # HTMX expects 200 for HX-Location
+        response["HX-Location"] = next_url
+
+        return response
 
 
 class ErrorView(TemplateView):

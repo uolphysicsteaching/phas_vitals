@@ -4,20 +4,29 @@
 from django.core.validators import BaseValidator
 from django.utils.deconstruct import deconstructible
 
+# external imports
+from numpy import isnan
+
 
 @deconstructible
 class RangeValueValidator(BaseValidator):
-    """A validator for a range of numbers."""
+    """Validates a number as None, nan or between upper and lower limits."""
 
-    code = "range_value"
+    message = "Ensure this value is None, NaN, or between 0.0 and 100.0 inclusive."
+    code = "invalid_float_range"
 
-    @property
-    def message(self):
-        """Return limit message."""
-        return f"Ensure {self.value} is between {self.limit_value[0]} and {self.limit_value[1]}"
+    def __init__(self, limit_value=None, message=None):
+        """Set default limit range tro 0...100."""
+        if limit_value is None:
+            limit_value = (0.0, 100.0)
+        super().__init__(limit_value, message=message)
 
-    def compare(self, a, b):
-        """Check where a is None or between the limits given in b."""
-        ret = a is None or min(b) <= a <= max(b)
-        self.value = a
-        return not ret
+    def compare(self, value, _):
+        if value is None:
+            return False
+        if isinstance(value, float) and isnan(value):
+            return False
+        return not (min(self.limit_value) <= value <= max(self.limit_value))
+
+    def clean(self, value):
+        return value  # No transformation needed
