@@ -319,13 +319,13 @@ class VITAL(models.Model):
         """Check whether a VITAL has been passed by a user."""
         # Check if any sufficient tests passed
         sufficient = self.tests_mappings.filter(sufficient=True)
-        if user.test_results.filter(test__vitals_mappings__in=sufficient, passed=True).count() > 0:
+        if user.test_results.filter(test__vitals_mappings__in=sufficient.all(), passed=True).count() > 0:
             return self.passed(user)
         # Check all necessary tests are passed.
         necessary = self.tests_mappings.filter(necessary=True, condition="pass").distinct()
         if (
             necessary.count() > 0
-            and user.test_results.filter(test__vitals_mappings_in=necessary, passed=True).distinct().count()
+            and user.test_results.filter(test__vitals_mappings__in=necessary.all(), passed=True).distinct().count()
             == necessary.count()
         ):
             return self.passed(user)
@@ -333,7 +333,7 @@ class VITAL(models.Model):
         needed = necessary.aggregate(needed=models.Sum("required_fractrion"))["needed"]
         if (
             necessary.count() > 0
-            and user.test_results.filter(test__vitals_mappings__in=necessary).distinct().count() >= needed
+            and user.test_results.filter(test__vitals_mappings__in=necessary.all()).distinct().count() >= needed
         ):
             return self.passed(user)
         if (
@@ -351,21 +351,24 @@ class VITAL(models.Model):
 def calculate_vitals(self):
     """Patch a function to create a summary score object for a VITALs."""
     try:
-        untested = (
-            VITAL.objects.exclude(student_results__user=self.student)
-            .filter(module__in=self.student.modules.all())
-            .filter(status="Finished")
-            .count()
-        )
-        vitals = self.student.vital_results.filter(vital__module=self.module)
+        all_vitals = VITAL.objects.filter(module__in=self.student.modules.all()).exclude(status="Not Started")
+        missed = all_vitals.exclude(student_results__user=self.student).filter(status="Finished").count()
+        in_progress = all_vitals.exclude(student_results__user=self.student).exclude(status="Finished").count()
+
+        vitals = self.student.vital_results.filter(vital__module__level=self.student.year.level)
         passed = vitals.filter(passed=True).count()
         failed = vitals.filter(passed=False).count()
-        self.score = np.round(100.0 * passed / (vitals.count() + untested))
+        self.score = np.round((100.0 * passed + 50 * in_progress) / all_vitals.count())
     except (ValueError, ZeroDivisionError):
         self.score = np.nan
     data = {}
     colours = {}
-    status = [x.status for x in vitals.all()]
+    status = []
+    for vital in all_vitals:
+        if vr := self.student.vital_results.filter(vital=vital).first():
+            status.append(vr.status)
+        else:
+            status.append(vital.status)
     status = np.array(status)
     for stat, (label, colour) in settings.VITALS_RESULTS_MAPPING.items():
         if count := status[status == stat].size:
@@ -438,6 +441,6 @@ def required_tests(self):
         tests.append(best_test)
         data.loc[:, data.loc[best_test] == 1.0] = 0.0
 
-    tests = vital.tests.model.objects.filter(test_id__in=tests).distinct().order_by("type", "release_date")
+    tests = vital.tests.model.objects.filter(test_id__in=tests).distinct().order_by("category__text", "release_date")
 
     return tests

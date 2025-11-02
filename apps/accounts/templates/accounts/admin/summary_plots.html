@@ -12,21 +12,17 @@
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="pills-activity-tab" data-bs-toggle="pill" data-bs-target="#pills-activity" type="button" role="tab" aria-controls="pills-activity" aria-selected="true">Overall</button>
         </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="pills-tests-tab" data-bs-toggle="pill" data-bs-target="#pills-tests" type="button" role="tab" aria-controls="pills-tests" aria-selected="true">Homework</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="pills-labs-tab" data-bs-toggle="pill" data-bs-target="#pills-labs" type="button" role="tab" aria-controls="pills-labs" aria-selected="true">Lab</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="pills-coding-tab" data-bs-toggle="pill" data-bs-target="#pills-coding" type="button" role="tab" aria-controls="pills-coding" aria-selected="true">Coding</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="pills-vitals-tab" data-bs-toggle="pill" data-bs-target="#pills-vitals" type="button" role="tab" aria-controls="pills-vitals" aria-selected="true">VITALs</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="pills-engagement-tab" data-bs-toggle="pill" data-bs-target="#pills-engagement" type="button" role="tab" aria-controls="pills-engagement" aria-selected="true">Tutorials</button>
-        </li>
+        {% for cat in categories %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link"
+                        id="{{ cat.module.code }}-{{ cat.label }}-tab"
+                        data-bs-toggle="pill"
+                        data-bs-target="#pills-{{ cat.mpodule.code }}-{{ cat.label }}"
+                        type="button" role="tab"
+                        aria-controls="pills-{{ cat.module.cpde}}-{{ cat.label }}"
+                        aria-selected="false">{{ cat.module.code }}:{{ cat.label }}</button>
+            </li>
+        {% endfor %}
     </ul>
     <div class="tab-content" id="pills-tabContent">
         <div class="tab-pane fade show active" id="pills-summary" role="tabpanel" aria-labelledby="pills-summary-tab">
@@ -39,30 +35,15 @@
                 <img class="plot"  src='{{ activity_score_plot.data|safe }}' alt="{{ activity_score_plot.alt|safe }}" />
             </div>
         </div>
-        <div class="tab-pane fade" id="pills-tests" role="tabpanel" aria-labelledby="pills-tests-tab">
-            <div class="table-responsive">
-                <img class="plot"  src='{{ tests_score_plot.data|safe }}' alt="{{ tests_score_plot.alt|safe }}" />
+        {% for cat in categories %}
+            <div class="tab-pane fade"
+                 id="pills-{{ cat.mpodule.code }}-{{ cat.label }}"
+                 role="tabpanel"
+                 aria-labelledby="pills-{{ cat.mpodule.code }}-{{ cat.label }}-tab">
+                <div class="table-responsive">
+                    <img class="plot"  src='{{ cat.plot.data|safe }}' alt="{{ cat.plot.alt|safe }}" />
+                </div>
             </div>
-        </div>
-        <div class="tab-pane fade" id="pills-labs" role="tabpanel" aria-labelledby="pills-labs-tab">
-            <div class="table-responsive">
-                <img class="plot"  src='{{ labs_score_plot.data|safe }}' alt="{{ labs_score_plot.alt|safe }}" />
-            </div>
-        </div>
-        <div class="tab-pane fade" id="pills-coding" role="tabpanel" aria-labelledby="pills-coding-tab">
-            <div class="table-responsive">
-                <img class="plot"  src='{{ coding_score_plot.data|safe }}' alt="{{ coding_score_plot.alt|safe }}" />
-            </div>
-        </div>
-        <div class="tab-pane fade" id="pills-vitals" role="tabpanel" aria-labelledby="pills-vitals-tab">
-            <div class="table-responsive">
-                <img class="plot"  src='{{ vitals_score_plot.data|safe }}' alt="{{ vitals_score_plot.alt|safe }}" />
-            </div>
-        </div>
-        <div class="tab-pane fade" id="pills-engagement" role="tabpanel" aria-labelledby="pills-engagement-tab">
-            <div class="table-responsive">
-                <img class="plot"  src='{{ engagement_plot.data|safe }}' alt="{{ engagement_plot.alt|safe }}" />
-            </div>
-        </div>
+        {% endfor %}
     </div>
 {% endblock content %}

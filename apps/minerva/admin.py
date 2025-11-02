@@ -396,7 +396,7 @@ class GradebookColumnAdmin(ImportExportModelAdmin):
 
     form = GradebookColumnForm
 
-    list_display = ("gradebook_id", "name", "module", "test", "category")
+    list_display = ("gradebook_id", "name", "module", "test", "category", "priority")
     list_filter = ["test", ModuleListFilter, TestCategoryFilter]
     search_fields = [
         "gradebook_id",
@@ -407,6 +407,7 @@ class GradebookColumnAdmin(ImportExportModelAdmin):
         "module__name",
         "category__text",
     ]
+    list_editable = ["test", "priority"]
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""

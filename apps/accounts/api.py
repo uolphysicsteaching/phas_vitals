@@ -12,7 +12,7 @@ from rest_framework import serializers, viewsets
 from phas_vitals.api import router
 
 # app imports
-from .models import Account, Cohort, Programme
+from .models import Account, Cohort, Programme, Year
 
 
 # Serializers define the API representation.
@@ -27,7 +27,7 @@ class AccountSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "email",
-            "level",
+            "year",
             "programme",
             "apt",
             "registration_status",
@@ -62,6 +62,14 @@ class CohortSerializer(serializers.ModelSerializer):
         fields = ("name", "representation")
 
 
+class YearSerializer(serializers.ModelSerializer):
+    """Serialiser for Years."""
+
+    class Meta:
+        model = Year
+        fields = ("name", "status", "level")
+
+
 # ViewSets define the view behavior.
 
 
@@ -79,6 +87,14 @@ class AccountViewSet(viewsets.ReadOnlyModelViewSet):
         "is_staff",
         "is_superuser",
     ]
+
+
+class YearViewSet(viewsets.ReadOnlyModelViewSet):
+    """Default Viewset for Cohort Objects."""
+
+    queryset = Year.objects.all()
+    serializer_class = YearSerializer
+    filterset_fields = ["name", "status", "level"]
 
 
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):

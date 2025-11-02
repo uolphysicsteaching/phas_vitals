@@ -3,6 +3,10 @@
 # Python imports
 import logging
 
+# Django imports
+from django.apps import apps
+from django.db.models import Q
+
 # external imports
 import numpy as np
 from accounts.models import Account
@@ -25,8 +29,15 @@ logger = logging.getLogger(__name__)
 # Register your models here.
 
 
-class TestsWidget(widgets.ManyToManyWidget):
+class VITALsWidget(widgets.ManyToManyWidget):
     """Import Export Widge for reading Tests that understands the natural key for a test."""
+
+    def __init__(self, model, separator=None, field=None, **kwargs):
+        """Handle converting model from string to model instance."""
+        if isinstance(model, str):
+            app, model = model.split(".")
+            model = apps.get_model(app, model)
+        super().__init__(model, separator, field, **kwargs)
 
     def clean(self, value, row=None, **kwargs):
         """Split the value by separator and then lookup natural keys."""
@@ -38,14 +49,19 @@ class TestsWidget(widgets.ManyToManyWidget):
             values = [value]
         ret = []
         for v in values:
-            ret.append(self.model.objects.get_by_natural_key(v))
+            try:
+                v = int(v)
+                query = Q(id=v)
+            except (ValueError, TypeError):
+                query = Q(VITAL_ID=v) | Q(name=v)
+            ret.append(self.model.objects.get(query))
         return ret
 
     def render(self, value, obj=None, **kwargs):
         """Render using natural keys."""
         if value is None:
             return ""
-        ids = [str(obj) for obj in value.all()]
+        ids = [str(obj.VITAL_ID) for obj in value.all()]
         return self.separator.join(ids)
 
 
@@ -101,6 +117,7 @@ class TestResource(resources.ModelResource):
             "release_date",
             "recommended_date",
             "grading_attemptsAllowed",
+            "VITALS",
         )
         import_id_fields = ["id"]
 
@@ -110,10 +127,14 @@ class TestResource(resources.ModelResource):
         widget=widgets.ForeignKeyWidget(Module, "code"),
     )
 
-    module = fields.Field(
+    category = fields.Field(
         column_name="category",
         attribute="category",
         widget=widgets.ForeignKeyWidget(TestCategory, "text"),
+    )
+
+    VITALs = fields.Field(
+        column_name="VITALS", attribute="VITALS", widget=VITALsWidget("vitals.vital", separator=";", field="VITAL_ID")
     )
 
     def before_import_row(self, row, row_number=None, **kwargs):

@@ -9,6 +9,7 @@ from textwrap import shorten
 from traceback import format_exc
 
 # Django imports
+from django.apps import apps
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import OuterRef, Q, Subquery
@@ -757,18 +758,16 @@ class TestResultsBarChartView(IsStaffViewMixin, FormView):
         self.module = form.cleaned_data["module"]
         self.category = form.cleaned_data.get("type")
         if self.module is not None:
-            if self.category.text.lower() in ["homework", "lab experiment", "code tasks"]:
-                self.tests = self.module.tests.filter(category=self.category).order_by("release_date", "name")
-            elif self.category.text.lower() == "vitals":
-                m = self.module
-                ids = [x.student.pk for x in m.student_enrollments.all()]
-                self.tests = (
-                    m.VITALS.model.objects.filter(module__student_enrollments__student__pk__in=ids)
-                    .distinct()
-                    .order_by("start_date")
-                )
+            if self.category.text.lower() == "vitals":
+                VITAL = apps.get_model("vitals", "vital")
+                vitals = Q(module=self.module)
+                if (sub_modules := self.module.sub_modules.all()).count() > 0:
+                    vitals |= Q(module__in=sub_modules)
+                self.tests = VITAL.objects.filter(vitals).distinct().order_by("start_date")
             elif self.category.text.lower() == "tutorial":
                 self.tests = self.module.tutorial_sessions.distinct().order_by("semester", "week")
+            else:
+                self.tests = self.module.tests.filter(category=self.category).order_by("release_date", "name")
         return self.render_to_response(self.get_context_data())
 
     def get_context_data(self, **kwargs):

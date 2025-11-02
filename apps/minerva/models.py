@@ -287,6 +287,20 @@ class Module(models.Model):
             enrollment.user_id = data[enrollment.student.number]
         with transaction.atomic():
             keep.bulk_update(keep, ["user_id"])
+        keep_students = set([x[0] for x in keep.values_list("student_id")])
+        for module in self.sub_modules.all():
+            mod_students = set([x[0] for x in module.student_enrollments.all().values_list("student_id")])
+            to_add = keep_students - mod_students
+            to_add = (
+                Account.objects.filter(pk__in=to_add)
+                .exclude(modules=module)
+                .exclude(is_staff=True)
+                .exclude(is_superuser=True)
+                .filter(year__level=module.level)
+            )
+            for account in to_add:
+                me = ModuleEnrollment(student=account, module=module, user_id=data[account.number])
+                me.save()
 
         # Calculate accounts to add and to drop - the inverse of accounts to keep
         drop = (
@@ -300,7 +314,7 @@ class Module(models.Model):
             .exclude(modules=self)
             .exclude(is_staff=True)
             .exclude(is_superuser=True)
-            .filter(year__level=F("module__level"))
+            .filter(year__level=self.level)
         )
         if drop:  # Drop registrations in this and sub-modules
             for module in self.sub_modules.all():
@@ -325,7 +339,7 @@ class Module(models.Model):
                     .exclude(modules=module)
                     .exclude(is_staff=True)
                     .exclude(is_superuser=True)
-                    .filter(year__level=F("module_level"))
+                    .filter(year__level=F("module__level"))
                 )
                 enrollemnts.extend(
                     [
@@ -586,13 +600,13 @@ class SummaryScore(models.Model):
         else:
             taken = tests.filter(results__user=self.student).distinct().order_by("id")
             not_taken = tests.exclude(results__user=self.student).distinct().filter(status="Overdue").order_by("id")
-
+            in_progress = tests.exclude(results__user=self.student).distinct().filter(status="Released").count()
             passed = taken.filter(results__passed=True).count()
             failed = taken.exclude(results__passed=True).count()
             if taken.count() + not_taken.count() == 0:
                 self.score = np.nan
             else:
-                self.score = 100 * passed / (taken.count() + not_taken.count())
+                self.score = (100 * passed) / (taken.count() + not_taken.count())
             data = {}
             colours = {}
 
@@ -624,7 +638,7 @@ class SummaryScore(models.Model):
 class Test_Manager(models.Manager):
     """Manager class for Test objects to support natural keys."""
 
-    key_pattern = re.compile(r"(?P<name>.*)\s\((?P<module__code>[^\)]*)\)")
+    key_pattern = re.compile(r"(?P<name>.*)\s\((?P<module>[A-Z]{4}\d{4}M?)\)")
 
     def __init__(self, *args, **kargs):
         """Record the type filter."""
@@ -654,7 +668,10 @@ class Test_Manager(models.Manager):
     def get_by_natural_key(self, name):
         """Use ythe string representation as a natural key."""
         if match := self.key_pattern.match(name):
-            return self.get(**match.groupdict())
+            data = match.groupdict()
+            qs = self.filter(module__code=data["module"])
+            query = Q(name=data["name"]) | Q(test_id=data["name"])
+            return qs.get(query)
         raise ObjectDoesNotExist(f"No VITAL {name}")
 
 
@@ -680,7 +697,7 @@ class Test(models.Model):
     )
     category = models.ForeignKey(TestCategory, on_delete=models.SET_NULL, null=True, related_name="tests")
     score_possible = models.FloatField(default=100, verbose_name="Maximum possible score")
-    passing_score = models.FloatField(default=80, verbose_name="Passing score")
+    passing_score = models.FloatField(null=True, blank=True, verbose_name="Passing score")
     grading_due = models.DateTimeField(blank=True, null=True, verbose_name="Minerva Due Date")
     release_date = models.DateTimeField(blank=True, null=True, verbose_name="Test Available Date")
     recommended_date = models.DateTimeField(blank=True, null=True, verbose_name="Recomemnded Attempt Date")
@@ -746,12 +763,12 @@ class Test(models.Model):
     @property
     def attempts_json(self):
         """Match the filename for the test attempts."""
-        return [x.json_attempts_file for x in self.columns.all()]
+        return [x.json_attempts_file for x in self.columns.all().order_by("priority")]
 
     @property
     def grades_json(self):
         """Match the filename for the test attempts."""
-        return [x.json_grades_file for x in self.columns.all()]
+        return [x.json_grades_file for x in self.columns.all().order_by("priority")]
 
     @property
     def data_ready(self):
@@ -766,7 +783,9 @@ class Test(models.Model):
         """Ensure that all our columns have the same category and then set our category."""
         if self.pk is None:
             return
-        categories = np.unique([x[0] for x in self.columns.all().values_list("category_id") if x[0] is not None])
+        categories = np.unique(
+            [x[0] for x in self.columns.all().order_by("priority").values_list("category_id") if x[0] is not None]
+        )
         match categories.size:
             case 0:
                 pass
@@ -780,6 +799,8 @@ class Test(models.Model):
     ):  # pylint: disable=arguments-differ
         """Check whether we need to update test_score passing fields."""
         self.full_clean()
+        if self.passing_score is None and self.score_possible:
+            self.passing_score = 0.8 * self.score_possible
         if self.pk and self.results.count() > 0:
             orig = Test.objects.get(pk=self.pk)
             update_results = orig.passing_score != self.passing_score
@@ -792,7 +813,7 @@ class Test(models.Model):
 
     def attempts_from_columns(self):
         """Create a test attempts and test scores from the individual column hjson files."""
-        for column in self.columns.all():
+        for column in self.columns.all().order_by("priority"):
             column.update_grades()
             logger.debug(f"Updated grades for column {column}")
             column.update_attempts()
@@ -800,7 +821,7 @@ class Test(models.Model):
 
     def grades_from_columns(self):
         """Create test scores from each columns json files."""
-        for column in self.columns.all():
+        for column in self.columns.all().order_by("priority"):
             column.update_grades()
 
     def add_attempt(self, student, mark, date=None, text=None):
@@ -875,7 +896,7 @@ class Test(models.Model):
         """Create Test objects based on matching column names from a module's columns."""
         column_data = module.column_data
         if column is None:
-            columns = module.gradebook_columns.all()
+            columns = module.gradebook_columns.all().distinct()
         else:
             columns = [column]
         for column in columns:
@@ -893,7 +914,7 @@ class Test(models.Model):
                 regex_search = re.sub(r"\(\?P\<[^\>]+\>", "(", regex_search)
             else:  # No test ID suibpatten
                 regex_search = re.sub(r"\(\?P\<[^\>]+\>", "(", search)
-            possible = module.tests.filter(name__iregex=regex_search)
+            possible = module.tests.filter(name__iregex=regex_search, category=column.category)
             test = None
             if column.test:  # Existing test found
                 test = column.test
@@ -902,7 +923,7 @@ class Test(models.Model):
             elif possible.count() == 0 and match:  # New test needed.
                 try:
                     test = cls.objects.get(module=module, name=column.name)
-                except ObjectDoesNotExist:  # Workoput our test id already exists
+                except ObjectDoesNotExist:  # Workout our test id already exists
                     match = dict(match.groupdict())
                     testid = match.get("id", match.get("name"))
                     if test := cls.objects.filter(test_id=testid, module=module).first():  # Yes, so use that test
@@ -931,7 +952,7 @@ class Test(models.Model):
         if not self.data_ready:  # Don;'t do anything if we don't have data
             return
         blobs = json.get_blob_list()
-        for column in self.columns.all():
+        for column in self.columns.all().order_by("priority"):
             if column.json_attempts_file not in blobs and column.json_grades_file not in blobs:
                 if remove_column:
                     column.delete()
@@ -952,9 +973,12 @@ class GradebookColumn(models.Model):
         TestCategory, on_delete=models.SET_NULL, blank=True, null=True, related_name="columns"
     )
     module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name="gradebook_columns")
+    priority = models.IntegerField(
+        default=1, help_text="When more than one column may have results for a test, set which column to use"
+    )
 
     class Meta:
-        ordering = ["test__module__code", "test__name"]
+        ordering = ["test__module__code", "test__name", "priority"]
 
     def __str__(self):
         """Refer to a column."""
@@ -1429,7 +1453,7 @@ def category_score(self, category):
         summaries = self.summary_scores.filter(category__text=category)
     summary = np.array(summaries.values_list("module__credits", "score"))
     if summary.size == 0:  # No results must be a zero score
-        return 0.0
+        return np.nan
     summary = summary.astype(float)
     return float(np.nansum(np.nanprod(summary, axis=1)) / np.nansum(summary[:, 0]))
 

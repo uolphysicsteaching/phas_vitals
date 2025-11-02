@@ -70,7 +70,7 @@ def update_all_users():
             )
         summaries = account.summary_scores.filter(module__in=account.modules.all())
         for summary in summaries:
-            summary.calculate()
+            summary.save()
         summaries.bulk_update(summaries, ["score", "data"])
         try:
             summary = np.array(summaries.values_list("module__credits", "category__weighting", "score")).astype(float)

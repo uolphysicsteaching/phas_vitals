@@ -8,7 +8,7 @@ from django.db.models import Count, Q
 from ajax_select import LookupChannel, register
 
 # app imports
-from .models import TestCategory
+from .models import Module, TestCategory
 
 
 @register("testcategory")
@@ -22,6 +22,37 @@ class CategoryLookup(LookupChannel):
         """Qyery on Group name only."""
         name = Q(module__pk=q, in_dashboard=True)
         return self.model.objects.filter(name).annotate(count=Count("tests")).filter(count__gt=0)
+
+    def format_item_display(self, item):
+        """Group name is the display text."""
+        return item.text
+
+    def format_match(self, item):
+        """Match on Group.name."""
+        return item.pk
+
+    def check_auth(self, request):
+        """Require a logged in user."""
+        if not request.user.is_authenticated:
+            raise PermissionDenied
+
+
+@register("full_testcategory")
+class FullCategoryLookup(LookupChannel):
+    """Lockup for Test Category Objects in a module and sub-modules."""
+
+    model = TestCategory
+    parameter_name = "module"
+
+    def get_query(self, q, request):
+        """Qyery on Group name only."""
+        name = Q(module__pk=q, in_dashboard=True)
+        try:
+            sub_modules = Module.objects.get(pk=q).sub_modules.all()
+            name |= Q(module__in=sub_modules, in_dashboard=True)
+        except Module.DoesNotExist:
+            pass
+        return self.model.objects.filter(name).annotate(count=Count("tests"))
 
     def format_item_display(self, item):
         """Group name is the display text."""

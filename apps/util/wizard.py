@@ -94,7 +94,7 @@ class GradebookImport(IsStaffViewMixin, SessionWizardView):
         self._add_choice_field(
             form_class, "date", [("", "None")] + force_cols, "Date Column", date_guess, required=False
         )
-
+        cols = module.tests.all().order_by("release_date")
         for test in module.tests.all().order_by("release_date"):
             self._add_choice_field(form_class, test.name, columns, f"Test: {test.name}", required=False)
 

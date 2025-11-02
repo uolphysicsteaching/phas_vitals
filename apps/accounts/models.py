@@ -186,11 +186,6 @@ class Account(AbstractUser):
     number = models.IntegerField(unique=True)
     title = models.CharField(max_length=20, blank=True, null=True)
     programme = models.ForeignKey(Programme, on_delete=models.SET_NULL, blank=True, null=True, related_name="students")
-    level = models.IntegerField(
-        default=1,
-        verbose_name="Current Level of Study",
-        choices=LEVEL_OF_STUDY,
-    )
     year = models.ForeignKey(
         Year, on_delete=models.SET_NULL, blank=True, null=True, related_name="students", verbose_name="Year of Study"
     )

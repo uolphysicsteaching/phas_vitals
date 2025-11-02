@@ -312,6 +312,11 @@ except IOError:
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "ignore_noise": {
+            "()": f"{SITE_NAME}.logging_filters.IgnoreNoiseFilter",
+        },
+    },
     "handlers": {
         "file": {
             "level": "DEBUG",
@@ -333,7 +338,11 @@ LOGGING = {
             "class": "logging.FileHandler",
             "filename": str(PROJECT_ROOT_PATH / "logs" / "debug.log"),
         },
-        "mail_admins": {"level": "ERROR", "class": "django.utils.log.AdminEmailHandler"},
+        "mail_admins": {
+            "level": "ERROR",
+            "class": "django.utils.log.AdminEmailHandler",
+            "filters": ["ignore_noise"],
+        },
     },
     "formatters": {"verbose": {"format": "%(asctime)s %(levelname)-8s [%(name)s:%(lineno)s] %(message)s"}},
     "root": {"handlers": ["file"], "level": "DEBUG"},

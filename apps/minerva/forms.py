@@ -179,7 +179,7 @@ class ModuleSelectPlotForm(forms.Form):
     type = forms.ModelChoiceField(
         TestCategory.objects.all(),
         widget=HTMXSelectWidget(
-            lookup_channel="testcategory", parent="module", attrs={"onChange": "this.form.submit();"}
+            lookup_channel="full_testcategory", parent="module", attrs={"onChange": "this.form.submit();"}
         ),
     )
 
@@ -192,8 +192,14 @@ class ModuleSelectPlotForm(forms.Form):
         if module:
             try:
                 module_id = int(module)
-                queryset = self.fields["type"].queryset.filter(module_id=module_id, in_dashboard=True)
-                queryset = queryset.annotate(count=Count("tests")).filter(count__gt=0)
+                cat_query = Q(module_id=module_id, in_dashboard=True)
+                try:
+                    module = Module.objects.get(id=module_id)
+                    cat_query |= Q(module_id__in=module.sub_modules.all())
+                except Module.alsDoesNotExist:
+                    pass
+                queryset = self.fields["type"].queryset.filter(cat_query)
+                queryset = queryset.annotate(count=Count("tests"))
                 self.fields["type"].queryset = queryset
             except (ValueError, TestCategory.DoesNotExist):
                 pass

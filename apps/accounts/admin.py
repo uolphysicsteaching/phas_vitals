@@ -15,7 +15,7 @@ from django.contrib.admin import (
 )
 from django.contrib.auth.admin import GroupAdmin, UserAdmin
 from django.contrib.auth.models import Group
-from django.db.models import Case, Count, F, When
+from django.db.models import Case, Count, F, Value, When
 from django.http import StreamingHttpResponse
 from django.utils.translation import gettext_lazy as _
 
@@ -206,7 +206,7 @@ class SectionAdmin(ImportExportModelAdmin):
                 return data
 
             queryset = queryset.annotate(
-                enrol_ok=Case(When(self_enrol=True, then="Y"), When(self_enrol=False, then="N"))
+                enrol_ok=Case(When(self_enrol=True, then=Value("Y")), When(self_enrol=False, then=Value("N")))
             )
             csvwriter.writerow(["Group Code", "Title", "Description", "Group Set", "Self Enroll"])
             yield read_and_flush()
@@ -218,7 +218,7 @@ class SectionAdmin(ImportExportModelAdmin):
                 yield read_and_flush()
 
         response = StreamingHttpResponse(rows(queryset), content_type="text/csv")
-        response["Content-Disposition"] = f"attachment; filename='Minerva {self.model.__name__}s.csv'"
+        response["Content-Disposition"] = f'attachment; filename="Minerva {self.model.__name__}s.csv"'
 
         return response
 

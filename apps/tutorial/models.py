@@ -455,6 +455,8 @@ def engagement(self):
     """Get engagement score from Summary Score."""
     summary = np.array(self.summary_scores.filter(category__text="Tutorial").values_list("module__credits", "score"))
     summary = summary.astype(float)
+    if summary.size == 0:
+        return np.nan
     return float(np.nansum(np.nanprod(summary, axis=1)) / np.nansum(summary[:, 0]))
 
 

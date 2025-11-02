@@ -12,8 +12,8 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.views import PasswordChangeView
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMessage
-from django.db.models import Q
-from django.http import HttpResponse
+from django.db.models import FloatField, Min, OuterRef, Q, Subquery
+from django.http import HttpResponse, HttpResponseRedirect
 from django.template import loader
 from django.urls import reverse_lazy
 from django.views.generic import FormView, TemplateView
@@ -375,13 +375,33 @@ class CohortFilterActivityScoresView(IsSuperuserViewMixin, FormListView):
         data = self.form.cleaned_data
         if data["what"] == "activity_score":
             query_arg = {f"activity_score__{data['how']}": data["value"]}
-            return self.model.students.filter(modules=data["module"], **query_arg).distinct().order_by(data["what"])
+            return (
+                self.model.students.filter(modules=data["module"], **query_arg).distinct().order_by(f'-{data["what"]}')
+            )
+        if data["what"] == "any":
+            query_args = {f"min_score__{data['how']}": data["value"]}
+            return (
+                self.model.students.annotate(min_score=Min("summary_scores__score"))
+                .filter(modules=data["module"], **query_args)
+                .order_by("-min_score")
+            )
+
         TestCategory = apps.get_model("minerva", "testcategory")
         SummaryScore = apps.get_model("minerva", "summaryscore")
-        if cat := TestCategory.objects.filter(module=data["module"], text=data["what"]).first():
+        if cat := TestCategory.objects.filter(module=data["module"], text__iexact=data["what"]).first():
+
+            filtered_scores = SummaryScore.objects.filter(
+                student_id=OuterRef("pk"), category__text__iexact=data["what"], module=data["module"]
+            ).values("score")
+
             query_args = {"category": cat, f"score__{data['how']}": data["value"]}
             student_ids = set([x[0] for x in SummaryScore.objects.filter(**query_args).values_list("student")])
-            return self.model.objects.filter(pk__in=student_ids)
+            return (
+                self.model.objects.filter(pk__in=student_ids)
+                .annotate(filtered_score=Subquery(filtered_scores, output_field=FloatField()))
+                .order_by("-filtered_score")
+            )
+
         return self.model.objects.none()
 
 
@@ -390,22 +410,28 @@ class CohortFilterActivityScoresExportView(CohortFilterActivityScoresView):
 
     def render_to_response(self, context, **response_kwargs):
         """Render the object list to a pandas dataframe and then output as Excel."""
+        if context["students"].count() == 0:
+            return HttpResponseRedirect("/accounts/no-data/")
         fields = {
             "number": "SID",
             "first_name": "First Name",
             "last_name": "Last Name",
             "email": "Email",
             "programme__name": "Programme",
-            "tests_score": "Homework",
-            "labs_score": "Labs",
-            "coding_score": "Code Taks",
-            "vitals_score": "VITALs",
-            "engagement": "Tutorial Engagement",
-            "activity_score": "Overall Activity",
         }
         form = self.form.cleaned_data
-        data = context["students"].values(*list(fields.keys()))
-        df = pd.DataFrame(data)
+        module = form["module"]
+        fields.update({f"_{x.text}": x.label for x in module.categories.filter(dashboard_plot=True)})
+        fields["_activity_score"] = "Overall Activity"
+        data = context["students"].values(*list([x for x in fields if not x.startswith("_")]))
+        for student, row in zip(context["students"], data):
+            for category in module.categories.filter(dashboard_plot=True):
+                try:
+                    row[f"_{category.text}"] = student.summary_scores.get(category=category).score
+                except ObjectDoesNotExist:
+                    row[f"_{category.text}"] = np.nan
+                row["_activity_score"] = student.activity_score
+        df = pd.DataFrame(data)[list(fields.keys())]
         df.rename(columns=fields, inplace=True)
         df.set_index("SID", inplace=True)
         response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -434,21 +460,22 @@ class CohortScoresOverview(IsStaffViewMixin, TemplateView):
 
     def _load_gif_data(self, context):
         """Load pre-prepared gif data."""
-        attrs = {
-            "activity_score": "Overall Activity",
-            "tests_score": "Homework Assignments",
-            "labs_score": "Lab Activities",
-            "coding_score": "Code Tasks",
-            "vitals_score": "VITALs Progress",
-            "engagement": "Tutorial Enghagement",
-        }
+        TestCategory = apps.get_model("minerva", "testcategory")
+        cats = TestCategory.objects.filter(dashboard_plot=True)
+        if module := self.kwargs.get("module", None):
+            cats = cats.filter(module__code=module)
+        if text := self.kwargs.get("text", None):
+            cats = cats.filter(text__contains=text)
 
-        for attr, label in attrs.items():
-            if (data := (Path(settings.MEDIA_ROOT) / "data" / f"{attr}.gif")).exists():
-                with open(data, "rb") as buffer:
-                    context[f"{attr}_plot"] = ImageData(data=buffer_to_base64(buffer, "image/gif"), alt=label)
-            else:
-                context[f"{attr}_plot"] = data
+        cats = cats.order_by("module__code", "order")
+        output = []
+        for cat in cats.all():
+            if not cat.gif.exists():
+                continue
+            with open(cat.gif, "rb") as buffer:
+                cat.plot = ImageData(data=buffer_to_base64(buffer, "image/gif"), alt=cat.label)
+            output.append(cat)
+        context["categories"] = output
         context["plot"] = ImageData(data=svg_data(self.mod_cdf(), base64=True), alt="Summary Student Scores")
         return context
 
@@ -459,26 +486,36 @@ class CohortScoresOverview(IsStaffViewMixin, TemplateView):
         else:
             plt.sca(ax)
 
-        scorenames = {
-            "tests_score": "Tests",
-            "labs_score": "Labs",
-            "coding_score": "Coding",
-            "vitals_score": "VITALs",
-            "engagement": "Tutorial",
-            "activity_score": "Overall",
+        TestCategory = apps.get_model("minerva", "testcategory")
+        cats = TestCategory.objects.filter(dashboard_plot=True)
+        if module := self.kwargs.get("module", None):
+            cats = cats.filter(module__code=module)
+        if text := self.kwargs.get("text", None):
+            cats = cats.filter(text__contains=text)
+
+        data = {}
+        for cat in cats.all():
+            if cat.xlsx.exists():
+                data[f"{cat.module.code}:{cat.label}"] = pd.read_excel(cat.xlsx).set_index("Date").iloc[-1]
+        data = pd.DataFrame(data).sort_index()
+        activity = {
+            x[0]: x[1]
+            for x in (
+                Account.objects.filter(number__in=data.index.values)
+                .order_by("number")
+                .values_list("number", "activity_score")
+            )
         }
-        # TODO: Modify to work with different modules.
-        data = pd.DataFrame(Account.students.filter(modules__code="PHAS1000").values(*scorenames.keys())).fillna(
-            value=np.NaN
-        )
+        activity = pd.Series(activity)
+        data["Activity"] = activity
 
         x = np.linspace(0, 101, 102)
-        for ix, (k, label) in enumerate(scorenames.items()):
+        for ix, k in enumerate(data.columns):
             entries = data[k].loc[~np.isnan(data[k])]  # Remove bad marks
             if len(entries) < 4:  # Insufficient entries to compute a cdf
                 continue
             y = np.array([100 * len(entries[entries >= ix]) / len(entries) for ix in x])
-            plt.step(x, y, linewidth=2, label=f"{label}")
+            plt.step(x, y, linewidth=2, label=k)
         ax.legend(fontsize="small", loc="upper right")
         ax.set_xlabel("Student Mark %")
         ax.set_ylabel("% students getting this mark or better")

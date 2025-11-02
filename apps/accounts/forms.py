@@ -122,6 +122,7 @@ class CohortFilterActivityScoresForm(forms.Form):
     what = forms.ChoiceField(
         choices=[
             ("activity_score", "Overall Activity"),
+            ("any", "Any of the dashboard scores"),
             ("Tutorial", "Tutorial Engagement"),
             ("VITALS", "VITALs passed %"),
             ("Lab Experiment", "Lab Sessions"),
