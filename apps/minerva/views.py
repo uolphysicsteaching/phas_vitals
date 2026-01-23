@@ -72,6 +72,14 @@ def _delimiter(filename):
 
 
 def set_name(name):
+    """Shorten a name to 30 characters and remove dots.
+
+    Args:
+        name (str): The name to process.
+
+    Returns:
+        (str): The shortened name without dots.
+    """
     return shorten(name, width=30, placeholder="[-]").replace(".", "")
 
 
@@ -503,6 +511,14 @@ class BaseShowTestResultsView(SingleTableMixin, HTMXProcessMixin, FormView):
         return context
 
     def get_context_data_next_batch(self, **kwargs):
+        """Get context data for the next batch of results.
+
+        Keyword Parameters:
+            **kwargs: Additional context data.
+
+        Returns:
+            (dict): Context dictionary for template rendering.
+        """
         ret = self.get_context_data(**kwargs)
         return ret
 
@@ -522,9 +538,21 @@ class BaseShowTestResultsView(SingleTableMixin, HTMXProcessMixin, FormView):
 
 
 class Row_Dict:
-    """Proxy for a dictionary that delays evaluating the test results."""
+    """Proxy for a dictionary that delays evaluating the test results.
+
+    Attributes:
+        student: The student account object.
+        test_results: Prefetched test results for the student.
+        tests (dict): Dictionary mapping test names to test IDs.
+    """
 
     def __init__(self, student, tests):
+        """Initialise Row_Dict with student and test data.
+
+        Args:
+            student: The student account object.
+            tests (dict): Dictionary mapping test names to test IDs.
+        """
         self.student = student
         self.test_results = student.test_results.all()
         self.tests = tests
