@@ -195,10 +195,12 @@ class SectionAdmin(ImportExportModelAdmin):
         """Action to export a Minerva groups csv file."""
 
         def rows(queryset):
+            """Generate CSV rows for streaming response."""
             csvfile = StringIO()
             csvwriter = csv.writer(csvfile)
 
             def read_and_flush():
+                """Read CSV buffer content and flush it."""
                 csvfile.seek(0)
                 data = csvfile.read()
                 csvfile.seek(0)
@@ -329,10 +331,12 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
         """Action to export Gradescope Roster file."""
 
         def rows(queryset):
+            """Generate CSV rows for streaming response."""
             csvfile = StringIO()
             csvwriter = csv.writer(csvfile)
 
             def read_and_flush():
+                """Read CSV buffer content and flush it."""
                 csvfile.seek(0)
                 data = csvfile.read()
                 csvfile.seek(0)
@@ -362,10 +366,12 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
         """Action to export a Minerva groups csv file."""
 
         def rows(queryset):
+            """Generate CSV rows for streaming response."""
             csvfile = StringIO()
             csvwriter = csv.writer(csvfile)
 
             def read_and_flush():
+                """Read CSV buffer content and flush it."""
                 csvfile.seek(0)
                 data = csvfile.read()
                 csvfile.seek(0)

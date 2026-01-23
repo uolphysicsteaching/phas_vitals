@@ -11,4 +11,6 @@ from . import views
 
 
 class EquipmentConfig(AppConfig):
+    """Django App config object for the htmx_views app."""
+
     name = basename(dirname(__file__))

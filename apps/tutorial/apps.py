@@ -5,6 +5,8 @@ from django.apps import AppConfig
 
 
 class ProjectConfig(AppConfig):
+    """Django App config object for the tutorial app."""
+
     default_auto_field = "django.db.models.BigAutoField"
     name = "tutorial"
 

@@ -311,6 +311,16 @@ class _LocalUserPassesTest:
     """Implement the bits of UserPassesTestMixin without triggering early import."""
 
     def dispatch(self, request, *args, **kwargs):
+        """Dispatch request after testing user permissions.
+
+        Args:
+            request: The HTTP request object.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            HTTP response or redirect to login if test fails.
+        """
         user_test_result = self.test_func()
         if not user_test_result:
             # Django imports

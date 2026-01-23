@@ -29,6 +29,13 @@ class StudentSelectForm(forms.Form):
     )
 
     def __init__(self, *args, **kargs):
+        """Initialise the form with optional field filters.
+
+        Keyword Parameters:
+            *args: Variable length argument list.
+            filters (tuple): Tuple of (field_name, filter_dict) pairs for queryset filtering.
+            **kargs: Arbitrary keyword arguments.
+        """
         filters = kargs.pop("filters", tuple(tuple()))
         super(StudentSelectForm, self).__init__(*args, **kargs)
         for field, filt in filters:
@@ -59,6 +66,13 @@ class AllStudentSelectForm(forms.Form):
     )
 
     def __init__(self, *args, **kargs):
+        """Initialise the form with optional field filters.
+
+        Keyword Parameters:
+            *args: Variable length argument list.
+            filters (tuple): Tuple of (field_name, filter_dict) pairs for queryset filtering.
+            **kargs: Arbitrary keyword arguments.
+        """
         filters = kargs.pop("filters", tuple(tuple()))
         super(AllStudentSelectForm, self).__init__(*args, **kargs)
         for field, filt in filters:

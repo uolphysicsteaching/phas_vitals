@@ -66,6 +66,13 @@ class UsernameFKWidget(widgets.ForeignKeyWidget):
     name_pat = re.compile(r"\((.*)\)")
 
     def __init__(self, *args, **kargs):
+        """Initialise UsernameFKWidget with processing callback.
+
+        Keyword Parameters:
+            *args: Variable length argument list.
+            process (callable): Function to process values during import. Defaults to name2username.
+            **kargs: Arbitrary keyword arguments.
+        """
         self.process = kargs.pop("process", self.name2username)
         super().__init__(*args, **kargs)
 
@@ -473,6 +480,14 @@ class UserResource(resources.ModelResource):
     }
 
     def before_import(self, dataset, **kwargs):
+        """Prepare dataset before import by adding username field if missing.
+
+        Args:
+            dataset: The tablib dataset to import.
+
+        Keyword Parameters:
+            **kwargs: Additional keyword arguments.
+        """
         # mimic a 'dynamic field' - i.e. append field which exists on
         # Book model, but not in dataset
         if "username" not in dataset.headers:
@@ -519,6 +534,7 @@ class ProgrammeResource(resources.ModelResource):
 
 
 class YearResource(resources.ModelResource):
+    """Import Export Resource class for Year objects."""
 
     class Meta:
         model = Year
