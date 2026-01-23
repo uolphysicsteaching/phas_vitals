@@ -15,6 +15,8 @@ class VITALForm(forms.ModelForm):
     """Form for referring to VITALs."""
 
     class Meta:
+        """Form metadata for VITAL model."""
+
         model = VITAL
         fields = "__all__"
 
@@ -23,6 +25,8 @@ class VITAL_Test_MapForm(forms.ModelForm):
     """Form for VITAL-Test Mapping Edits."""
 
     class Meta:
+        """Form metadata for VITAL_Test_Map model."""
+
         model = VITAL_Test_Map
         fields = "__all__"
         widgets = {
@@ -35,6 +39,8 @@ class VITAL_ResultForm(forms.ModelForm):
     """Form for VITAL-Test Mapping Edits."""
 
     class Meta:
+        """Form metadata for VITAL_Result model."""
+
         model = VITAL_Result
         fields = "__all__"
         widgets = {
