@@ -51,6 +51,7 @@ logger = logging.getLogger("celery_tasks")
 
 
 class ModuleListFilter(admin.SimpleListFilter):
+    """Filter for selecting modules by their code."""
 
     title = "Module"
     parameter_name = "module"
@@ -70,7 +71,7 @@ class ModuleListFilter(admin.SimpleListFilter):
 class TestCategoryFilter(admin.SimpleListFilter):
     """Filter that uses TestCategories."""
 
-    title = "Categpry"
+    title = "Category"
     parameter_name = "category_text"
 
     def lookups(self, request, model_admin):

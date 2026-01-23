@@ -19,16 +19,38 @@ class GroupLookup(LookupChannel):
     parameter_name = "name"
 
     def get_query(self, q, request):
-        """Qyery on Group name only."""
+        """Query for groups by name.
+
+        Args:
+            q (str): The search query string.
+            request: The HTTP request object.
+
+        Returns:
+            (QuerySet): Groups matching the name query.
+        """
         name = Q(name__istartswith=q)
         return self.model.objects.filter(name)
 
     def format_item_display(self, item):
-        """Group name is the display text."""
+        """Format the display text for a group.
+
+        Args:
+            item (Group): The group object.
+
+        Returns:
+            (str): The name of the group.
+        """
         return item.name
 
     def format_match(self, item):
-        """Match on Group.name."""
+        """Format the value for matching a group.
+
+        Args:
+            item (Group): The group object.
+
+        Returns:
+            (str): The name of the group.
+        """
         return item.name
 
     def check_auth(self, request):
@@ -45,16 +67,38 @@ class SectionLookup(LookupChannel):
     parameter_name = "name"
 
     def get_query(self, q, request):
-        """Qyery on Group name only."""
+        """Query for sections by name or code.
+
+        Args:
+            q (str): The search query string.
+            request: The HTTP request object.
+
+        Returns:
+            (QuerySet): Sections matching the name or code query.
+        """
         name = Q(name__icontains=q) | Q(code__istartswith=q)
         return self.model.objects.filter(name)
 
     def format_item_display(self, item):
-        """Group name is the display text."""
+        """Format the display text for a section.
+
+        Args:
+            item (Section): The section object.
+
+        Returns:
+            (str): The name of the section.
+        """
         return item.name
 
     def format_match(self, item):
-        """Match on Group.name."""
+        """Format the value for matching a section.
+
+        Args:
+            item (Section): The section object.
+
+        Returns:
+            (str): The name of the section.
+        """
         return item.name
 
     def check_auth(self, request):
@@ -78,11 +122,25 @@ class AcademicAccountLookup(LookupChannel):
         return self.model.objects.filter(academic_Q).filter(username | name | email)
 
     def format_item_display(self, item):
-        """Show dipsplay names."""
+        """Format the display text for an account.
+
+        Args:
+            item (Account): The account object.
+
+        Returns:
+            (str): The display name of the account.
+        """
         return item.display_name
 
     def format_match(self, item):
-        """Match on display names."""
+        """Format the value for matching an account.
+
+        Args:
+            item (Account): The account object.
+
+        Returns:
+            (str): The display name of the account.
+        """
         return item.display_name
 
     def check_auth(self, request):
@@ -93,7 +151,7 @@ class AcademicAccountLookup(LookupChannel):
 
 @register("tutor")
 class TutorAccountLookup(AcademicAccountLookup):
-    """Lookip tutor accounts - based on academic account lookup."""
+    """Lookup tutor accounts - based on academic account lookup."""
 
     model = Account
     parameter_name = "name"
@@ -108,13 +166,21 @@ class TutorAccountLookup(AcademicAccountLookup):
 
 @register("user")
 class StudentAccountLookup(AcademicAccountLookup):
-    """Lookip tutor accounts - based on academic account lookup."""
+    """Lookup student accounts - based on academic account lookup."""
 
     model = Account
     parameter_name = "name"
 
     def get_query(self, q, request):
-        """Search on name,  username and email and limit to tutor accounts."""
+        """Search on name, username and email and limit to student accounts.
+
+        Args:
+            q (str): The search query string.
+            request: The HTTP request object.
+
+        Returns:
+            (QuerySet): Student accounts matching the query.
+        """
         username = Q(username__istartswith=q)
         name = Q(first_name__istartswith=q) | Q(last_name__istartswith=q)
         email = Q(email__istartswith=q)

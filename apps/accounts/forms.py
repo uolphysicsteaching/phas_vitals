@@ -13,7 +13,15 @@ from .models import Account, Cohort, academic_Q, students_Q
 
 
 class StudentSelectForm(forms.Form):
-    """A form to select students with."""
+    """A form to select students with filtering support.
+
+    Attributes:
+        user (ModelChoiceField): Field for selecting a student account.
+
+    Examples:
+        >>> form = StudentSelectForm(filters=(('user', {'groups__name': 'Student'}),))
+        >>> form.is_valid()
+    """
 
     user = forms.ModelChoiceField(
         queryset=Account.students.filter(students_Q).order_by("last_name"),
@@ -21,7 +29,6 @@ class StudentSelectForm(forms.Form):
     )
 
     def __init__(self, *args, **kargs):
-        """Filter accounts for students."""
         filters = kargs.pop("filters", tuple(tuple()))
         super(StudentSelectForm, self).__init__(*args, **kargs)
         for field, filt in filters:
@@ -36,7 +43,15 @@ class StudentSelectForm(forms.Form):
 
 
 class AllStudentSelectForm(forms.Form):
-    """A form to select students with."""
+    """A form to select students with autocomplete and filtering support.
+
+    Attributes:
+        user (ModelChoiceField): Field for selecting a student account with autocomplete.
+
+    Examples:
+        >>> form = AllStudentSelectForm(filters=(('user', {'year__name': '2023'}),))
+        >>> form.is_valid()
+    """
 
     user = forms.ModelChoiceField(
         queryset=Account.objects.filter(students_Q).order_by("last_name"),
@@ -44,7 +59,6 @@ class AllStudentSelectForm(forms.Form):
     )
 
     def __init__(self, *args, **kargs):
-        """Filter accounts for students."""
         filters = kargs.pop("filters", tuple(tuple()))
         super(AllStudentSelectForm, self).__init__(*args, **kargs)
         for field, filt in filters:
@@ -68,7 +82,11 @@ class StaffSelectForm(forms.Form):
 
 
 class TutorSelectForm(forms.Form):
-    """A form to setlect staff who have tutorial students with."""
+    """A form to select staff who have tutorial students.
+
+    Attributes:
+        apt (ModelMultipleChoiceField): Field for selecting one or more staff members.
+    """
 
     class Media:
         css = {"all": ["jquery-multiselect/jquery.multiselect.css"]}
@@ -80,6 +98,8 @@ class TutorSelectForm(forms.Form):
 
 
 class CohortSelectForm(forms.Form):
+    """A form to select an academic cohort."""
+
     cohort = forms.ModelChoiceField(
         required=False, queryset=Cohort.objects.all(), widget=Select(attrs={"onChange": "this.form.submit();"})
     )
@@ -98,6 +118,14 @@ class UserAdminForm(forms.ModelForm):
 
 
 class ChangePasswordForm(forms.Form):
+    """A form for changing user passwords.
+
+    Attributes:
+        old_password (CharField): Field for the current password.
+        new_password (CharField): Field for the new password.
+        confirm_password (CharField): Field for confirming the new password.
+    """
+
     old_password = forms.CharField(widget=forms.PasswordInput())
     new_password = forms.CharField(widget=forms.PasswordInput())
     confirm_password = forms.CharField(widget=forms.PasswordInput())

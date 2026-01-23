@@ -16,12 +16,21 @@ class RangeValueValidator(BaseValidator):
     code = "invalid_float_range"
 
     def __init__(self, limit_value=None, message=None):
-        """Set default limit range tro 0...100."""
+        """Set default limit range to 0...100."""
         if limit_value is None:
             limit_value = (0.0, 100.0)
         super().__init__(limit_value, message=message)
 
     def compare(self, value, _):
+        """Compare value against the limit range.
+
+        Args:
+            value: The value to validate.
+            _: Unused parameter required by base class.
+
+        Returns:
+            (bool): True if validation fails, False if validation passes.
+        """
         if value is None:
             return False
         if isinstance(value, float) and isnan(value):
@@ -29,4 +38,12 @@ class RangeValueValidator(BaseValidator):
         return not (min(self.limit_value) <= value <= max(self.limit_value))
 
     def clean(self, value):
+        """Clean the value without transformation.
+
+        Args:
+            value: The value to clean.
+
+        Returns:
+            The unchanged value.
+        """
         return value  # No transformation needed

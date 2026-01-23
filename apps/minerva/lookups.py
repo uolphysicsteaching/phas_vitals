@@ -19,16 +19,38 @@ class CategoryLookup(LookupChannel):
     parameter_name = "module"
 
     def get_query(self, q, request):
-        """Qyery on Group name only."""
+        """Query for test categories within a module.
+
+        Args:
+            q: The module primary key to filter on.
+            request: The HTTP request object.
+
+        Returns:
+            (QuerySet): Test categories with test counts greater than zero.
+        """
         name = Q(module__pk=q, in_dashboard=True)
         return self.model.objects.filter(name).annotate(count=Count("tests")).filter(count__gt=0)
 
     def format_item_display(self, item):
-        """Group name is the display text."""
+        """Format the display text for a test category.
+
+        Args:
+            item (TestCategory): The test category object.
+
+        Returns:
+            (str): The text representation of the category.
+        """
         return item.text
 
     def format_match(self, item):
-        """Match on Group.name."""
+        """Format the value for matching a test category.
+
+        Args:
+            item (TestCategory): The test category object.
+
+        Returns:
+            (int): The primary key of the category.
+        """
         return item.pk
 
     def check_auth(self, request):
@@ -45,7 +67,15 @@ class FullCategoryLookup(LookupChannel):
     parameter_name = "module"
 
     def get_query(self, q, request):
-        """Qyery on Group name only."""
+        """Query for test categories within a module and its sub-modules.
+
+        Args:
+            q: The module primary key to filter on.
+            request: The HTTP request object.
+
+        Returns:
+            (QuerySet): Test categories from module and sub-modules with test counts.
+        """
         name = Q(module__pk=q, in_dashboard=True)
         try:
             sub_modules = Module.objects.get(pk=q).sub_modules.all()
@@ -55,11 +85,25 @@ class FullCategoryLookup(LookupChannel):
         return self.model.objects.filter(name).annotate(count=Count("tests"))
 
     def format_item_display(self, item):
-        """Group name is the display text."""
+        """Format the display text for a test category.
+
+        Args:
+            item (TestCategory): The test category object.
+
+        Returns:
+            (str): The text representation of the category.
+        """
         return item.text
 
     def format_match(self, item):
-        """Match on Group.name."""
+        """Format the value for matching a test category.
+
+        Args:
+            item (TestCategory): The test category object.
+
+        Returns:
+            (int): The primary key of the category.
+        """
         return item.pk
 
     def check_auth(self, request):
