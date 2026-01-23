@@ -4,7 +4,22 @@ This directory contains pytest-based tests for the phas_vitals Django project.
 
 ## Setup
 
-### 1. Install Test Dependencies
+There are two ways to set up the test environment:
+
+### Option 1: Using Conda (Recommended)
+
+Create a conda environment with all test dependencies:
+
+```bash
+conda env create -f environment-test.yaml
+conda activate phas_vitals_test
+```
+
+This will install Python, Django, pytest, and all required testing dependencies in an isolated environment.
+
+### Option 2: Using pip
+
+Install test dependencies using pip:
 
 ```bash
 pip install -r requirements/test.txt
@@ -12,7 +27,7 @@ pip install -r requirements/test.txt
 
 **Note**: The complete production environment requires additional packages that can be installed using the project's `environment.yaml` file with conda. The test requirements file provides the minimal dependencies needed to run the unit tests.
 
-### 2. Run Tests
+## Running Tests
 
 Run all tests:
 ```bash
@@ -46,7 +61,9 @@ pytest --cov=apps --cov-report=html
 
 - `pytest.ini` - Pytest configuration file
 - `conftest.py` - Shared fixtures and test configuration
-- `phas_vitals/settings/test.py` - Django settings for testing
+- `phas_vitals/settings/test.py` - Django settings for testing (imports from common.py)
+- `environment-test.yaml` - Conda environment file for test dependencies
+- `requirements/test.txt` - Pip requirements for test dependencies
 - `apps/*/tests.py` - Test files for each app
 
 ## Test Categories

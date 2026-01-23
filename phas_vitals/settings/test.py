@@ -1,46 +1,13 @@
-"""Test settings for pytest."""
+"""Test settings for pytest.
 
-# Python imports
-import sys
-from pathlib import Path
+Imports base settings from common.py and overrides with test-specific configuration.
+"""
 
-# ##### PATH CONFIGURATION ################################
+# app imports
+from .common import *  # NOQA
 
-# fetch Django's project directory
-DJANGO_ROOT_PATH = Path(__file__).parent.parent
-DJANGO_ROOT = str(DJANGO_ROOT_PATH)
-
-# fetch the project_root
-PROJECT_ROOT_PATH = DJANGO_ROOT_PATH.parent
-PROJECT_ROOT = str(PROJECT_ROOT_PATH)
-
-# the name of the whole site
-SITE_NAME = DJANGO_ROOT_PATH.name
-
-# For URLs
-PROJECT_ROOT = str(PROJECT_ROOT_PATH)
-
-# collect static files here
-STATIC_ROOT = str(PROJECT_ROOT_PATH / "run" / "static")
-
-# collect media files here
-MEDIA_ROOT = str(PROJECT_ROOT_PATH / "run" / "media")
-
-# look for static assets here
-STATICFILES_DIRS = [
-    str(PROJECT_ROOT_PATH / "static"),
-]
-
-# look for templates here
-PROJECT_TEMPLATES = [
-    str(PROJECT_ROOT_PATH / "templates"),
-]
-
-# Add apps to path
-APPS_PATH = PROJECT_ROOT_PATH / "apps"
-sys.path.append(str(APPS_PATH.absolute()))
-
-# Test database configuration
+# ##### TEST DATABASE CONFIGURATION #######################
+# Override database to use in-memory SQLite for tests
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -59,8 +26,8 @@ ALLOWED_HOSTS = ["*", "testserver"]
 SECRET_KEY = "test-secret-key-for-testing-only"
 
 # ##### APPLICATION CONFIGURATION #########################
-# Minimal apps for testing
-# Note: django.contrib.admin is excluded to avoid complex dependency issues
+# Use minimal apps for testing to avoid complex dependency issues
+# Note: django.contrib.admin and baton are excluded
 INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -70,59 +37,10 @@ INSTALLED_APPS = [
     "django.contrib.sites",
     # Third-party apps needed by models
     "sitetree",
-    # Custom apps
-    "accounts",
-    "minerva",
-    "vitals",
-    "util",
-    "psrb",
-    "tutorial",
-    "htmx_views",
-]
-
-# ##### MIDDLEWARE #########################################
-MIDDLEWARE = [
-    "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
-]
-
-# ##### TEMPLATES #########################################
-TEMPLATES = [
-    {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": PROJECT_TEMPLATES,
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.debug",
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
-            ],
-        },
-    },
-]
-
-# ##### SITE CONFIGURATION #################################
-SITE_ID = 1
-
-# ##### AUTH CONFIGURATION #################################
-AUTH_USER_MODEL = "accounts.Account"
-ROOT_URLCONF = "phas_vitals.urls"
-
-# ##### STATIC FILES CONFIGURATION ########################
-STATIC_URL = "/static/"
-
-# ##### MEDIA FILES CONFIGURATION #########################
-MEDIA_URL = "/media/"
+] + CUSTOM_APPS
 
 # ##### LOGGING CONFIGURATION #############################
-# Simple logging configuration for tests
+# Disable logging for tests
 LOGGING_CONFIG = None
 LOGGING = {}
 
@@ -138,6 +56,7 @@ CELERY_RESULT_BACKEND = "cache+memory://"
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # ##### CACHE CONFIGURATION ###############################
+# Use local memory cache for tests
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -145,39 +64,30 @@ CACHES = {
 }
 
 # ##### CONSTANCE CONFIGURATION ###########################
-# Mock constance configuration for testing
+# Use memory backend for constance in tests
 CONSTANCE_BACKEND = "constance.backends.memory.MemoryBackend"
-CONSTANCE_CONFIG = {
-    "SUBJECT_PREFIX": ("PHAS", "Subject prefix for module codes"),
-    "LAB_PATTERN": (r"(?P<name>Lab \d+)", "Lab pattern"),
-    "HOMEWORK_PATTERN": (r"(?P<name>HW \d+)", "Homework pattern"),
-    "CODE_PATTERN": (r"(?P<name>Code \d+)", "Code pattern"),
-}
 
 # ##### PROJECT-SPECIFIC CONFIGURATION ####################
-# Semesters configuration
-SEMESTERS = [(1, "Semester 1"), (2, "Semester 2"), (3, "Both Semesters")]
+# These settings may not be defined in common.py but are needed by models
 
-# Tutorial marks configuration
-TUTORIAL_MARKS = [
-    (0, "Not Attended", "silver"),
-    (1, "Absent", "tomato"),
-    (2, "Attended", "springgreen"),
-    (3, "Engaged", "mediumseagreen"),
-    (4, "Excellent", "forestgreen"),
-]
+# Semesters configuration (if not in common.py)
+if "SEMESTERS" not in globals():
+    SEMESTERS = [(1, "Semester 1"), (2, "Semester 2"), (3, "Both Semesters")]
 
-# VITALs results mapping
-VITALS_RESULTS_MAPPING = {
-    "passed": ("Passed", "green"),
-    "failed": ("Failed", "red"),
-    "pending": ("Pending", "yellow"),
-}
+# Tutorial marks configuration (if not in common.py)
+if "TUTORIAL_MARKS" not in globals():
+    TUTORIAL_MARKS = [
+        (0, "Not Attended", "silver"),
+        (1, "Absent", "tomato"),
+        (2, "Attended", "springgreen"),
+        (3, "Engaged", "mediumseagreen"),
+        (4, "Excellent", "forestgreen"),
+    ]
 
-# ##### TIME ZONE CONFIGURATION ###########################
-USE_TZ = True
-TIME_ZONE = "UTC"
-
-# ##### INTERNATIONALIZATION ##########################
-USE_I18N = True
-LANGUAGE_CODE = "en-gb"
+# VITALs results mapping (if not in common.py)
+if "VITALS_RESULTS_MAPPING" not in globals():
+    VITALS_RESULTS_MAPPING = {
+        "passed": ("Passed", "green"),
+        "failed": ("Failed", "red"),
+        "pending": ("Pending", "yellow"),
+    }
