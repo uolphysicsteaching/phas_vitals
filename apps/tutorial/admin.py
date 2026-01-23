@@ -93,6 +93,8 @@ class TutorialAdminForm(forms.ModelForm):
     """Form for managing tutorial groups."""
 
     class Meta:
+        """Form metadata for Tutorial model."""
+
         model = Tutorial
         exclude = []
 
@@ -106,6 +108,8 @@ class TutorialAdminInlineForm(forms.ModelForm):
     """Inline admin form class for tutorial groups."""
 
     class Meta:
+        """Form metadata for Tutorial inline editing."""
+
         model = Tutorial
         exclude = ("tutor",)
 
@@ -114,6 +118,8 @@ class TutorialAssignmentInlineForm(forms.ModelForm):
     """Inline admin form class for Tutorial Assignment."""
 
     class Meta:
+        """Form metadata for TutorialAssignment inline editing."""
+
         model = TutorialAssignment
         exclude = ("tutorial",)
 
@@ -122,6 +128,8 @@ class AltTutorialAssignmentInlineForm(forms.ModelForm):
     """Inline admin form class for Tutorial Assignment."""
 
     class Meta:
+        """Form metadata for alternative TutorialAssignment inline editing."""
+
         model = TutorialAssignment
         fields = ("tutorial", "student")
 

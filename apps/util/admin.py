@@ -206,6 +206,15 @@ class APIKeyAdmin(ImportExportModelAdmin):
 
     @admin.action(description="Create new key")
     def create_new(self, request, queryset):
+        """Create new API key for each selected object.
+
+        Args:
+            request: The HTTP request object.
+            queryset: The queryset of selected objects.
+
+        Returns:
+            (HttpResponseRedirect): Redirect back to the referring page.
+        """
         for _ in queryset.all():
             obj = APIKey.new()
         self.message_user(request, f"Created: {obj}", messages.SUCCESS)

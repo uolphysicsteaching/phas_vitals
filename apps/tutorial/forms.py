@@ -78,6 +78,8 @@ class EngagementEntryForm(forms.ModelForm):
     """Form class for recording engagement with the tutorial."""
 
     class Meta:
+        """Form metadata for Attendance model."""
+
         model = Attendance
         exclude = ["type"]
         widgets = {"session": HiddenInput, "student": ReadOnlySelect}
@@ -87,10 +89,14 @@ class TutorialAssignmentForm(forms.ModelForm):
     """Form for managing tutorial assignment."""
 
     class Meta:
+        """Form metadata for TutorialAssignment model."""
+
         model = TutorialAssignment
         exclude = []
 
     class Media:
+        """Media definitions for the form."""
+
         js = ("js/django-formset.js",)
 
     student = AutoCompleteSelectField(

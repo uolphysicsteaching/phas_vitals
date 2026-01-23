@@ -209,6 +209,8 @@ class Test_ScoreForm(forms.ModelForm):
     """Form with lookup for Test and student fields."""
 
     class Meta:
+        """Form metadata for Test_Score model."""
+
         model = Test_Score
         fields = "__all__"
         widgets = {
@@ -221,6 +223,8 @@ class GradebookColumnForm(forms.ModelForm):
     """Form with lookup for Test field for admining Gradebook columns."""
 
     class Meta:
+        """Form metadata for GradebookColumn model."""
+
         model = GradebookColumn
         fields = "__all__"
         widgets = {

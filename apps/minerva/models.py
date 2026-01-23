@@ -1296,6 +1296,11 @@ class Test_Score(models.Model):
 
     @property
     def student_score(self):
+        """Format the score for display to students.
+
+        Returns:
+            (str): Formatted score string, suppressing numerical values if configured.
+        """
         if self.test.suppress_numerical_score:
             return (
                 f"at least {self.test.passing_score} marks"

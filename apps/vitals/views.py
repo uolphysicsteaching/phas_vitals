@@ -141,6 +141,14 @@ class BaseShowvitalResults(SingleTableMixin, HTMXProcessMixin, FormView):
         return context
 
     def get_context_data_next_batch(self, **kwargs):
+        """Get context data for the next batch of results.
+
+        Keyword Parameters:
+            **kwargs: Additional context data.
+
+        Returns:
+            (dict): Context dictionary for template rendering.
+        """
         ret = self.get_context_data(**kwargs)
         return ret
 
@@ -160,9 +168,22 @@ class BaseShowvitalResults(SingleTableMixin, HTMXProcessMixin, FormView):
 
 
 class Row_Dict:
-    """Proxy for a dictionary that delays evaluating the test results."""
+    """Proxy for a dictionary that delays evaluating the VITAL results.
+
+    Attributes:
+        student: The student account object.
+        vital_results: Filtered VITAL results for the student.
+        vitals (dict): Dictionary mapping VITAL names to VITAL IDs.
+    """
 
     def __init__(self, student, vitals, module):
+        """Initialise Row_Dict with student, VITALs and module data.
+
+        Args:
+            student: The student account object.
+            vitals (dict): Dictionary mapping VITAL names to VITAL IDs.
+            module: The module object to filter results by.
+        """
         self.student = student
         self.vital_results = student.vital_results.filter(vital__module=module).all()
         self.vitals = vitals
@@ -277,6 +298,11 @@ class VITALAutocomplete(autocomplete.Select2QuerySetView):
     """Autocomplete lookup for VITALs."""
 
     def get_queryset(self):
+        """Get the queryset for VITAL autocomplete.
+
+        Returns:
+            (QuerySet): Filtered VITAL objects based on user authentication and query.
+        """
         # Don't forget to filter out results depending on the visitor !
         if not self.request.user.is_authenticated:
             return VITAL.objects.none()

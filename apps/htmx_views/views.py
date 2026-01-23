@@ -76,7 +76,12 @@ class HTMXProcessMixin:
     """
 
     def __init__(self, *args, **kwargs):
-        """Setup the _htmc_call attribute for later use."""
+        """Initialise HTMX process mixin with context flags.
+
+        Keyword Parameters:
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+        """
         super().__init__(*args, **kwargs)
         self._htmx_get_context_data = False
         self._htmx_get_context_object_name = False
@@ -242,7 +247,12 @@ class HTMXFormMixin(HTMXProcessMixin):
     """Provide additional methods to adapt FormView and friends for htmx requests as well."""
 
     def __init__(self, *args, **kwargs):
-        """Setup the _htmc_call attribute for later use."""
+        """Initialise HTMX form mixin with form validation flags.
+
+        Keyword Parameters:
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+        """
         super().__init__(*args, **kwargs)
         self._htmx_form_valid = False
         self._htmx_form_invalid = False
@@ -298,9 +308,19 @@ class HTMXFormMixin(HTMXProcessMixin):
 
 
 class _LocalUserPassesTest:
-    """Implement the bits of UserPassesTestMixin that we need wiuthout triggering the early import."""
+    """Implement the bits of UserPassesTestMixin without triggering early import."""
 
     def dispatch(self, request, *args, **kwargs):
+        """Dispatch request after testing user permissions.
+
+        Args:
+            request: The HTTP request object.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            HTTP response or redirect to login if test fails.
+        """
         user_test_result = self.test_func()
         if not user_test_result:
             # Django imports

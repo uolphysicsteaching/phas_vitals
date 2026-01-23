@@ -51,12 +51,28 @@ def _lname_from_name(value):
 
 
 class UsernameFKWidget(widgets.ForeignKeyWidget):
-    """Foreign Key widget that allows a callback inside clean() method."""
+    """Foreign Key widget that allows a callback inside clean() method.
+
+    Attributes:
+        name_pat (Pattern): Compiled regex pattern for extracting usernames from parentheses.
+        process (callable): Function to process values during import.
+
+    Examples:
+        >>> widget = UsernameFKWidget(Account, 'username')
+        >>> widget.clean('John Smith (jsmith)')
+        <Account: jsmith>
+    """
 
     name_pat = re.compile(r"\((.*)\)")
 
     def __init__(self, *args, **kargs):
-        """Add a hook for a function to process each element on import."""
+        """Initialise UsernameFKWidget with processing callback.
+
+        Keyword Parameters:
+            *args: Variable length argument list.
+            process (callable): Function to process values during import. Defaults to name2username.
+            **kargs: Arbitrary keyword arguments.
+        """
         self.process = kargs.pop("process", self.name2username)
         super().__init__(*args, **kargs)
 
@@ -68,10 +84,17 @@ class UsernameFKWidget(widgets.ForeignKeyWidget):
     def name2username(self, name):
         """Try various ways to get a valid username.
 
-        1) Look for some () and assume that contains a username
-        2) Look for a comma and assume that that divides first name from last name
-        3) Look for words and if more than 1 word, assume that it is first anem last name
-        4) If only 1 word, assume it is a user id.
+        Attempts to extract or infer a username from various name formats:
+        1) Look for text within () and assume that contains a username
+        2) Look for a comma and assume that divides first name from last name
+        3) Look for words and if more than 1 word, assume that it is first name last name
+        4) If only 1 word, assume it is a user id
+
+        Args:
+            name: The name string to process.
+
+        Returns:
+            (str): The username extracted or inferred from the name.
         """
         name = str(name)
         match = self.name_pat.search(name)
@@ -116,10 +139,17 @@ class UsernameFKWidget(widgets.ForeignKeyWidget):
 def name2username(name):
     """Try various ways to get a valid username.
 
-    1) Look for some () and assume that contains a username
-    2) Look for a comma and assume that that divides first name from last name
-    3) Look for words and if more than 1 word, assume that it is first anem last name
-    4) If only 1 word, assume it is a user id.
+    Attempts to extract or infer a username from various name formats:
+    1) Look for text within () and assume that contains a username
+    2) Look for a comma and assume that divides first name from last name
+    3) Look for words and if more than 1 word, assume that it is first name last name
+    4) If only 1 word, assume it is a user id
+
+    Args:
+        name: The name string to process.
+
+    Returns:
+        (str): The username extracted or inferred from the name.
     """
     name_pat = re.compile(r"\((.*)\)")
     name = str(name)
@@ -450,6 +480,14 @@ class UserResource(resources.ModelResource):
     }
 
     def before_import(self, dataset, **kwargs):
+        """Prepare dataset before import by adding username field if missing.
+
+        Args:
+            dataset: The tablib dataset to import.
+
+        Keyword Parameters:
+            **kwargs: Additional keyword arguments.
+        """
         # mimic a 'dynamic field' - i.e. append field which exists on
         # Book model, but not in dataset
         if "username" not in dataset.headers:
@@ -496,6 +534,7 @@ class ProgrammeResource(resources.ModelResource):
 
 
 class YearResource(resources.ModelResource):
+    """Import Export Resource class for Year objects."""
 
     class Meta:
         model = Year

@@ -51,6 +51,7 @@ logger = logging.getLogger("celery_tasks")
 
 
 class ModuleListFilter(admin.SimpleListFilter):
+    """Filter for selecting modules by their code."""
 
     title = "Module"
     parameter_name = "module"
@@ -70,7 +71,7 @@ class ModuleListFilter(admin.SimpleListFilter):
 class TestCategoryFilter(admin.SimpleListFilter):
     """Filter that uses TestCategories."""
 
-    title = "Categpry"
+    title = "Category"
     parameter_name = "category_text"
 
     def lookups(self, request, model_admin):
@@ -219,21 +220,45 @@ class ModuleAdmin(ImportExportModelAdmin):
 
     @admin.action(description="Update the categories for module")
     def update_categries(self, request, queryset):
+        """Update test categories for selected modules from JSON data.
+
+        Args:
+            request: The HTTP request object.
+            queryset: The queryset of selected modules.
+        """
         for module in queryset.all():
             module.update_from_json(categories=True, grades=False)
 
     @admin.action(description="Update the Grades for module")
     def update_grades(self, request, queryset):
+        """Update grades for selected modules from JSON data.
+
+        Args:
+            request: The HTTP request object.
+            queryset: The queryset of selected modules.
+        """
         for module in queryset.all():
             module.update_from_json(grades=True)
 
     @admin.action(description="Update the enrollments for module")
     def update_enrollments(self, request, queryset):
+        """Update enrollments for selected modules from JSON data.
+
+        Args:
+            request: The HTTP request object.
+            queryset: The queryset of selected modules.
+        """
         for module in queryset.all():
             module.update_from_json(enrollments=True, grades=False)
 
     @admin.action(description="Update Tests for module")
     def update_tests(self, request, queryset):
+        """Update tests for selected modules from JSON data.
+
+        Args:
+            request: The HTTP request object.
+            queryset: The queryset of selected modules.
+        """
         for module in queryset.all():
             module.update_from_json(tests=True, grades=False)
 
@@ -245,6 +270,12 @@ class ModuleAdmin(ImportExportModelAdmin):
 
     @admin.action(description="Full update of categories, columns, tests and grades for Module")
     def update_all(self, request, queryset):
+        """Perform full update of all module data from JSON.
+
+        Args:
+            request: The HTTP request object.
+            queryset: The queryset of selected modules.
+        """
         for module in queryset.all():
             module.update_from_json(tests=True, grades=True, columns=True, categories=True, enrollments=True)
 

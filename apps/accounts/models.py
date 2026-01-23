@@ -125,6 +125,8 @@ class Programme(models.Model):
 
 
 class YearManager(models.Manager):
+    """Custom manager for Year model with natural key support."""
+
     def get_by_natural_key(self, natural_key):
         """Get object by a natural Key of <label>,<status>."""
         if "," in natural_key:
@@ -151,6 +153,11 @@ class Year(models.Model):
         constraints = [models.UniqueConstraint(fields=["name", "status"], name="year_unique_name_status")]
 
     def __str__(self):
+        """Return string representation of the year.
+
+        Returns:
+            (str): Year name and status.
+        """
         return f"{self.name}, {self.status}"
 
     def natural_key(self):

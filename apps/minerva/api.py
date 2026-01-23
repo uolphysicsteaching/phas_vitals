@@ -32,6 +32,8 @@ logger.debug("*" * 80)
 
 
 class TenPerPagePagination(PageNumberPagination):
+    """Pagination class that displays 10 items per page."""
+
     page_size = 10
 
 
@@ -39,6 +41,17 @@ class CompoundSlugRelatedField(serializers.SlugRelatedField):
     """Subclass a SlugRelatedField so it can optionall do multiple lookups"""
 
     def to_internal_value(self, data):
+        """Convert compound slug data to model instance.
+
+        Args:
+            data (str): Slug data with values separated by ~.
+
+        Returns:
+            Model instance matching the compound slug.
+
+        Raises:
+            ValidationError: If object does not exist or data is invalid.
+        """
         queryset = self.get_queryset()
         try:
             slugs = self.slug_field.split("~")
@@ -51,6 +64,14 @@ class CompoundSlugRelatedField(serializers.SlugRelatedField):
             self.fail("invalid")
 
     def to_representation(self, obj):
+        """Convert model instance to compound slug representation.
+
+        Args:
+            obj: The model instance to represent.
+
+        Returns:
+            (str): Compound slug string with values separated by ~.
+        """
         slugs = self.slug_field.split("~")
         out = []
         for slug in slugs:
@@ -196,6 +217,15 @@ class FeedbackSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
+        """Update a Test_Score instance with validated data.
+
+        Args:
+            instance: The Test_Score instance to update.
+            validated_data (dict): The validated data for update.
+
+        Returns:
+            The updated Test_Score instance.
+        """
         instance.comment = validated_data["comment"]
         instance.score = validated_data["score"]
         instance.date = validated_data["date"]
@@ -203,6 +233,14 @@ class FeedbackSerializer(serializers.ModelSerializer):
         return instance
 
     def to_representation(self, instance):
+        """Convert Test_Score instance to dictionary representation.
+
+        Args:
+            instance: The Test_Score instance to represent.
+
+        Returns:
+            (dict): Dictionary representation with latest attempt details.
+        """
         data = super().to_representation(instance)
         last = instance.attempts.last()
         if last:
@@ -212,6 +250,7 @@ class FeedbackSerializer(serializers.ModelSerializer):
 
 
 class FeedbackFilters(filters.FilterSet):
+    """FilterSet for Test_Score feedback with custom filtering."""
 
     class Meta:
         model = Test_Score
@@ -222,6 +261,16 @@ class FeedbackFilters(filters.FilterSet):
     test = filters.CharFilter(method="filter_test")
 
     def filter_student(self, queryset, name, value):
+        """Filter queryset by student ID or name.
+
+        Args:
+            queryset: The queryset to filter.
+            name (str): The field name.
+            value: The filter value (ID or name).
+
+        Returns:
+            (QuerySet): Filtered queryset matching the student criteria.
+        """
         try:
             value = int(value)
             return queryset.filter(Q(user__pk=value))
@@ -233,6 +282,16 @@ class FeedbackFilters(filters.FilterSet):
             )
 
     def filter_test(self, queryset, name, value):
+        """Filter queryset by test ID or name.
+
+        Args:
+            queryset: The queryset to filter.
+            name (str): The field name.
+            value: The filter value (ID or name).
+
+        Returns:
+            (QuerySet): Filtered queryset matching the test criteria.
+        """
         try:
             value = int(value)
             return queryset.filter(Q(test__pk=value))
@@ -257,6 +316,14 @@ class FeednackViewSet(viewsets.ModelViewSet):
     pagination_class = TenPerPagePagination
 
     def paginate_queryset(self, queryset):
+        """Override pagination to disable for JSON format.
+
+        Args:
+            queryset: The queryset to paginate.
+
+        Returns:
+            Paginated queryset or None for JSON format.
+        """
         if self.request.accepted_renderer.format == "json":
             return None  # disables pagination
         return super().paginate_queryset(queryset)

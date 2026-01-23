@@ -138,6 +138,15 @@ class TestResource(resources.ModelResource):
     )
 
     def before_import_row(self, row, row_number=None, **kwargs):
+        """Pre-process row data before importing test.
+
+        Args:
+            row (dict): The row data dictionary.
+            row_number (int): The row number in the dataset.
+
+        Keyword Parameters:
+            **kwargs: Additional keyword arguments.
+        """
         logger.debug(f"{row=}")
         super().before_import_row(row, row_number=row_number, **kwargs)
         if not row["test_id"]:
