@@ -17,6 +17,9 @@ PROJECT_ROOT = str(PROJECT_ROOT_PATH)
 # the name of the whole site
 SITE_NAME = DJANGO_ROOT_PATH.name
 
+# For URLs
+PROJECT_ROOT = str(PROJECT_ROOT_PATH)
+
 # collect static files here
 STATIC_ROOT = str(PROJECT_ROOT_PATH / "run" / "static")
 
@@ -57,8 +60,8 @@ SECRET_KEY = "test-secret-key-for-testing-only"
 
 # ##### APPLICATION CONFIGURATION #########################
 # Minimal apps for testing
+# Note: django.contrib.admin is excluded to avoid complex dependency issues
 INSTALLED_APPS = [
-    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -149,6 +152,26 @@ CONSTANCE_CONFIG = {
     "LAB_PATTERN": (r"(?P<name>Lab \d+)", "Lab pattern"),
     "HOMEWORK_PATTERN": (r"(?P<name>HW \d+)", "Homework pattern"),
     "CODE_PATTERN": (r"(?P<name>Code \d+)", "Code pattern"),
+}
+
+# ##### PROJECT-SPECIFIC CONFIGURATION ####################
+# Semesters configuration
+SEMESTERS = [(1, "Semester 1"), (2, "Semester 2"), (3, "Both Semesters")]
+
+# Tutorial marks configuration
+TUTORIAL_MARKS = [
+    (0, "Not Attended", "silver"),
+    (1, "Absent", "tomato"),
+    (2, "Attended", "springgreen"),
+    (3, "Engaged", "mediumseagreen"),
+    (4, "Excellent", "forestgreen"),
+]
+
+# VITALs results mapping
+VITALS_RESULTS_MAPPING = {
+    "passed": ("Passed", "green"),
+    "failed": ("Failed", "red"),
+    "pending": ("Pending", "yellow"),
 }
 
 # ##### TIME ZONE CONFIGURATION ###########################

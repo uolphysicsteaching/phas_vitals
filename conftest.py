@@ -1,26 +1,25 @@
 """Pytest configuration and fixtures for testing."""
 
 # Python imports
+import os
+import sys
+from pathlib import Path
+
+# Setup Django settings before any Django imports
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "phas_vitals.settings.test")
+
+# Add apps to Python path
+DJANGO_ROOT_PATH = Path(__file__).parent / "phas_vitals"
+PROJECT_ROOT_PATH = Path(__file__).parent
+APPS_PATH = PROJECT_ROOT_PATH / "apps"
+sys.path.insert(0, str(APPS_PATH.absolute()))
+sys.path.insert(0, str(PROJECT_ROOT_PATH.absolute()))
+
+# Python imports
 import pytest
 
-# Django imports
+# Django imports - let pytest-django handle setup
 from django.contrib.auth import get_user_model
-
-# external imports
-import django
-from django.conf import settings
-
-# Setup Django before importing models
-django.setup()
-
-
-@pytest.fixture(scope="session")
-def django_db_setup():
-    """Configure the test database."""
-    settings.DATABASES["default"] = {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
-    }
 
 
 @pytest.fixture

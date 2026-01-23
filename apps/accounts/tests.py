@@ -8,9 +8,6 @@ from django.contrib.auth import get_user_model
 from django.db.utils import IntegrityError
 from django.utils import timezone
 
-# app imports
-from .models import Cohort, Programme, Year
-
 
 @pytest.mark.django_db
 @pytest.mark.unit
@@ -24,6 +21,9 @@ class TestCohort:
             >>> cohort = Cohort.objects.create(name="202425")
             >>> assert str(cohort) == "2024/25"
         """
+        # app imports
+        from accounts.models import Cohort
+
         cohort = Cohort.objects.create(name="202425")
         assert cohort.name == "202425"
         assert str(cohort) == "2024/25"
@@ -35,6 +35,9 @@ class TestCohort:
             >>> cohort = Cohort.objects.create(name="202425")
             >>> assert str(cohort) == "2024/25"
         """
+        # app imports
+        from accounts.models import Cohort
+
         cohort = Cohort.objects.create(name="202425")
         assert str(cohort) == "2024/25"
 
@@ -45,6 +48,9 @@ class TestCohort:
             >>> cohort = Cohort.objects.create(name="test")
             >>> assert str(cohort) == "test"
         """
+        # app imports
+        from accounts.models import Cohort
+
         cohort = Cohort.objects.create(name="test")
         assert str(cohort) == "test"
 
@@ -55,6 +61,9 @@ class TestCohort:
             >>> cohort = Cohort.objects.create(name="202425")
             >>> assert int(cohort) == 202425
         """
+        # app imports
+        from accounts.models import Cohort
+
         cohort = Cohort.objects.create(name="202425")
         assert int(cohort) == 202425
 
@@ -65,6 +74,9 @@ class TestCohort:
             >>> cohort = Cohort.objects.create(name="test")
             >>> assert int(cohort) is None
         """
+        # app imports
+        from accounts.models import Cohort
+
         cohort = Cohort.objects.create(name="test")
         assert int(cohort) is None
 
@@ -75,6 +87,9 @@ class TestCohort:
             >>> cohort = Cohort.current
             >>> assert cohort is not None
         """
+        # app imports
+        from accounts.models import Cohort
+
         cohort = Cohort.current
         assert cohort is not None
         assert isinstance(cohort, Cohort)
@@ -87,6 +102,9 @@ class TestCohort:
             >>> result = Cohort.get(cohort)
             >>> assert result == cohort
         """
+        # app imports
+        from accounts.models import Cohort
+
         cohort = Cohort.objects.create(name="202425")
         result = Cohort.get(cohort)
         assert result == cohort
@@ -99,6 +117,9 @@ class TestCohort:
             >>> result = Cohort.get("2024/25")
             >>> assert result == cohort
         """
+        # app imports
+        from accounts.models import Cohort
+
         cohort = Cohort.objects.create(name="202425")
         result = Cohort.get("2024/25")
         assert result == cohort
@@ -111,6 +132,9 @@ class TestCohort:
             >>> result = Cohort.get(202425)
             >>> assert result == cohort
         """
+        # app imports
+        from accounts.models import Cohort
+
         cohort = Cohort.objects.create(name="202425")
         result = Cohort.get(202425)
         assert result == cohort
@@ -128,6 +152,9 @@ class TestProgramme:
             >>> prog = Programme.objects.create(code="PHYS1234", name="Test Programme")
             >>> assert prog.code == "PHYS1234"
         """
+        # app imports
+        from accounts.models import Programme
+
         programme = Programme.objects.create(
             code="PHYS1234", name="Test Physics Programme", local=True, level="B"
         )
@@ -142,6 +169,9 @@ class TestProgramme:
             >>> prog = Programme.objects.create(code="PHYS1234", name="Test Programme")
             >>> assert str(prog) == "Test Programme (PHYS1234)"
         """
+        # app imports
+        from accounts.models import Programme
+
         programme = Programme.objects.create(code="PHYS1234", name="Test Physics Programme")
         assert str(programme) == "Test Physics Programme (PHYS1234)"
 
@@ -158,6 +188,9 @@ class TestYear:
             >>> year = Year.objects.create(name="First Year", status="UG", level=1)
             >>> assert year.name == "First Year"
         """
+        # app imports
+        from accounts.models import Year
+
         year = Year.objects.create(name="First Year", status="UG", level=1)
         assert year.name == "First Year"
         assert year.status == "UG"
@@ -170,6 +203,9 @@ class TestYear:
             >>> year = Year.objects.create(name="First Year", status="UG", level=1)
             >>> assert str(year) == "First Year, UG"
         """
+        # app imports
+        from accounts.models import Year
+
         year = Year.objects.create(name="First Year", status="UG", level=1)
         assert str(year) == "First Year, UG"
 
@@ -180,6 +216,9 @@ class TestYear:
             >>> year = Year.objects.create(name="First Year", status="UG", level=1)
             >>> assert year.natural_key() == "First Year, UG"
         """
+        # app imports
+        from accounts.models import Year
+
         year = Year.objects.create(name="First Year", status="UG", level=1)
         assert year.natural_key() == "First Year, UG"
 
@@ -191,6 +230,9 @@ class TestYear:
             >>> result = Year.objects.get_by_natural_key("First Year, UG")
             >>> assert result == year
         """
+        # app imports
+        from accounts.models import Year
+
         year = Year.objects.create(name="First Year", status="UG", level=1)
         result = Year.objects.get_by_natural_key("First Year, UG")
         assert result == year
@@ -203,6 +245,9 @@ class TestYear:
             >>> with pytest.raises(IntegrityError):
             ...     Year.objects.create(name="First Year", status="UG", level=2)
         """
+        # app imports
+        from accounts.models import Year
+
         Year.objects.create(name="First Year", status="UG", level=1)
         with pytest.raises(IntegrityError):
             Year.objects.create(name="First Year", status="UG", level=2)
