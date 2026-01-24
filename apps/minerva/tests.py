@@ -65,10 +65,10 @@ class TestLocateNamedGroup:
     """Test the locate_named_group function."""
 
     def test_locate_simple_named_group(self):
-        """Test locating a simple named group.
+        r"""Test locating a simple named group.
 
         Examples:
-            >>> pattern = r"(?P<name>\\w+)"
+            >>> pattern = r"(?P<name>\w+)"
             >>> start, end = locate_named_group(pattern, "name")
             >>> assert start == 0
         """
@@ -91,20 +91,20 @@ class TestLocateNamedGroup:
         assert end > start
 
     def test_locate_nonexistent_group(self):
-        """Test locating a non-existent named group.
+        r"""Test locating a non-existent named group.
 
         Examples:
             >>> with pytest.raises(ValueError):
-            ...     locate_named_group(r"(?P<name>\\w+)", "missing")
+            ...     locate_named_group(r"(?P<name>\w+)", "missing")
         """
         with pytest.raises(ValueError, match="Named group 'missing' not found"):
             locate_named_group(r"(?P<name>\w+)", "missing")
 
     def test_locate_named_group_with_substitution(self):
-        """Test locating and substituting a named group.
+        r"""Test locating and substituting a named group.
 
         Examples:
-            >>> pattern = r"(?P<name>\\w+)"
+            >>> pattern = r"(?P<name>\w+)"
             >>> result = locate_named_group(pattern, "name", sub="replaced")
             >>> assert "replaced" in result
         """
