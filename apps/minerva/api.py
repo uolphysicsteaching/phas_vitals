@@ -36,7 +36,7 @@ class TenPerPagePagination(PageNumberPagination):
 
 
 class CompoundSlugRelatedField(serializers.SlugRelatedField):
-    """Subclass a SlugRelatedField so it can optionall do multiple lookups"""
+    """Subclass a SlugRelatedField to optionally do multiple lookups."""
 
     def to_internal_value(self, data):
         """Convert compound slug data to model instance.

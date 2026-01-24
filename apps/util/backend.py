@@ -230,7 +230,7 @@ class HMACAuthentication(BaseAuthentication):
 
 
 def send_hmac_signed_request(payload, url=None, secret_key=None, headers=None):
-    """Sends a POST request with HMAC authentication.
+    """Send a POST request with HMAC authentication.
 
     Args:
         url (str): The endpoint URL.
