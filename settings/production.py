@@ -2,7 +2,7 @@
 
 # for now fetch the development settings only
 # app imports
-from .development import *
+from .development import *  # noqa: F401, F403
 
 SECURE_HSTS_SECONDS = 3600
 SECURE_CONTENT_TYPE_NOSNIFF = True
