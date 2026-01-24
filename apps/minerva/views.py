@@ -558,6 +558,16 @@ class Row_Dict:
         self.tests = tests
 
     def __getitem__(self, index):
+        """Get item from Row_Dict by index key.
+
+        Args:
+            index (str): The key to retrieve - can be "student", "SID", "number",
+                "programme", "status", or a test name.
+
+        Returns:
+            The requested value from student data or test results. Returns None if
+            test result not found.
+        """
         match index:
             case "student":
                 return self.student
