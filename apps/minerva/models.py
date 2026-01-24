@@ -24,10 +24,6 @@ from constance import config
 from util.models import patch_model
 from util.spreadsheet import Spreadsheet
 
-# app imports
-from eps_success import celery_app
-
-# app imports
 from . import json
 
 logger = logging.getLogger(__name__)
