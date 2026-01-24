@@ -411,7 +411,7 @@ BATON = {
         {
             "type": "free",
             "label": "Frontend",
-            "url": "https://phas-vitals.leeds.ac.uk",
+            "url": "https://eps-success.leeds.ac.uk",
             "icon": "fa-solid fa-house-chimney-window",
         },
         {"type": "title", "label": "main", "apps": ("auth",)},

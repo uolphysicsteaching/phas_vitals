@@ -1,6 +1,6 @@
-<h3>VITALS passed/not passed</h3>
-<div class="accordion" id="accordianVITALs">
-    {% for module,vr in vitals_results.items %}
+<h3>Success passed/not passed</h3>
+<div class="accordion" id="accordianSuccess">
+    {% for module,vr in Success_results.items %}
         <div class="accordion-item">
             <div class="accordion-header" id="heading_{{ module.code }}" role="navigation">
                 <button class="accordion-button" type="button"
@@ -13,7 +13,7 @@
             <div id="collapse_{{ module.code }}"
                  class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
                  aria-labelledby="heading_{{ module.cond }}"
-                 data-bs-parent="#accordianVITALs">
+                 data-bs-parent="#accordianSuccess">
                 <div class="accordion-body">
                     {% for vital_result in vr %}
                         <div class="row border-top border-dark border-2 {{ vital_result.vital.bootstrap5_class }}">

@@ -22,8 +22,8 @@ from constance import config
 from minerva.models import Module, Test_Score
 
 # app imports
-from phas_vitals import celery_app
-from phas_vitals.tasks import PHASTask
+from eps_success import celery_app
+from eps_success.tasks import PHASTask
 
 # app imports
 from .models import GradebookColumn, SummaryScore, TestCategory

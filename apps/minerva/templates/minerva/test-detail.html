@@ -40,8 +40,8 @@
         <div class="col-md-2"> {{ test.passing_score }}</div>
     </dvi>
     <div class="row">
-        <div class="col-md-4">Completing this assignment will pass these VITALs</div>
-        <div class="col-md-8">{% for vital in test.VITALS.all %}
+        <div class="col-md-4">Completing this assignment will pass these Success</div>
+        <div class="col-md-8">{% for vital in test.Success.all %}
             {% if forloop.first %}<ul>{% endif %}
             <li><a href="{{ vital.url }}">{{ vital.name }}</a></li>
             {% if forloop.last %}</ul>{% endif %}

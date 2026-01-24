@@ -23,7 +23,7 @@ from tinymce.models import HTMLField
 from util.models import colour, contrast, patch_model
 
 # app imports
-from phas_vitals import celery_app
+from eps_success import celery_app
 
 task_logger = logging.getLogger("celery_tasks")
 

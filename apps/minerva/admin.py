@@ -21,7 +21,7 @@ from tinymce.widgets import TinyMCE
 from util.admin import add_inlines
 
 # app imports
-from phas_vitals import celery_app
+from eps_success import celery_app
 
 # app imports
 from .forms import GradebookColumnForm, Test_ScoreForm

@@ -23,8 +23,8 @@ _commit: spell isort black djhtml check
 	git push origin
 
 restart:
-	sudo systemctl restart gunicorn
-	sudo systemctl restart celery
-	sudo systemctl restart celery_beat
+	sudo systemctl restart eps-success
+	sudo systemctl restart celery_eps_success
+	sudo systemctl restart celery_beat_eps_success
 
 FORCE:

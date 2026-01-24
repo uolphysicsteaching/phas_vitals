@@ -19,8 +19,8 @@ from constance import config
 from django_auth_adfs.config import provider_config
 
 # app imports
-from phas_vitals import celery_app
-from phas_vitals.tasks import PHASTask
+from eps_success import celery_app
+from eps_success.tasks import PHASTask
 
 # app imports
 from .models import Account

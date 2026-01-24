@@ -1,1 +1,1 @@
-"""Apps package collects the custom applications for the phas_vitals tool."""
+"""Apps package collects the custom applications for the eps_success tool."""

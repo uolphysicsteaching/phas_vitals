@@ -9,7 +9,7 @@ from django.contrib.auth.models import Group
 from rest_framework import serializers, viewsets
 
 # app imports
-from phas_vitals.api import router
+from eps_success.api import router
 
 # app imports
 from .models import Account, Cohort, Programme, Year

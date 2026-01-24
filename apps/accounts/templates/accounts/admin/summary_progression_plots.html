@@ -19,7 +19,7 @@
             <button class="nav-link" id="pills-coding-tab" data-bs-toggle="pill" data-bs-target="#pills-coding" type="button" role="tab" aria-controls="pills-coding" aria-selected="true">Coding</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="pills-vitals-tab" data-bs-toggle="pill" data-bs-target="#pills-vitals" type="button" role="tab" aria-controls="pills-vitals" aria-selected="true">VITALs</button>
+            <button class="nav-link" id="pills-Success-tab" data-bs-toggle="pill" data-bs-target="#pills-Success" type="button" role="tab" aria-controls="pills-Success" aria-selected="true">Success</button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="pills-engagement-tab" data-bs-toggle="pill" data-bs-target="#pills-engagement" type="button" role="tab" aria-controls="pills-engagement" aria-selected="true">Tutorials</button>
@@ -46,9 +46,9 @@
                 <img class="plot"  src='{{ coding_score_plot.data|safe }}' alt="{{ coding_score_plot.alt|safe }}" />
             </div>
         </div>
-        <div class="tab-pane fade" id="pills-vitals" role="tabpanel" aria-labelledby="pills-vitals-tab">
+        <div class="tab-pane fade" id="pills-Success" role="tabpanel" aria-labelledby="pills-Success-tab">
             <div class="table-responsive">
-                <img class="plot"  src='{{ vitals_score_plot.data|safe }}' alt="{{ vitals_score_plot.alt|safe }}" />
+                <img class="plot"  src='{{ Success_score_plot.data|safe }}' alt="{{ Success_score_plot.alt|safe }}" />
             </div>
         </div>
         <div class="tab-pane fade" id="pills-engagement" role="tabpanel" aria-labelledby="pills-engagement-tab">

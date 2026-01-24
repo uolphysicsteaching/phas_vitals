@@ -8,7 +8,7 @@
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1">
             {% endblock meta %}
-            <title>{% block title %}Physics VITALS: {% endblock %}</title>
+            <title>{% block title %}Engineering and Physical Sciences Success: {% endblock %}</title>
             {% htmx_script %}
             {% block javascript %}
                 <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
@@ -30,7 +30,7 @@
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/themes/smoothness/jquery-ui.min.css">
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/themes/smoothness/theme.min.css">
-                <link href="{% static 'css/phas_vitals.css' %}" rel="stylesheet">
+                <link href="{% static 'css/eps_success.css' %}" rel="stylesheet">
             {%endblock css %}
         </head>
         <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
@@ -59,7 +59,7 @@
             <div class="local-header container-lg">
                 <div class="local-header-inner d-flex justify-content-between">
                     <div class="local-header-title" role="navigation" aria-label="Home page link">
-                        <a href="/">Physics VITALs Tracker</a>
+                        <a href="/">Engineering and Physical Sciences Success Tracker</a>
                     </div>
                     <div class="local-header-search text-end" role="search">
                         <button id="searchbutton" class="bi bi-search" type="button" data-bs-toggle="collapse" data-bs-target="#sitesearch" aria-label="Open site search" aria-expanded="false" aria-controls="sitesearch">

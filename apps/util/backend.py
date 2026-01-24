@@ -24,7 +24,7 @@ from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 
 # app imports
-from phas_vitals import celery_app
+from eps_success import celery_app
 
 # app imports
 from .models import APIKey

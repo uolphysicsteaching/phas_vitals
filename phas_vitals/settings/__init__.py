@@ -1,1 +1,0 @@
-"""Main project settings package."""

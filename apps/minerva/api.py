@@ -22,7 +22,7 @@ from rest_framework.schemas import get_schema_view
 from util.backend import HMACAuthentication
 
 # app imports
-from phas_vitals.api import router
+from eps_success.api import router
 
 # app imports
 from .models import Module, Test, Test_Attempt, Test_Score

@@ -25,7 +25,7 @@ from util.models import patch_model
 from util.spreadsheet import Spreadsheet
 
 # app imports
-from phas_vitals import celery_app
+from eps_success import celery_app
 
 # app imports
 from . import json

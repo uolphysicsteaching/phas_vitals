@@ -6,10 +6,10 @@ import sys
 from pathlib import Path
 
 # Setup Django settings before any Django imports
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "phas_vitals.settings.test")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "eps_success.settings.test")
 
 # Add apps to Python path
-DJANGO_ROOT_PATH = Path(__file__).parent / "phas_vitals"
+DJANGO_ROOT_PATH = Path(__file__).parent / "eps_success"
 PROJECT_ROOT_PATH = Path(__file__).parent
 APPS_PATH = PROJECT_ROOT_PATH / "apps"
 sys.path.insert(0, str(APPS_PATH.absolute()))
