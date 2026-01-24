@@ -22,8 +22,6 @@ from minerva.models import SummaryScore
 from tinymce.models import HTMLField
 from util.models import colour, contrast, patch_model
 
-# app imports
-
 task_logger = logging.getLogger("celery_tasks")
 
 

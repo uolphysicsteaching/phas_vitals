@@ -10,12 +10,7 @@ from django.db import transaction
 from django.db.models import Count
 from django.http import JsonResponse
 from django.utils import timezone as tz
-from django.views.generic import (
-    DetailView,
-    FormView,
-    TemplateView,
-    UpdateView,
-)
+from django.views.generic import DetailView, FormView, TemplateView, UpdateView
 from django.views.generic.edit import FormMixin
 
 # external imports

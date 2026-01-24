@@ -10,8 +10,6 @@ from import_export.admin import ImportExportModelAdmin
 from util.admin import add_inlines
 
 # app imports
-
-# app imports
 from .forms import VITAL_ResultForm, VITAL_Test_MapForm, VITALForm
 from .models import VITAL, VITAL_Result, VITAL_Test_Map
 from .resource import (

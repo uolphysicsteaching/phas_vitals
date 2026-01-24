@@ -25,8 +25,6 @@ from util.models import patch_model
 from util.spreadsheet import Spreadsheet
 
 # app imports
-
-# app imports
 from . import json
 
 logger = logging.getLogger(__name__)
