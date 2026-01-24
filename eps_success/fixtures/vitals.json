@@ -1,0 +1,74 @@
+[
+{
+  "model": "vitals.vital",
+  "pk": 1,
+  "fields": {
+    "name": "2D Vectors",
+    "description": "Able to manipulate 2D vectors to find equations, distances etc.",
+    "module": 22698
+  }
+},
+{
+  "model": "vitals.vital",
+  "pk": 2,
+  "fields": {
+    "name": "Vector Planes",
+    "description": "Manipulate vectors to find equation of a plane and normals",
+    "module": 22698
+  }
+},
+{
+  "model": "vitals.vital",
+  "pk": 3,
+  "fields": {
+    "name": "Differentiaion of 1D functions",
+    "description": "Use Calculus to determine turning points of a function",
+    "module": 22698
+  }
+},
+{
+  "model": "vitals.vital",
+  "pk": 4,
+  "fields": {
+    "name": "Logarithmic Functions",
+    "description": "",
+    "module": 22698
+  }
+},
+{
+  "model": "vitals.vital",
+  "pk": 5,
+  "fields": {
+    "name": "Complex Numbers",
+    "description": "Understand and Manipulate Complex Numbers",
+    "module": 22698
+  }
+},
+{
+  "model": "vitals.vital",
+  "pk": 6,
+  "fields": {
+    "name": "Differentiation of Trig Functions",
+    "description": "Differentiation of trigometric functions",
+    "module": 22698
+  }
+},
+{
+  "model": "vitals.vital",
+  "pk": 7,
+  "fields": {
+    "name": "Integration",
+    "description": "Integration of 1D functions",
+    "module": 22698
+  }
+},
+{
+  "model": "vitals.vital",
+  "pk": 8,
+  "fields": {
+    "name": "Differential Equations",
+    "description": "",
+    "module": 22698
+  }
+}
+]

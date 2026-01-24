@@ -1,0 +1,22 @@
+[
+{
+  "model": "minerva.module",
+  "pk": 22698,
+  "fields": {
+    "uuid": "22698",
+    "courseId": "PHAS1290",
+    "code": "PHAS1290",
+    "alt_code": null,
+    "credits": 10,
+    "name": "Maths 1",
+    "level": 1,
+    "semester": null,
+    "exam_code": 1,
+    "description": "Dummy Module for Testing",
+    "module_leader": 1,
+    "updated": "2024-02-09T20:09:05.428Z",
+    "updater": 1,
+    "team_members": []
+  }
+}
+]

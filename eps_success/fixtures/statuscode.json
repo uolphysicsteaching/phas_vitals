@@ -1,0 +1,574 @@
+[
+{
+  "model": "minerva.statuscode",
+  "pk": "A1",
+  "fields": {
+    "explanation": "First Attempt Summer Resit",
+    "capped": false,
+    "valid": true,
+    "resit": true,
+    "level": "first"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "A2",
+  "fields": {
+    "explanation": "Second attempt summer resit",
+    "capped": true,
+    "valid": true,
+    "resit": true,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "A3",
+  "fields": {
+    "explanation": "3rd Attempt Summer Resits",
+    "capped": true,
+    "valid": true,
+    "resit": true,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "C1",
+  "fields": {
+    "explanation": "Carried 1st attempt no teaching",
+    "capped": false,
+    "valid": true,
+    "resit": false,
+    "level": "first"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "C2",
+  "fields": {
+    "explanation": "Carried 2nd attempt no teaching",
+    "capped": true,
+    "valid": true,
+    "resit": false,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "C3",
+  "fields": {
+    "explanation": "Carried 3rd attempt no teaching",
+    "capped": true,
+    "valid": true,
+    "resit": false,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "C4",
+  "fields": {
+    "explanation": "Carried 4th attempt no teaching",
+    "capped": true,
+    "valid": true,
+    "resit": true,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "C5",
+  "fields": {
+    "explanation": "Carried 5th attempt no teaching",
+    "capped": true,
+    "valid": true,
+    "resit": true,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "CA",
+  "fields": {
+    "explanation": "Carried Applied - no teaching",
+    "capped": true,
+    "valid": true,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "CE",
+  "fields": {
+    "explanation": "Carried Applied - no teaching",
+    "capped": true,
+    "valid": true,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "CM",
+  "fields": {
+    "explanation": "Not in use",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "CN",
+  "fields": {
+    "explanation": "Carried, not applied",
+    "capped": true,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "CS",
+  "fields": {
+    "explanation": "Continuing Submission - incomplete mark",
+    "capped": false,
+    "valid": true,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "DD",
+  "fields": {
+    "explanation": "Dropped Module",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "DE",
+  "fields": {
+    "explanation": "Student Exluded",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "DM",
+  "fields": {
+    "explanation": "Discarded Module",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "DS",
+  "fields": {
+    "explanation": "Module Discontinued",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "DW",
+  "fields": {
+    "explanation": "Dropped via Web",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "EH",
+  "fields": {
+    "explanation": "Temporary enrollment (Erasmus/JYA_",
+    "capped": false,
+    "valid": true,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "EL",
+  "fields": {
+    "explanation": "Eligible",
+    "capped": false,
+    "valid": true,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "EN",
+  "fields": {
+    "explanation": "Elible to register after fees (new)",
+    "capped": false,
+    "valid": true,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "ER",
+  "fields": {
+    "explanation": "Elible to register after fees returning)",
+    "capped": false,
+    "valid": true,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "EX",
+  "fields": {
+    "explanation": "Exempt for module",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "IR",
+  "fields": {
+    "explanation": "Not elible for module",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "N1",
+  "fields": {
+    "explanation": "Carried Noty applied strike 1",
+    "capped": false,
+    "valid": true,
+    "resit": false,
+    "level": "first"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "N2",
+  "fields": {
+    "explanation": "Carried Noty applied strike 2",
+    "capped": true,
+    "valid": true,
+    "resit": false,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "N3",
+  "fields": {
+    "explanation": "Carried Noty applied strike 3",
+    "capped": true,
+    "valid": true,
+    "resit": false,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "N4",
+  "fields": {
+    "explanation": "Carried Noty applied strike 4",
+    "capped": true,
+    "valid": true,
+    "resit": false,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "NA",
+  "fields": {
+    "explanation": "Not attending",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "NR",
+  "fields": {
+    "explanation": "Not elible to register",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "NS",
+  "fields": {
+    "explanation": "Never Started",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "R1",
+  "fields": {
+    "explanation": "Elible for August resit attempt 1",
+    "capped": false,
+    "valid": true,
+    "resit": true,
+    "level": "first"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "R2",
+  "fields": {
+    "explanation": "Elible for August resit attempt 2",
+    "capped": true,
+    "valid": true,
+    "resit": true,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "R3",
+  "fields": {
+    "explanation": "Elible for August resit attempt 3",
+    "capped": true,
+    "valid": true,
+    "resit": true,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "R4",
+  "fields": {
+    "explanation": "Elible for August resit attempt 4",
+    "capped": true,
+    "valid": true,
+    "resit": true,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "RA",
+  "fields": {
+    "explanation": "Applied for resit online",
+    "capped": true,
+    "valid": true,
+    "resit": true,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "RD",
+  "fields": {
+    "explanation": "Replaced Module",
+    "capped": false,
+    "valid": true,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "RE",
+  "fields": {
+    "explanation": "Enrolled",
+    "capped": false,
+    "valid": true,
+    "resit": false,
+    "level": "normal"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "RM",
+  "fields": {
+    "explanation": "Replacement Module",
+    "capped": false,
+    "valid": true,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "RT",
+  "fields": {
+    "explanation": "Elible for August Resit",
+    "capped": true,
+    "valid": true,
+    "resit": true,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "RW",
+  "fields": {
+    "explanation": "Web Registered",
+    "capped": false,
+    "valid": true,
+    "resit": false,
+    "level": "normal"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "SC",
+  "fields": {
+    "explanation": "Suspend Module",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "SF",
+  "fields": {
+    "explanation": "Suspended Registration (full year)",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "SN",
+  "fields": {
+    "explanation": "Supernumary",
+    "capped": false,
+    "valid": true,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "SP",
+  "fields": {
+    "explanation": "Suspended Registration (part year)",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "SS",
+  "fields": {
+    "explanation": "Special Skills",
+    "capped": false,
+    "valid": true,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "T1",
+  "fields": {
+    "explanation": "Carried with teaching Attempt 1",
+    "capped": false,
+    "valid": true,
+    "resit": false,
+    "level": "first"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "T2",
+  "fields": {
+    "explanation": "Carried with teaching Attempt 2",
+    "capped": true,
+    "valid": true,
+    "resit": false,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "T3",
+  "fields": {
+    "explanation": "Carried with teaching Attempt 3",
+    "capped": true,
+    "valid": true,
+    "resit": false,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "T4",
+  "fields": {
+    "explanation": "Carried with teaching Attempt 4",
+    "capped": true,
+    "valid": true,
+    "resit": false,
+    "level": "second"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "WA",
+  "fields": {
+    "explanation": "Withdrawn - Assessment required",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+},
+{
+  "model": "minerva.statuscode",
+  "pk": "WD",
+  "fields": {
+    "explanation": "Withdrawn - Permanent",
+    "capped": false,
+    "valid": false,
+    "resit": false,
+    "level": "none"
+  }
+}
+]

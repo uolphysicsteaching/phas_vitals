@@ -1,0 +1,416 @@
+[
+{
+  "model": "accounts.programme",
+  "pk": "BS-GEOP",
+  "fields": {
+    "name": "Geophysics",
+    "local": false,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-HPSC&PHYS",
+  "fields": {
+    "name": "Hist/Phil Sc & Physics",
+    "local": false,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-NAT/SC",
+  "fields": {
+    "name": "Natural Sciences",
+    "local": false,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-NAT/SC9",
+  "fields": {
+    "name": "Natural Sciences (Int)",
+    "local": false,
+    "level": null
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-PHIL&PHY9",
+  "fields": {
+    "name": "Philosophy and Physics (Int)",
+    "local": false,
+    "level": null
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-PHIL&PHYS",
+  "fields": {
+    "name": "Philosophy and Physics",
+    "local": false,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-PHY9",
+  "fields": {
+    "name": "Physics (Int)",
+    "local": true,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-PHYI9",
+  "fields": {
+    "name": "BSc Physics Inverted Year Abroad",
+    "local": true,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-PHYS",
+  "fields": {
+    "name": "Physics",
+    "local": true,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-PHYS4",
+  "fields": {
+    "name": "Physics (Ind)",
+    "local": true,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-PHYS7",
+  "fields": {
+    "name": "Physics (Int)",
+    "local": true,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-PHYS/AP",
+  "fields": {
+    "name": "Physics w Astrophysics",
+    "local": true,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-PHYS/AP4",
+  "fields": {
+    "name": "Physics w Astrophysics (Ind)",
+    "local": true,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-PHYS/AP9",
+  "fields": {
+    "name": "Physics with Astrophysics (Int)",
+    "local": true,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-PHYS/PNT",
+  "fields": {
+    "name": "Physics with Nanotechnology",
+    "local": true,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-PHYS/TP",
+  "fields": {
+    "name": "Theoretical Physics",
+    "local": true,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-PHYS/TP4",
+  "fields": {
+    "name": "Theoretical Physics (Ind)",
+    "local": true,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "BS-PHYS/TP9",
+  "fields": {
+    "name": "Theoretical Physics (Int)",
+    "local": true,
+    "level": "B"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "GEOPHYSI",
+  "fields": {
+    "name": "Geophysical  Sciences (Int)",
+    "local": false,
+    "level": null
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "HIST/PHI",
+  "fields": {
+    "name": "Hist/Phil Sc & Physics",
+    "local": false,
+    "level": null
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MGPS-GEOP9",
+  "fields": {
+    "name": "Geophysics (Int)",
+    "local": false,
+    "level": null
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MGPS-GEOPSC",
+  "fields": {
+    "name": "Geophysical Sciences",
+    "local": false,
+    "level": null
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MNBS-NAT/SC",
+  "fields": {
+    "name": "Natural Sciences",
+    "local": false,
+    "level": "MB"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MNBS-NAT/SC9",
+  "fields": {
+    "name": "Natural Sciences (Int)",
+    "local": false,
+    "level": null
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-P/AP4Y4",
+  "fields": {
+    "name": "Physics wth Astrophys (Y4 Ind)",
+    "local": false,
+    "level": null
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-PH/T4Y4",
+  "fields": {
+    "name": "Theoretical Physics (Y4 Ind)",
+    "local": true,
+    "level": "MB"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-PHY/AI9",
+  "fields": {
+    "name": "Physics with Astrophysics (int)",
+    "local": true,
+    "level": "MB"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-PHY/NI9",
+  "fields": {
+    "name": "Physics with Nanotechology (internationa;)",
+    "local": true,
+    "level": "MB"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-PHY/PN4",
+  "fields": {
+    "name": "Physics with Nanotechology (Ind)",
+    "local": true,
+    "level": "MB"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-PHYS",
+  "fields": {
+    "name": "Physics",
+    "local": true,
+    "level": "MB"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-PHYS4",
+  "fields": {
+    "name": "Physics (Ind)",
+    "local": true,
+    "level": "MB"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-PHYS/AP",
+  "fields": {
+    "name": "Physics with Astrophysics",
+    "local": true,
+    "level": "MB"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-PHYSI4",
+  "fields": {
+    "name": "Physics (I Ind)",
+    "local": false,
+    "level": null
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-PHYSI9",
+  "fields": {
+    "name": "MPhys Physics (Int)",
+    "local": false,
+    "level": "MB"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-PHYS/PN",
+  "fields": {
+    "name": "Physics with Nanotechology",
+    "local": true,
+    "level": "MB"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-PHYS/TP",
+  "fields": {
+    "name": "Theoretical Physics",
+    "local": true,
+    "level": "MB"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-PHY/TI9",
+  "fields": {
+    "name": "Theoretical Physics (Int)",
+    "local": true,
+    "level": "MB"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-PHY/TP4",
+  "fields": {
+    "name": "MPhys Theoretical Physics (Ind)",
+    "local": false,
+    "level": "MB"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MPBS-PHY/TP7",
+  "fields": {
+    "name": "Theoretical Physics (Int)",
+    "local": true,
+    "level": "MB"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MSC-PHYS",
+  "fields": {
+    "name": "Physics",
+    "local": true,
+    "level": "PGT"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "MSC-PHYSJ",
+  "fields": {
+    "name": "Physics (Jan)",
+    "local": true,
+    "level": "O"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "ND-PHYS-ISA",
+  "fields": {
+    "name": "Physics-ISA",
+    "local": true,
+    "level": "O"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "PGR-PHYS-4FT",
+  "fields": {
+    "name": "Physics 4FT",
+    "local": true,
+    "level": "PGT"
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "PHD-PHYP-FT",
+  "fields": {
+    "name": "Physics & Astronomy (Phys) FT",
+    "local": false,
+    "level": null
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "PHIL AND",
+  "fields": {
+    "name": "Phil and Physics (I Int)",
+    "local": false,
+    "level": null
+  }
+},
+{
+  "model": "accounts.programme",
+  "pk": "PHILOSOP",
+  "fields": {
+    "name": "Philosophy and Physics",
+    "local": false,
+    "level": null
+  }
+}
+]

@@ -1,0 +1,152 @@
+[
+{
+  "model": "vitals.vital_test_map",
+  "pk": 1,
+  "fields": {
+    "test": "998908",
+    "vital": 1,
+    "necessary": false,
+    "sufficient": true
+  }
+},
+{
+  "model": "vitals.vital_test_map",
+  "pk": 2,
+  "fields": {
+    "test": "998909",
+    "vital": 1,
+    "necessary": false,
+    "sufficient": true
+  }
+},
+{
+  "model": "vitals.vital_test_map",
+  "pk": 3,
+  "fields": {
+    "test": "998909",
+    "vital": 2,
+    "necessary": false,
+    "sufficient": true
+  }
+},
+{
+  "model": "vitals.vital_test_map",
+  "pk": 4,
+  "fields": {
+    "test": "1000888",
+    "vital": 2,
+    "necessary": false,
+    "sufficient": true
+  }
+},
+{
+  "model": "vitals.vital_test_map",
+  "pk": 5,
+  "fields": {
+    "test": "1000888",
+    "vital": 3,
+    "necessary": false,
+    "sufficient": true
+  }
+},
+{
+  "model": "vitals.vital_test_map",
+  "pk": 6,
+  "fields": {
+    "test": "1001411",
+    "vital": 3,
+    "necessary": false,
+    "sufficient": true
+  }
+},
+{
+  "model": "vitals.vital_test_map",
+  "pk": 7,
+  "fields": {
+    "test": "1001411",
+    "vital": 4,
+    "necessary": false,
+    "sufficient": true
+  }
+},
+{
+  "model": "vitals.vital_test_map",
+  "pk": 8,
+  "fields": {
+    "test": "1004521",
+    "vital": 4,
+    "necessary": false,
+    "sufficient": true
+  }
+},
+{
+  "model": "vitals.vital_test_map",
+  "pk": 9,
+  "fields": {
+    "test": "1003010",
+    "vital": 5,
+    "necessary": false,
+    "sufficient": true
+  }
+},
+{
+  "model": "vitals.vital_test_map",
+  "pk": 10,
+  "fields": {
+    "test": "1016418",
+    "vital": 5,
+    "necessary": false,
+    "sufficient": true
+  }
+},
+{
+  "model": "vitals.vital_test_map",
+  "pk": 11,
+  "fields": {
+    "test": "1016418",
+    "vital": 6,
+    "necessary": false,
+    "sufficient": true
+  }
+},
+{
+  "model": "vitals.vital_test_map",
+  "pk": 12,
+  "fields": {
+    "test": "1007200",
+    "vital": 6,
+    "necessary": false,
+    "sufficient": true
+  }
+},
+{
+  "model": "vitals.vital_test_map",
+  "pk": 13,
+  "fields": {
+    "test": "1007200",
+    "vital": 7,
+    "necessary": false,
+    "sufficient": true
+  }
+},
+{
+  "model": "vitals.vital_test_map",
+  "pk": 14,
+  "fields": {
+    "test": "1008297",
+    "vital": 7,
+    "necessary": false,
+    "sufficient": true
+  }
+},
+{
+  "model": "vitals.vital_test_map",
+  "pk": 15,
+  "fields": {
+    "test": "1009185",
+    "vital": 8,
+    "necessary": false,
+    "sufficient": true
+  }
+}
+]
