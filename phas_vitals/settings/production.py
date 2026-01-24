@@ -1,7 +1,8 @@
 """Production mode settings."""
 
-# Production security settings
+# for now fetch the development settings only
 # app imports
+from .development import *  # noqa: F401, F403
 
 SECURE_HSTS_SECONDS = 3600
 SECURE_CONTENT_TYPE_NOSNIFF = True
