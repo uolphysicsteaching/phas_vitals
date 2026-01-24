@@ -15,4 +15,4 @@ class AccountsConfig(AppConfig):
         """When app is up and running, import api."""
         # app imports
         from . import api  # pylint: disable=unused-import
-        from . import signals  # noqa: F401
+        from . import signals  # pylint: disable=unused-import

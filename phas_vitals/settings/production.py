@@ -1,6 +1,6 @@
 """Production mode settings."""
 
-# for now fetch the development settings only
+# Production security settings
 # app imports
 
 SECURE_HSTS_SECONDS = 3600
