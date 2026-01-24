@@ -13,7 +13,7 @@ from django.db.models import Q
 from import_export import fields, resources, widgets
 
 # app imports
-from .models import Account, Cohort, Programme, Section, TermDate, Year
+from .models import Account, Cohort, Programme, School, Section, TermDate, Year
 
 logger = logging.getLogger(__name__)
 
@@ -230,6 +230,17 @@ class ProgrammeWidget(widgets.ForeignKeyWidget):
         return qs.last()
 
 
+class SchoolWidget(widgets.ForeignKeyWidget):
+    """Import export ediget that looks up programmes by name or code."""
+
+    def clean(self, value, row=None, *args, **kwargs):
+        """Do a lookup attempting to match code or name."""
+        qs = School.objects.filter(Q(code=value) | Q(name__contains=value))
+        if qs.count() < 1:
+            return None
+        return qs.last()
+
+
 class ProgrammesWidget(widgets.ManyToManyWidget):
     """Import Export Wdiget that understands lists of programmes."""
 
@@ -405,6 +416,11 @@ class UserResource(resources.ModelResource):
     groups = fields.Field(
         column_name="groups", attribute="groups", widget=widgets.ManyToManyWidget(Group, ";", "name")
     )
+    school = fields.Field(
+        column_name="school",
+        attribute="school",
+        widget=SchoolWidget(School, "code"),
+    )
     programme = fields.Field(
         column_name="programme",
         attribute="programme",
@@ -443,6 +459,7 @@ class UserResource(resources.ModelResource):
             "is_superuser",
             "number",
             "programme",
+            "school",
             "year",
             "section",
             "registration_status",
@@ -473,6 +490,7 @@ class UserResource(resources.ModelResource):
             "Student Name": _lname_from_name,
         },
         "programme": {"programme": _none, "Programme": _none},
+        "school": {"school": _none, "School": _none},
         "year": {"year": _none, "Class": _none},
         "section": {"section": _none, "Section": _none},
         "registtration_status": {"registtration_status": _none, "Registration Status": _none, "ESTS_Code": _none},
@@ -528,8 +546,23 @@ class GroupResource(resources.ModelResource):
 class ProgrammeResource(resources.ModelResource):
     """Import Export Resource class for Programmes."""
 
+    school = fields.Field(
+        column_name="school",
+        attribute="school",
+        widget=SchoolWidget(School, "code"),
+    )
+
     class Meta:
         model = Programme
+        import_id_fields = ["code"]
+
+
+class SchoolResource(resources.ModelResource):
+    """Import Export Resource classes for School objects."""
+
+    class Meta:
+        model = School
+        fields = ("code", "name")
         import_id_fields = ["code"]
 
 

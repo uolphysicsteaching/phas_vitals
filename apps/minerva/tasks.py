@@ -16,7 +16,7 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from accounts.models import Account
+from accounts.models import Account, Cohort, School
 from celery import shared_task
 from constance import config
 from minerva.models import Module, Test_Score
@@ -31,6 +31,27 @@ from .models import GradebookColumn, SummaryScore, TestCategory
 logger = logging.getLogger("celery_tasks")
 
 update_all_users = celery_app.signature("accounts.tasks.update_all_users")
+
+
+@shared_task
+def import_module_list():
+    """Periodic task to update the list of modules we're reading."""
+    mod_list = [x for x in json.get_blob_list() if x.endswith("Course.json")]
+    for mod_json in mod_list:
+        data = json.get_blob_by_name(mod_json)[0]
+        year, crn, code = data["courseId"].split("_")
+        year = Cohort.objects.get(name=year)
+        school = School.from_code(code[:4])
+        name = " ".join(data["name"].split(" ")[1:-1])
+        mod, _ = Module.objects.get_or_create(uuid=data["uuid"], courseId=data["courseId"], year=year, code=code)
+        mod.name = name
+        mod.school = school
+        mod.level = int(mod.code[4])
+        mod.semester = int(data["name"].split(" ")[0][-2])
+        mod.save()
+        mod.create_test_categories_from_json()
+        mod.create_tests_columns_from_json()
+        mod.create_module_entrollments_from_json()
 
 
 @shared_task

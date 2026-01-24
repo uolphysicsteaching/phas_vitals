@@ -11,7 +11,7 @@ from datetime import date, datetime, time, timedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, Group, UserManager
 from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
-from django.db import models
+from django.db import DEFAULT_DB_ALIAS, models
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.functional import classproperty
@@ -106,11 +106,46 @@ class Cohort(models.Model):
                 raise TypeError(f"Can't interpret {search} as a Cohort.")
 
 
+class School(models.Model):
+    """Represent an Academic School in the data schema."""
+
+    name = models.CharField(max_length=96)
+    code = models.CharField(max_length=4)
+    module_codes = models.CharField(max_length=50, null=True, blank=True)
+    managers = models.ManyToManyField("Account", related_name="managed_schools")
+
+    class Meta:
+        ordering = ["code"]
+        constraints = [models.UniqueConstraint(fields=["code"], name="unique_code_constraint")]
+
+    def __str__(self):
+        """Nice display of name."""
+        return f"({self.code}) - {self.name}"
+
+    def save(
+        self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None
+    ):  #  pylint: disable=arguments-differ
+        if self.module_codes in ["", None]:
+            self.module_codes = self.code
+        self.module_codes = ",".join([x[:4].upper().strip() for x in self.module_codes.split(",")])
+        super().save(force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)
+
+    @classmethod
+    def from_code(cls, code):
+        """Get a school instance from a code."""
+        code = code.upper().strip()
+        try:
+            return School.objects.get(module_codes__contains=code)
+        except cls.DoesNotExist:
+            return None
+
+
 class Programme(models.Model):
     """Represents a programme of study that a student might be on."""
 
     name = models.CharField(max_length=150, default="Unknown")
     code = models.CharField(max_length=15, primary_key=True)
+    school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True, related_name="programmes")
     local = models.BooleanField(default=False, verbose_name="Parented by school")
     level = models.CharField(max_length=10, choices=DEGREE_LEVEL, verbose_name="Degree Level", null=True, blank=True)
 
@@ -193,6 +228,7 @@ class Account(AbstractUser):
     number = models.IntegerField(unique=True)
     title = models.CharField(max_length=20, blank=True, null=True)
     programme = models.ForeignKey(Programme, on_delete=models.SET_NULL, blank=True, null=True, related_name="students")
+    school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True, related_name="people")
     year = models.ForeignKey(
         Year, on_delete=models.SET_NULL, blank=True, null=True, related_name="students", verbose_name="Year of Study"
     )
@@ -311,6 +347,14 @@ class Account(AbstractUser):
     def activity_colour(self) -> str:
         """Monkeypatch a routine to convert engagement scaore into a hex colour."""
         return colour(self.activity_score)
+
+    def save(
+        self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None
+    ):  #  pylint: disable=arguments-differ
+        """Set the school from the programme."""
+        if getattr(self, "school", None) is None and getattr(self, "programme", None) is not None:
+            self.school = self.programme.school
+        super().save(force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)
 
 
 class Section(models.Model):

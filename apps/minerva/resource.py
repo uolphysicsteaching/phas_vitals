@@ -9,8 +9,8 @@ from django.db.models import Q
 
 # external imports
 import numpy as np
-from accounts.models import Account
-from accounts.resource import AccountsWidget, AccountWidget
+from accounts.models import Account, School
+from accounts.resource import AccountsWidget, AccountWidget, SchoolWidget
 from import_export import fields, resources, widgets
 
 # app imports
@@ -78,6 +78,7 @@ class ModuleResource(resources.ModelResource):
             "semester",
             "level",
             "exam_code",
+            "school",
             "code",
             "name",
             "description",
@@ -95,6 +96,11 @@ class ModuleResource(resources.ModelResource):
         column_name="team_members",
         attribute="team_members",
         widget=AccountsWidget("accounts.Account", ";", "display_name"),
+    )
+    school = fields.Field(
+        column_name="school",
+        attribute="school",
+        widget=SchoolWidget(School, "code"),
     )
 
 

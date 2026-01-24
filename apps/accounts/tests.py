@@ -1,12 +1,12 @@
 """Tests for the accounts app models."""
 
-# Python imports
-import pytest
-
 # Django imports
 from django.contrib.auth import get_user_model
 from django.db.utils import IntegrityError
 from django.utils import timezone
+
+# external imports
+import pytest
 
 
 @pytest.mark.django_db
@@ -16,12 +16,12 @@ class TestCohort:
 
     def test_cohort_creation(self):
         """Test creating a cohort.
-        
+
         Examples:
             >>> cohort = Cohort.objects.create(name="202425")
             >>> assert str(cohort) == "2024/25"
         """
-        # app imports
+        # external imports
         from accounts.models import Cohort
 
         cohort = Cohort.objects.create(name="202425")
@@ -30,12 +30,12 @@ class TestCohort:
 
     def test_cohort_str_representation(self):
         """Test string representation of cohort.
-        
+
         Examples:
             >>> cohort = Cohort.objects.create(name="202425")
             >>> assert str(cohort) == "2024/25"
         """
-        # app imports
+        # external imports
         from accounts.models import Cohort
 
         cohort = Cohort.objects.create(name="202425")
@@ -43,12 +43,12 @@ class TestCohort:
 
     def test_cohort_str_with_invalid_format(self):
         """Test string representation with non-numeric name.
-        
+
         Examples:
             >>> cohort = Cohort.objects.create(name="test")
             >>> assert str(cohort) == "test"
         """
-        # app imports
+        # external imports
         from accounts.models import Cohort
 
         cohort = Cohort.objects.create(name="test")
@@ -56,12 +56,12 @@ class TestCohort:
 
     def test_cohort_int_conversion(self):
         """Test integer conversion of cohort.
-        
+
         Examples:
             >>> cohort = Cohort.objects.create(name="202425")
             >>> assert int(cohort) == 202425
         """
-        # app imports
+        # external imports
         from accounts.models import Cohort
 
         cohort = Cohort.objects.create(name="202425")
@@ -69,12 +69,12 @@ class TestCohort:
 
     def test_cohort_int_with_invalid_format(self):
         """Test integer conversion with non-numeric name.
-        
+
         Examples:
             >>> cohort = Cohort.objects.create(name="test")
             >>> assert int(cohort) is None
         """
-        # app imports
+        # external imports
         from accounts.models import Cohort
 
         cohort = Cohort.objects.create(name="test")
@@ -82,12 +82,12 @@ class TestCohort:
 
     def test_cohort_current(self):
         """Test getting current cohort.
-        
+
         Examples:
             >>> cohort = Cohort.current
             >>> assert cohort is not None
         """
-        # app imports
+        # external imports
         from accounts.models import Cohort
 
         cohort = Cohort.current
@@ -96,13 +96,13 @@ class TestCohort:
 
     def test_cohort_get_with_cohort_object(self):
         """Test getting cohort with a Cohort object.
-        
+
         Examples:
             >>> cohort = Cohort.objects.create(name="202425")
             >>> result = Cohort.get(cohort)
             >>> assert result == cohort
         """
-        # app imports
+        # external imports
         from accounts.models import Cohort
 
         cohort = Cohort.objects.create(name="202425")
@@ -111,13 +111,13 @@ class TestCohort:
 
     def test_cohort_get_with_string(self):
         """Test getting cohort with a string.
-        
+
         Examples:
             >>> cohort = Cohort.objects.create(name="202425")
             >>> result = Cohort.get("2024/25")
             >>> assert result == cohort
         """
-        # app imports
+        # external imports
         from accounts.models import Cohort
 
         cohort = Cohort.objects.create(name="202425")
@@ -126,13 +126,13 @@ class TestCohort:
 
     def test_cohort_get_with_int(self):
         """Test getting cohort with an integer.
-        
+
         Examples:
             >>> cohort = Cohort.objects.create(name="202425")
             >>> result = Cohort.get(202425)
             >>> assert result == cohort
         """
-        # app imports
+        # external imports
         from accounts.models import Cohort
 
         cohort = Cohort.objects.create(name="202425")
@@ -147,29 +147,27 @@ class TestProgramme:
 
     def test_programme_creation(self):
         """Test creating a programme.
-        
+
         Examples:
             >>> prog = Programme.objects.create(code="PHYS1234", name="Test Programme")
             >>> assert prog.code == "PHYS1234"
         """
-        # app imports
+        # external imports
         from accounts.models import Programme
 
-        programme = Programme.objects.create(
-            code="PHYS1234", name="Test Physics Programme", local=True, level="B"
-        )
+        programme = Programme.objects.create(code="PHYS1234", name="Test Physics Programme", local=True, level="B")
         assert programme.code == "PHYS1234"
         assert programme.name == "Test Physics Programme"
         assert programme.local is True
 
     def test_programme_str_representation(self):
         """Test string representation of programme.
-        
+
         Examples:
             >>> prog = Programme.objects.create(code="PHYS1234", name="Test Programme")
             >>> assert str(prog) == "Test Programme (PHYS1234)"
         """
-        # app imports
+        # external imports
         from accounts.models import Programme
 
         programme = Programme.objects.create(code="PHYS1234", name="Test Physics Programme")
@@ -183,12 +181,12 @@ class TestYear:
 
     def test_year_creation(self):
         """Test creating a year.
-        
+
         Examples:
             >>> year = Year.objects.create(name="First Year", status="UG", level=1)
             >>> assert year.name == "First Year"
         """
-        # app imports
+        # external imports
         from accounts.models import Year
 
         year = Year.objects.create(name="First Year", status="UG", level=1)
@@ -198,12 +196,12 @@ class TestYear:
 
     def test_year_str_representation(self):
         """Test string representation of year.
-        
+
         Examples:
             >>> year = Year.objects.create(name="First Year", status="UG", level=1)
             >>> assert str(year) == "First Year, UG"
         """
-        # app imports
+        # external imports
         from accounts.models import Year
 
         year = Year.objects.create(name="First Year", status="UG", level=1)
@@ -211,12 +209,12 @@ class TestYear:
 
     def test_year_natural_key(self):
         """Test natural key of year.
-        
+
         Examples:
             >>> year = Year.objects.create(name="First Year", status="UG", level=1)
             >>> assert year.natural_key() == "First Year, UG"
         """
-        # app imports
+        # external imports
         from accounts.models import Year
 
         year = Year.objects.create(name="First Year", status="UG", level=1)
@@ -224,13 +222,13 @@ class TestYear:
 
     def test_year_get_by_natural_key(self):
         """Test getting year by natural key.
-        
+
         Examples:
             >>> year = Year.objects.create(name="First Year", status="UG", level=1)
             >>> result = Year.objects.get_by_natural_key("First Year, UG")
             >>> assert result == year
         """
-        # app imports
+        # external imports
         from accounts.models import Year
 
         year = Year.objects.create(name="First Year", status="UG", level=1)
@@ -239,13 +237,13 @@ class TestYear:
 
     def test_year_unique_constraint(self):
         """Test unique constraint on year name and status.
-        
+
         Examples:
             >>> Year.objects.create(name="First Year", status="UG", level=1)
             >>> with pytest.raises(IntegrityError):
             ...     Year.objects.create(name="First Year", status="UG", level=2)
         """
-        # app imports
+        # external imports
         from accounts.models import Year
 
         Year.objects.create(name="First Year", status="UG", level=1)
@@ -260,11 +258,11 @@ class TestAccount:
 
     def test_account_creation(self, sample_programme, sample_year):
         """Test creating an account.
-        
+
         Args:
             sample_programme (Programme): A test programme instance.
             sample_year (Year): A test year instance.
-            
+
         Examples:
             >>> user = User.objects.create(username="testuser", number=123456)
             >>> assert user.username == "testuser"
@@ -286,7 +284,7 @@ class TestAccount:
 
     def test_account_unique_number(self):
         """Test that account numbers are unique.
-        
+
         Examples:
             >>> User.objects.create(username="user1", number=123456)
             >>> with pytest.raises(IntegrityError):
@@ -299,7 +297,7 @@ class TestAccount:
 
     def test_account_ordering(self):
         """Test account ordering by last name and first name.
-        
+
         Examples:
             >>> User.objects.create(username="user1", number=1, last_name="Zebra")
             >>> User.objects.create(username="user2", number=2, last_name="Apple")

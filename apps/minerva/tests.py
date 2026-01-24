@@ -1,15 +1,17 @@
 """Tests for the minerva app models and utilities."""
 
 # Python imports
-import pytest
 import re
 
 # Django imports
 from django.core.exceptions import ValidationError
 from django.utils import timezone as tz
 
+# external imports
+import pytest
+
 # app imports
-from .models import Module, module_validator, locate_named_group
+from .models import Module, locate_named_group, module_validator
 
 
 @pytest.mark.unit
@@ -18,7 +20,7 @@ class TestModuleValidator:
 
     def test_valid_module_code(self):
         """Test validation of valid module codes.
-        
+
         Examples:
             >>> module_validator("PHAS1234")  # Should not raise
         """
@@ -30,7 +32,7 @@ class TestModuleValidator:
 
     def test_invalid_module_code(self):
         """Test validation of invalid module codes.
-        
+
         Examples:
             >>> with pytest.raises(ValidationError):
             ...     module_validator("INVALID")
@@ -46,7 +48,7 @@ class TestModuleValidator:
 
     def test_non_string_input(self):
         """Test validation with non-string input.
-        
+
         Examples:
             >>> with pytest.raises(ValidationError):
             ...     module_validator(1234)
@@ -64,7 +66,7 @@ class TestLocateNamedGroup:
 
     def test_locate_simple_named_group(self):
         """Test locating a simple named group.
-        
+
         Examples:
             >>> pattern = r"(?P<name>\\w+)"
             >>> start, end = locate_named_group(pattern, "name")
@@ -77,7 +79,7 @@ class TestLocateNamedGroup:
 
     def test_locate_named_group_with_nested_parens(self):
         """Test locating a named group with nested parentheses.
-        
+
         Examples:
             >>> pattern = r"(?P<group>(a|b))"
             >>> start, end = locate_named_group(pattern, "group")
@@ -90,7 +92,7 @@ class TestLocateNamedGroup:
 
     def test_locate_nonexistent_group(self):
         """Test locating a non-existent named group.
-        
+
         Examples:
             >>> with pytest.raises(ValueError):
             ...     locate_named_group(r"(?P<name>\\w+)", "missing")
@@ -100,7 +102,7 @@ class TestLocateNamedGroup:
 
     def test_locate_named_group_with_substitution(self):
         """Test locating and substituting a named group.
-        
+
         Examples:
             >>> pattern = r"(?P<name>\\w+)"
             >>> result = locate_named_group(pattern, "name", sub="replaced")
@@ -118,10 +120,10 @@ class TestModule:
 
     def test_module_creation(self, sample_cohort):
         """Test creating a module.
-        
+
         Args:
             sample_cohort (Cohort): A test cohort instance.
-            
+
         Examples:
             >>> module = Module.objects.create(code="PHAS1234", ...)
             >>> assert module.code == "PHAS1234"
@@ -142,10 +144,10 @@ class TestModule:
 
     def test_module_str_representation(self, sample_module):
         """Test string representation of module.
-        
+
         Args:
             sample_module (Module): A test module instance.
-            
+
         Examples:
             >>> module = Module.objects.create(code="PHAS1234", exam_code=1, ...)
             >>> assert "PHAS1234" in str(module)
@@ -156,10 +158,10 @@ class TestModule:
 
     def test_module_slug_property(self, sample_module):
         """Test slug property of module.
-        
+
         Args:
             sample_module (Module): A test module instance.
-            
+
         Examples:
             >>> assert "PHAS1234" in module.slug
         """
@@ -169,10 +171,10 @@ class TestModule:
 
     def test_module_key_property(self, sample_module):
         """Test key property of module.
-        
+
         Args:
             sample_module (Module): A test module instance.
-            
+
         Examples:
             >>> key = module.key
             >>> assert module.code in key
@@ -183,15 +185,16 @@ class TestModule:
 
     def test_module_unique_together(self, sample_cohort):
         """Test unique_together constraint on code and exam_code.
-        
+
         Args:
             sample_cohort (Cohort): A test cohort instance.
-            
+
         Examples:
             >>> Module.objects.create(code="PHAS1234", exam_code=1, ...)
             >>> with pytest.raises(Exception):  # IntegrityError or similar
             ...     Module.objects.create(code="PHAS1234", exam_code=1, ...)
         """
+        # Django imports
         from django.db.utils import IntegrityError
 
         Module.objects.create(
@@ -218,10 +221,10 @@ class TestTest:
 
     def test_test_creation(self, sample_module):
         """Test creating a Test.
-        
+
         Args:
             sample_module (Module): A test module instance.
-            
+
         Examples:
             >>> test = Test.objects.create(name="Test", module=module, ...)
             >>> assert test.name == "Test"

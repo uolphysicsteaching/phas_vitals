@@ -15,11 +15,12 @@ APPS_PATH = PROJECT_ROOT_PATH / "apps"
 sys.path.insert(0, str(APPS_PATH.absolute()))
 sys.path.insert(0, str(PROJECT_ROOT_PATH.absolute()))
 
-# Python imports
-import pytest
-
+# Django imports
 # Django imports - let pytest-django handle setup
 from django.contrib.auth import get_user_model
+
+# external imports
+import pytest
 
 
 @pytest.fixture
@@ -31,11 +32,11 @@ def user_model():
 @pytest.fixture
 def sample_cohort(db):
     """Create a sample cohort for testing.
-    
+
     Returns:
         (Cohort): A test cohort instance.
     """
-    # app imports
+    # external imports
     from accounts.models import Cohort
 
     cohort, _ = Cohort.objects.get_or_create(name="202425")
@@ -45,11 +46,11 @@ def sample_cohort(db):
 @pytest.fixture
 def sample_programme(db):
     """Create a sample programme for testing.
-    
+
     Returns:
         (Programme): A test programme instance.
     """
-    # app imports
+    # external imports
     from accounts.models import Programme
 
     programme, _ = Programme.objects.get_or_create(
@@ -61,11 +62,11 @@ def sample_programme(db):
 @pytest.fixture
 def sample_year(db):
     """Create a sample year for testing.
-    
+
     Returns:
         (Year): A test year instance.
     """
-    # app imports
+    # external imports
     from accounts.models import Year
 
     year, _ = Year.objects.get_or_create(name="First Year", status="UG", defaults={"level": 1})
@@ -75,12 +76,12 @@ def sample_year(db):
 @pytest.fixture
 def sample_user(db, sample_programme, sample_year):
     """Create a sample user/account for testing.
-    
+
     Args:
         db: The pytest database fixture.
         sample_programme (Programme): A test programme instance.
         sample_year (Year): A test year instance.
-        
+
     Returns:
         (Account): A test user instance.
     """
@@ -102,15 +103,15 @@ def sample_user(db, sample_programme, sample_year):
 @pytest.fixture
 def sample_module(db, sample_cohort):
     """Create a sample module for testing.
-    
+
     Args:
         db: The pytest database fixture.
         sample_cohort (Cohort): A test cohort instance.
-        
+
     Returns:
         (Module): A test module instance.
     """
-    # app imports
+    # external imports
     from minerva.models import Module
 
     module, _ = Module.objects.get_or_create(
@@ -131,18 +132,18 @@ def sample_module(db, sample_cohort):
 @pytest.fixture
 def sample_test(db, sample_module):
     """Create a sample test for testing.
-    
+
     Args:
         db: The pytest database fixture.
         sample_module (Module): A test module instance.
-        
+
     Returns:
         (Test): A test Test instance.
     """
     # Django imports
     from django.utils import timezone as tz
 
-    # app imports
+    # external imports
     from minerva.models import Test
 
     test, _ = Test.objects.get_or_create(
@@ -164,15 +165,15 @@ def sample_test(db, sample_module):
 @pytest.fixture
 def sample_vital(db, sample_module):
     """Create a sample VITAL for testing.
-    
+
     Args:
         db: The pytest database fixture.
         sample_module (Module): A test module instance.
-        
+
     Returns:
         (VITAL): A test VITAL instance.
     """
-    # app imports
+    # external imports
     from vitals.models import VITAL
 
     vital, _ = VITAL.objects.get_or_create(

@@ -29,6 +29,7 @@ from .models import (
     AccountGroup,
     Cohort,
     Programme,
+    School,
     Section,
     TermDate,
     Year,
@@ -37,6 +38,7 @@ from .resource import (
     CohortResource,
     GroupResource,
     ProgrammeResource,
+    SchoolResource,
     SectionResource,
     TermDateResource,
     UserResource,
@@ -172,6 +174,19 @@ class CohortAdmin(ImportExportModelAdmin):
     def get_import_resource_class(self):
         """Return the class for importing objects."""
         return CohortResource
+
+
+@register(School)
+class SchoolAdmin(ImportExportModelAdmin):
+    """Minimal School Admin Interface."""
+
+    def get_export_resource_class(self):
+        """Return the class for exporting objects."""
+        return SchoolResource
+
+    def get_import_resource_class(self):
+        """Return the class for importing objects."""
+        return SchoolResource
 
 
 @register(Section)

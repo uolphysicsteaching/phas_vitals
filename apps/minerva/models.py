@@ -19,7 +19,7 @@ from django.utils.html import format_html
 # external imports
 import numpy as np
 import pytz
-from accounts.models import Account
+from accounts.models import Account, School
 from constance import config
 from util.models import patch_model
 from util.spreadsheet import Spreadsheet
@@ -131,6 +131,9 @@ class Module(models.Model):
     year = models.ForeignKey("accounts.Cohort", on_delete=models.CASCADE, related_name="modules")
     semester = models.IntegerField(null=True, blank=True, choices=SEMESTERS)
     exam_code = models.IntegerField(default=1, null=False, blank=False, choices=EXAM_CODES)
+    school = models.ForeignKey(
+        "accounts.school", on_delete=models.SET_NULL, related_name="modules", null=True, blank=True
+    )
     description = models.TextField(blank=True, null=True)
     module_leader = models.ForeignKey(
         "accounts.Account", on_delete=models.SET_NULL, blank=True, null=True, related_name="_modules"
@@ -273,6 +276,20 @@ class Module(models.Model):
         test_ids = set([x[0] for x in self.tests.all().values_list("test_id")])
         common = list(data_ids & test_ids)
         return {x: self.tests.get(test_id=x) for x in common}
+
+    def save(
+        self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None
+    ):  #  pylint: disable=arguments-differ
+        """Sort out a School before saving."""
+        if getattr(self, "school", None) is None:
+            code = self.code[:4]
+            try:
+                school = School.objects.get(code=code)
+                self.school = school
+            except School.DoesNotExist:
+                if getattr(self, "module_leader", False) and getatr(self.module_leader, "school", None) is not None:
+                    self.school = self.module_leader.school
+        super().save(force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)
 
     def update_enrollments(self):
         """Get the mapping between SIDs and Blackboard IDs and update the enrollment table."""
