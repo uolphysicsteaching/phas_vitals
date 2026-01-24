@@ -25,7 +25,6 @@ from util.models import patch_model
 from util.spreadsheet import Spreadsheet
 
 # app imports
-from phas_vitals import celery_app
 
 # app imports
 from . import json
@@ -501,7 +500,7 @@ class TestCategory(models.Model):
             category.save()
 
     def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
-        """Set the label to be the text if the label is &nbsp;"""
+        """Set the label to be the text if the label is empty."""
         if not self.label:
             self.label = self.text[:40]
         super().save(force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)

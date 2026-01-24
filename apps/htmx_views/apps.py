@@ -7,7 +7,6 @@ from os.path import basename, dirname
 from django.apps import AppConfig
 
 # app imports
-from . import views
 
 
 class EquipmentConfig(AppConfig):

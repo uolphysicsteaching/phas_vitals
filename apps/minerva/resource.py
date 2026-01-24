@@ -160,7 +160,7 @@ class TestResource(resources.ModelResource):
 
 
 class TestCategoryResource(resources.ModelResource):
-    """Import Export Resource for Test Categories"""
+    """Import Export Resource for Test Categories."""
 
     class Meta:
         model = TestCategory

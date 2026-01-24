@@ -16,7 +16,7 @@ from sitetree.models import TreeBase, TreeItemBase
 
 
 def patch_model(model, name=None, prep=None):
-    """Decorator to monkey-patch a function into a model.
+    """Decorate a function to monkey-patch it into a model.
 
     Args:
         model (model):
@@ -41,7 +41,7 @@ def patch_model(model, name=None, prep=None):
         raise ImproperlyConfigured(f"model argument to patch should either be a string or model - not a {type(model)}")
 
     def patch_model_decorator(func):
-        """Decorator that patches a function onto a model class.
+        """Patch a function onto a model class.
 
         Args:
             func (callable): The function to patch onto the model.

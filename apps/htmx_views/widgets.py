@@ -3,9 +3,8 @@
 
 # Django imports
 from django.core.exceptions import ImproperlyConfigured
-from django.forms import ModelChoiceField
 from django.forms.widgets import Select
-from django.urls import reverse, reverse_lazy
+from django.urls import reverse_lazy
 
 # external imports
 from ajax_select import registry

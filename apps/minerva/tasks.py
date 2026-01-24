@@ -4,11 +4,8 @@
 import logging
 from datetime import datetime, time
 from functools import partial
-from pathlib import Path
 
 # Django imports
-from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone as tz
 
 # external imports
@@ -19,11 +16,10 @@ import pandas as pd
 from accounts.models import Account, Cohort, School
 from celery import shared_task
 from constance import config
-from minerva.models import Module, Test_Score
+from minerva.models import Module
 
 # app imports
 from phas_vitals import celery_app
-from phas_vitals.tasks import PHASTask
 
 # app imports
 from .models import GradebookColumn, SummaryScore, TestCategory

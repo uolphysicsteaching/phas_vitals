@@ -6,12 +6,10 @@ from django.contrib import admin
 
 # external imports
 from accounts.admin import StudentListFilter
-from accounts.models import Account
 from import_export.admin import ImportExportModelAdmin
-from util.admin import add_action, add_inlines
+from util.admin import add_inlines
 
 # app imports
-from phas_vitals import celery_app
 
 # app imports
 from .forms import VITAL_ResultForm, VITAL_Test_MapForm, VITALForm

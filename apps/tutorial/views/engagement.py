@@ -13,7 +13,6 @@ from django.utils import timezone as tz
 from django.views.generic import (
     DetailView,
     FormView,
-    ListView,
     TemplateView,
     UpdateView,
 )
@@ -45,7 +44,7 @@ class TutorStudentEngagementSummary(IsStaffViewMixin, HTMXProcessMixin, FormMixi
     form_class = CohortSelectForm
 
     def clean_kwargs(self):
-        """Utility method to convert 'None' to None values in self.kwargs."""
+        """Convert 'None' string values to None in self.kwargs."""
         for k, val in self.kwargs.items():
             match val:
                 case "None":

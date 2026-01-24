@@ -3,7 +3,6 @@
 # Python imports
 import re
 from datetime import timedelta
-from itertools import chain
 
 # Django imports
 from django.apps import apps

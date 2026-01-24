@@ -15,12 +15,10 @@ from django.db.models import Count, Q
 import numpy as np
 import pandas as pd
 from celery import shared_task
-from constance import config
 from django_auth_adfs.config import provider_config
 
 # app imports
 from phas_vitals import celery_app
-from phas_vitals.tasks import PHASTask
 
 # app imports
 from .models import Account
