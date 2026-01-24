@@ -8,16 +8,14 @@ from operator import attrgetter
 # Django imports
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
-from django.utils import timezone as tz
 from django.utils.encoding import smart_str
 
 # external imports
 from accounts.models import Account
 from django_filters import rest_framework as filters
-from rest_framework import routers, serializers, status, viewsets
+from rest_framework import serializers, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import BasePermission
-from rest_framework.response import Response
 from rest_framework.schemas import get_schema_view
 from util.backend import HMACAuthentication
 

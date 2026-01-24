@@ -13,7 +13,6 @@ from django.utils import timezone as tz
 from django.views.generic import (
     DetailView,
     FormView,
-    ListView,
     TemplateView,
     UpdateView,
 )

@@ -2,7 +2,6 @@
 
 # for now fetch the development settings only
 # app imports
-from .development import *
 
 SECURE_HSTS_SECONDS = 3600
 SECURE_CONTENT_TYPE_NOSNIFF = True
