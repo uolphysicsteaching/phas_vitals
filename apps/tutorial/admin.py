@@ -42,9 +42,13 @@ class TutorialListFilter(SimpleListFilter):
     parameter_name = "tutorial"
 
     def lookups(self, request, model_admin):
-        """Return a sorted list of Tutor group names."""
-        res = Tutorial.objects.all().order_by("-cohort__name", "code")
-        return tuple([(x.code, x) for x in res])
+        """Return a sorted list of Tutor group names.
+        
+        Returns:
+            (tuple): A tuple of (code, display_string) tuples for tutorial options.
+        """
+        tutorials = Tutorial.objects.all().order_by("-cohort__name", "code").values_list("code", "code")
+        return tuple(tutorials)
 
     def queryset(self, request, queryset):
         """Return the object with a student of the right username."""
@@ -78,6 +82,7 @@ class TutorialAssignmentAdmin(ImportExportModelAdmin):
         "tutorial__code",
         "tutorial__tutor__last_name",
     ]
+    list_select_related = ("tutorial", "tutorial__tutor", "student")
     form = TutorialAssignmentForm
 
     def get_export_resource_class(self):
@@ -181,6 +186,7 @@ class TutorialAdmin(ImportExportModelAdmin):
         "code",
         "students__number",
     ]
+    list_select_related = ("tutor", "cohort")
 
     form = TutorialAdminForm
     inlines = (TutorialAssignmentInline,)
@@ -218,6 +224,7 @@ class SessionAdmin(ImportExportModelAdmin):
     list_display = ("cohort", "semester", "name", "start", "end")
     list_filter = (CohortListFilter, "semester", "name", "start", "end")
     search_fields = ("name", "cohort__name")
+    list_select_related = ("cohort",)
 
     def get_export_resource_class(self):
         """Set the export resource class."""
@@ -242,6 +249,7 @@ class AttendanceAdmin(ImportExportModelAdmin):
         "session__name",
         "type__name",
     )
+    list_select_related = ("student", "session", "session__cohort", "type")
 
     def get_export_resource_class(self):
         """Set the export resource class."""
@@ -265,6 +273,7 @@ class MeetingAttendanceAdmin(ImportExportModelAdmin):
         "student__number",
         "meeting__name",
     )
+    list_select_related = ("student", "meeting", "meeting__cohort", "tutor")
 
     def get_export_resource_class(self):
         """Set the export resource class."""
@@ -282,6 +291,7 @@ class MeetingAdmin(ImportExportModelAdmin):
     list_display = ("name", "cohort", "due_date")
     list_filter = ("name", CohortListFilter, "due_date")
     search_fields = ("name", "cohort__name")
+    list_select_related = ("cohort",)
 
     def get_export_resource_class(self):
         """Set the export resource class."""

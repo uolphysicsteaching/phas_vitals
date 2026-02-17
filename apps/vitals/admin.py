@@ -36,9 +36,13 @@ class VITALListFilter(admin.SimpleListFilter):
     parameter_name = "VITAL"
 
     def lookups(self, request, model_admin):
-        """Return a sorted list of student names."""
-        res = VITAL.objects.all().order_by("VITAL_ID")
-        return tuple([(vital.VITAL_ID, str(vital)) for vital in res.all()])
+        """Return a sorted list of VITAL options.
+        
+        Returns:
+            (tuple): A tuple of (VITAL_ID, display_string) tuples for VITAL options.
+        """
+        vital_data = VITAL.objects.all().order_by("VITAL_ID").values_list("VITAL_ID", "name")
+        return tuple([(vid, f"{vid} - {name}") for vid, name in vital_data])
 
     def queryset(self, request, queryset):
         """Return the object with a student of the right username."""
@@ -111,6 +115,7 @@ class VITALAdmin(ImportExportModelAdmin):
     list_display = ("name", "module", "VITAL_ID")
     list_filter = list_display
     search_fields = ["name", "description", "module__name", "VITAL_ID"]
+    list_select_related = ("module",)
     inlines = [VITAL_Test_Map_VITAL_Inline, VITAL_ResultInline]
     actions = [
         update_vital_users,
@@ -142,6 +147,7 @@ class VITAL_Test_MapAdmin(ImportExportModelAdmin):
     list_display = ("test", "vital", "necessary", "sufficient")
     list_filter = list_display
     search_fields = ["test__name", "vital__name", "vital__module__name", "test__module__name"]
+    list_select_related = ("test", "test__module", "vital", "vital__module")
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
@@ -160,6 +166,7 @@ class VITAL_ResultAdmin(ImportExportModelAdmin):
     list_editable = ("passed",)
     list_filter = (VITALListFilter, StudentListFilter, "passed", "date_passed")
     search_fields = ["vital__name", "user__first_name", "user__last_name", "user__username", "vital__module__name"]
+    list_select_related = ("vital", "vital__module", "user")
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""

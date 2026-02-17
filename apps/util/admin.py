@@ -236,11 +236,19 @@ class StudentListFilter(admin.SimpleListFilter):
     parameter_name = "student"
 
     def lookups(self, request, model_admin):
-        """Return a sorted list of student names."""
+        """Return a sorted list of student names.
+        
+        Returns:
+            (tuple): A tuple of (username, display_name) tuples for student options.
+        """
         filt = {}
         filt.update({"groups__name": "Student"})
-        res = Account.objects.filter(**filt).order_by("last_name", "first_name")
-        return tuple([(user.username, user.display_name) for user in res.all()])
+        students = (
+            Account.objects.filter(**filt)
+            .order_by("last_name", "first_name")
+            .values_list("username", "first_name", "last_name")
+        )
+        return tuple([(username, f"{first} {last}") for username, first, last in students])
 
     def queryset(self, request, queryset):
         """Return the object with a student of the right username."""
@@ -266,11 +274,19 @@ class StaffListFilter(admin.SimpleListFilter):
     parameter_name = "staff"
 
     def lookups(self, request, model_admin):
-        """Return a sorted list of student names."""
+        """Return a sorted list of staff names.
+        
+        Returns:
+            (tuple): A tuple of (username, display_name) tuples for staff options.
+        """
         filt = {}
         filt.update({"is_staff": True})
-        res = Account.objects.filter(**filt).order_by("last_name", "first_name")
-        return tuple([(user.username, user.display_name) for user in res.all()])
+        staff = (
+            Account.objects.filter(**filt)
+            .order_by("last_name", "first_name")
+            .values_list("username", "first_name", "last_name")
+        )
+        return tuple([(username, f"{first} {last}") for username, first, last in staff])
 
     def queryset(self, request, queryset):
         """Return the object with a student of the right username."""

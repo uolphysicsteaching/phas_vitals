@@ -54,8 +54,12 @@ class ModuleListFilter(admin.SimpleListFilter):
     parameter_name = "module"
 
     def lookups(self, request, model_admin):
-        """Lookup Module lists."""
-        return [(x.code, str(x)) for x in Module.objects.all().order_by("code")]
+        """Lookup Module lists.
+        
+        Returns:
+            (list of tuples): A list of (code, display_string) tuples for module options.
+        """
+        return list(Module.objects.all().order_by("code").values_list("code", "name"))
 
     def queryset(self, request, queryset):
         """Get the module by code."""
@@ -167,7 +171,8 @@ class ModuleAdmin(ImportExportModelAdmin):
     list_display = ("id", "year", "code", "courseId", "name")
     list_filter = list_display
     search_fields = ["name", "description", "module__year"]
-    iniines = [
+    list_select_related = ("year",)
+    inlines = [
         ModuleEnrollmentInline,
     ]
     actions = [
@@ -339,6 +344,7 @@ class TestAdmin(ImportExportModelAdmin):
         "recommended_date",
     )
     search_fields = ["name", "module__name", "module__year__name", "category__text"]
+    list_select_related = ("module", "category")
     inlines = [
         GradebookColumnInline,
         Test_ScoreInline,
@@ -407,6 +413,7 @@ class TestCategoryAdmin(SortableAdminMixin, ImportExportModelAdmin):
     list_filter = [ModuleListFilter, "text", "in_dashboard", "dashboard_plot"]
     search_fields = ["module__name", "module__code", "text", "label"]
     list_editable = ["in_dashboard", "dashboard_plot", "label", "weighting"]
+    list_select_related = ("module",)
     readonly_fields = ["module", "text", "category_id"]
 
     def get_export_resource_class(self):
@@ -436,6 +443,7 @@ class GradebookColumnAdmin(ImportExportModelAdmin):
         "category__text",
     ]
     list_editable = ["test", "priority"]
+    list_select_related = ("module", "test", "category")
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
@@ -465,6 +473,7 @@ class Test_ScoreAdmin(ImportExportModelAdmin):
         "passed",
     )
     search_fields = ["user__last_name", "user__username", "test__name", "test__module__name"]
+    list_select_related = ("user", "test", "test__module")
     inlines = [
         Test_AttemptInline,
     ]
@@ -515,6 +524,7 @@ class Test_AtemptAdmin(ImportExportModelAdmin):
         "test_entry__test__name",
         "test_entry__test__module__name",
     ]
+    list_select_related = ("test_entry", "test_entry__user", "test_entry__test", "test_entry__test__module")
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
@@ -558,6 +568,7 @@ class ModuleEnrollmentAdmin(ImportExportModelAdmin):
         "status__code",
         "status__explanation",
     ]
+    list_select_related = ("module", "student", "status")
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
