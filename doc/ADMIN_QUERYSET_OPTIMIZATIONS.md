@@ -255,7 +255,7 @@ To verify these optimisations:
 
 ## Further Reading
 
-- [Django select_related() documentation](https://docs.djangoproject.com/en/stable/ref/models/querysets/#select-related)
-- [Django prefetch_related() documentation](https://docs.djangoproject.com/en/stable/ref/models/querysets/#prefetch-related)
-- [Django Admin list_select_related documentation](https://docs.djangoproject.com/en/stable/ref/contrib/admin/#django.contrib.admin.ModelAdmin.list_select_related)
-- [Database access optimisation](https://docs.djangoproject.com/en/stable/topics/db/optimization/)
+- [Django select_related() documentation](https://docs.djangoproject.com/en/4.2/ref/models/querysets/#select-related)
+- [Django prefetch_related() documentation](https://docs.djangoproject.com/en/4.2/ref/models/querysets/#prefetch-related)
+- [Django Admin list_select_related documentation](https://docs.djangoproject.com/en/4.2/ref/contrib/admin/#django.contrib.admin.ModelAdmin.list_select_related)
+- [Database access optimisation](https://docs.djangoproject.com/en/4.2/topics/db/optimization/)
