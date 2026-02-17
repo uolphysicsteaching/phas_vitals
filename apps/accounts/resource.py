@@ -49,6 +49,9 @@ def _lname_from_name(value):
         words = [x for x in value.split(" ") if x != ""]
     return words[-1].title()
 
+def _year_from_code(value):
+    """Return a Cohort from a term code"""
+    return int(re.search("\\d+",str(value)).group()[0])
 
 class UsernameFKWidget(widgets.ForeignKeyWidget):
     """Foreign Key widget that allows a callback inside clean() method.
@@ -216,7 +219,25 @@ class NaturalKeyForeignKeyWidget(widgets.ForeignKeyWidget):
 class YearWidget(NaturalKeyForeignKeyWidget):
     """Import export ediget that looks up programmes by name or code."""
 
-    pass
+    def clean(self, value, row=None, *args, **kwargs):
+        """Do a lookup attempting to match code or name."""
+        value=str(value).strip()
+        qs = Year.objects.filter(Q(level=int(value)) | Q(name=value))
+        if qs.count() < 1:
+            return Year.objects.none()
+        return qs.last()
+
+class CohortWidget(NaturalKeyForeignKeyWidget):
+    """Import export ediget that looks up programmes by name or code."""
+
+    def clean(self, value, row=None, *args, **kwargs):
+        """Do a lookup attempting to match code or name."""
+        value=str(value).strip()
+        qs = Cohort.objects.filter(Q(pk=value) | Q(name=value))
+        if qs.count() < 1:
+            return Year.objects.none()
+        return qs.last()
+
 
 
 class ProgrammeWidget(widgets.ForeignKeyWidget):
@@ -432,6 +453,13 @@ class UserResource(resources.ModelResource):
         widget=YearWidget(Year, "id"),
     )
 
+    cohort = fields.Field(
+        column_name="cohort",
+        attribute="cohort",
+        widget=CohortWidget(Year, "id"),
+    )
+
+
     apt = fields.Field(
         column_name="apt",
         attribute="apt",
@@ -472,11 +500,13 @@ class UserResource(resources.ModelResource):
             "Email Address": _user_from_email,
             "Email_Address": _user_from_email,
             "Email": _user_from_email,
+            "ISS_Email": _user_from_email,
         },
-        "email": {"email": _none, "Email Address": _none, "Email_Address": _none, "Email": _none},
-        "number": {"number": _none, "SID": _none, "Student_ID": _none, "Student ID": _none},
+        "email": {"email": _none, "Email Address": _none, "Email_Address": _none, "Email": _none, ": _user_from_email,":_none},
+        "number": {"number": _none, "SID": _none, "Student_ID": _none, "Student ID": _none, "ID": _none},
         "first_name": {
             "first_name": _none,
+            "FName": _none,
             "First_Name": _none,
             "First Name": _none,
             "Student_Name": _fname_from_name,
@@ -485,16 +515,18 @@ class UserResource(resources.ModelResource):
         "last_name": {
             "last_name": _none,
             "Last_Name": _none,
+            "LName": _none,
             "Last Name": _none,
             "Student_Name": _lname_from_name,
             "Student Name": _lname_from_name,
         },
         "programme": {"programme": _none, "Programme": _none},
         "school": {"school": _none, "School": _none},
-        "year": {"year": _none, "Class": _none},
+        "year": {"year": _none, "Class": _none, "Modulecode":_year_from_code},
         "section": {"section": _none, "Section": _none},
-        "registtration_status": {"registtration_status": _none, "Registration Status": _none, "ESTS_Code": _none},
+        "registtration_status": {"registtration_status": _none, "Registration Status": _none, "ESTS_Code": _none, "RSTS": _none},
         #        "apt": {"apt": _none, "tutor": _none, "Tutor Name": _none},
+        "cohort":{"Cohort":_none, "term":_none},
     }
 
     def before_import(self, dataset, **kwargs):

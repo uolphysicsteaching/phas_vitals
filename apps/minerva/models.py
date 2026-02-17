@@ -6,6 +6,8 @@ import re
 from datetime import datetime, timedelta
 from os import path
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
 
 # Django imports
 from django.conf import settings
@@ -30,6 +32,7 @@ from . import json
 logger = logging.getLogger(__name__)
 task_logger = logging.getLogger("celery_tasks")
 
+UK = ZoneInfo("Europe/London")
 
 # Create your models here.
 
@@ -604,7 +607,7 @@ class SummaryScore(models.Model):
 
         Calculate methods should also update the JSONField data with the data for constructing plots.
         """
-        if hasattr(self, f"calculate_{self.category.text.lower()}"):
+        if hasattr(self, f"calculate_{self.category.text.lower().split()[0]}"):
             self.score = getattr(self, f"calculate_{self.category.text.lower()}")()
             return
         tests = Test.objects.filter(category=self.category).distinct().exclude(status="Not Started")
@@ -615,8 +618,8 @@ class SummaryScore(models.Model):
             taken = tests.filter(results__user=self.student).distinct().order_by("id")
             not_taken = tests.exclude(results__user=self.student).distinct().filter(status="Overdue").order_by("id")
             in_progress = tests.exclude(results__user=self.student).distinct().filter(status="Released").count()
-            passed = taken.filter(results__passed=True).count()
-            failed = taken.exclude(results__passed=True).count()
+            passed = taken.filter(results__passed=True, results__user=self.student).count()
+            failed = taken.exclude(results__passed=True, results__user=self.student).count()
             if taken.count() + not_taken.count() == 0:
                 self.score = np.nan
             else:
@@ -923,40 +926,38 @@ class Test(models.Model):
             # Django's ORM doesn't support named groups, so rewrite regex to remove them.
             # Firsttry to locate an ID int he name:
             match = re.search(search, column.name)
-            if "(?P<id>" in search and match:  # Substitute the matched test ID back into the pattern.
-                regex_search = locate_named_group(search, "id", match.groupdict()["id"])
-                regex_search = re.sub(r"\(\?P\<[^\>]+\>", "(", regex_search)
-            else:  # No test ID suibpatten
-                regex_search = re.sub(r"\(\?P\<[^\>]+\>", "(", search)
-            possible = module.tests.filter(name__iregex=regex_search, category=column.category)
-            test = None
-            if column.test:  # Existing test found
-                test = column.test
-            elif possible.count() == 1:  # We have one matching test already
-                test = possible.first()
-            elif possible.count() == 0 and match:  # New test needed.
+            if not match or "name" not in match.groupdict(): # can't go further
+                continue
+
+            if not column.test:
+                test_id=match.groupdict().get("id",match.groupdict().get("name"))
+
+                # Get or create the test with the correct module and test_id
                 try:
-                    test = cls.objects.get(module=module, name=column.name)
-                except ObjectDoesNotExist:  # Workout our test id already exists
-                    match = dict(match.groupdict())
-                    testid = match.get("id", match.get("name"))
-                    if test := cls.objects.filter(test_id=testid, module=module).first():  # Yes, so use that test
-                        pass
-                    else:  # No, create new test and assign category.
-                        test = cls(test_id=testid, module=module, name=column.name, category=column.category)
-                        test.category = column.category
-            else:  # May have more than one possible - see if we can match on an ID subfield of the name
-                # Columns which have a category, but not a good name will have None for match - will need manaual
-                # allocation.
-                if match and (testid := match.groupdict().get("id")):
-                    for query in [Q(test_id=testid), Q(name__contains=testid)]:
-                        possible = Test.objects.filter(query)
-                        if possible.count() == 1:
-                            test = possible.first()
-                            break
+                    test=Test.objects.get(test_id=test_id,module=module)
+                    test.category=column.category
+                    test.name=match.groupdict().get("name")
+                except Test.DoesNotExist:
+                    test=Test(module=module,test_id=test_id, name=match.groupdict().get("name"),category=column.category)
+                test.save()
+            else:
+                test=column.test
+
+
             if test:  # We found, or created a test, so update test properties
-                test.grading_attemptsAllowed = dictionary["grading"]["attemptsAllowed"]
-                test.score_possible = dictionary["score"]["possible"]
+                test.grading_attemptsAllowed = dictionary.get("grading",{}).get("attemptsAllowed",None)
+                test.score_possible = dictionary.get("score",{}).get("possible",None)
+                if due:=dictionary.get("grading",{}).get("due", None):
+                    due=due.replace(tzinfo=UK)
+                    test.recommended_date=due
+                    test.grading_due=due+timedelta(days=14)
+                else:
+                    print(f"No due date for {test} {dictionary.get("grading",{}).get("due", None)}")
+                if modified:=dictionary.get("modified",None):
+                    modified=modified.replace(tzinfo=UK)
+                    test.release_date = modified
+                else:
+                    print(f"No modified date for {test} {dictionary.get("modified",None)}")
                 test.save()
                 column.test = test
                 column.save()

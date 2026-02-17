@@ -4,11 +4,8 @@
 import logging
 from datetime import datetime, time
 from functools import partial
-from pathlib import Path
 
 # Django imports
-from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone as tz
 
 # external imports
@@ -19,7 +16,7 @@ import pandas as pd
 from accounts.models import Account, Cohort, School
 from celery import shared_task
 from constance import config
-from minerva.models import Module, Test_Score
+from minerva.models import Module
 
 # app imports
 from eps_success import celery_app
@@ -27,6 +24,7 @@ from eps_success.tasks import PHASTask
 
 # app imports
 from .models import GradebookColumn, SummaryScore, TestCategory
+from . import json
 
 logger = logging.getLogger("celery_tasks")
 
@@ -42,16 +40,15 @@ def import_module_list():
         year, crn, code = data["courseId"].split("_")
         year = Cohort.objects.get(name=year)
         school = School.from_code(code[:4])
+        crn=data["courseId"].split("_")[1]
         name = " ".join(data["name"].split(" ")[1:-1])
-        mod, _ = Module.objects.get_or_create(uuid=data["uuid"], courseId=data["courseId"], year=year, code=code)
+        mod, _ = Module.objects.get_or_create(uuid=data["uuid"], courseId=crn, year=year, code=code)
         mod.name = name
         mod.school = school
         mod.level = int(mod.code[4])
         mod.semester = int(data["name"].split(" ")[0][-2])
         mod.save()
-        mod.create_test_categories_from_json()
-        mod.create_tests_columns_from_json()
-        mod.create_module_entrollments_from_json()
+        mod.update_from_json(categories=True, tests=True, enrollments=True, columns=True, grades=True)
 
 
 @shared_task

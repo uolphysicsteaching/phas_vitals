@@ -27,4 +27,9 @@ restart:
 	sudo systemctl restart celery_eps_success
 	sudo systemctl restart celery_beat_eps_success
 
+stop:
+	sudo systemctl stop eps-success
+	sudo systemctl stop celery_eps_success
+	sudo systemctl stop celery_beat_eps_success
+
 FORCE:

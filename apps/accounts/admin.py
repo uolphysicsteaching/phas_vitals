@@ -259,7 +259,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
                 "fields": [
                     ("username", "number"),
                     ("title", "first_name", "givenName", "last_name"),
-                    ("email"),
+                    ("school","email"),
                     ("programme", "registration_status", "year", "section"),
                 ],
                 "classes": [
