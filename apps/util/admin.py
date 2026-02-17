@@ -274,7 +274,7 @@ class StaffListFilter(admin.SimpleListFilter):
     parameter_name = "staff"
 
     def lookups(self, request, model_admin):
-        """Return a sorted list of student names.
+        """Return a sorted list of staff names.
         
         Returns:
             (tuple): A tuple of (username, display_name) tuples for staff options.

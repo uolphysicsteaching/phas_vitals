@@ -36,7 +36,7 @@ class VITALListFilter(admin.SimpleListFilter):
     parameter_name = "VITAL"
 
     def lookups(self, request, model_admin):
-        """Return a sorted list of student names.
+        """Return a sorted list of VITAL options.
         
         Returns:
             (tuple): A tuple of (VITAL_ID, display_string) tuples for VITAL options.

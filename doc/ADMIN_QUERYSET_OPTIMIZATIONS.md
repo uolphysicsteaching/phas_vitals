@@ -234,7 +234,7 @@ To verify these optimisations:
    }
    ```
 
-## Best Practises
+## Best Practices
 
 1. **Always use `list_select_related` for ForeignKey fields in `list_display`**
    - Include nested relationships with double-underscore notation (e.g., `'test__module'`)
