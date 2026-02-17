@@ -4,6 +4,7 @@
 import logging
 import re
 from datetime import datetime, timedelta
+from functools import cached_property
 from os import path
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -304,7 +305,9 @@ class Module(models.Model):
         with transaction.atomic():
             keep.bulk_update(keep, ["user_id"])
         keep_students = set([x[0] for x in keep.values_list("student_id")])
-        for module in self.sub_modules.all():
+        # Prefetch sub_modules and their student_enrollments to avoid N+1 queries
+        sub_modules = self.sub_modules.prefetch_related("student_enrollments").all()
+        for module in sub_modules:
             mod_students = set([x[0] for x in module.student_enrollments.all().values_list("student_id")])
             to_add = keep_students - mod_students
             to_add = (
@@ -776,12 +779,12 @@ class Test(models.Model):
         """Return a url for the detail page for this vital."""
         return f"/minerva/detail/{self.pk}/"
 
-    @property
+    @cached_property
     def attempts_json(self):
         """Match the filename for the test attempts."""
         return [x.json_attempts_file for x in self.columns.all().order_by("priority")]
 
-    @property
+    @cached_property
     def grades_json(self):
         """Match the filename for the test attempts."""
         return [x.json_grades_file for x in self.columns.all().order_by("priority")]
@@ -799,8 +802,10 @@ class Test(models.Model):
         """Ensure that all our columns have the same category and then set our category."""
         if self.pk is None:
             return
+        # Cache columns query to avoid multiple database hits
+        ordered_columns = list(self.columns.all().order_by("priority"))
         categories = np.unique(
-            [x[0] for x in self.columns.all().order_by("priority").values_list("category_id") if x[0] is not None]
+            [x.category_id for x in ordered_columns if x.category_id is not None]
         )
         match categories.size:
             case 0:
