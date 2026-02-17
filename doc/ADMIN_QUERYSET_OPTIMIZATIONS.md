@@ -178,17 +178,20 @@ class Test_ScoreAdmin(ImportExportModelAdmin):
 
 ### Expected Query Reduction
 
+**Note**: The following numbers are estimated based on the N+1 query pattern analysis. Actual performance improvements
+should be measured using Django Debug Toolbar or query logging in a development environment with representative data.
+
 For a typical admin list page with 50 items:
 
-| Admin Class | Before | After | Reduction |
+| Admin Class | Before (Estimated) | After | Reduction |
 |------------|--------|-------|-----------|
-| GradebookColumnAdmin | 151 | 1 | 99.3% |
-| Test_ScoreAdmin | 151 | 1 | 99.3% |
-| Test_AttemptAdmin | 201 | 1 | 99.5% |
-| ModuleEnrollmentAdmin | 151 | 1 | 99.3% |
-| VITAL_Test_MapAdmin | 201 | 1 | 99.5% |
-| VITAL_ResultAdmin | 151 | 1 | 99.3% |
-| MeetingAttendanceAdmin | 201 | 1 | 99.5% |
+| GradebookColumnAdmin | ~151 | 1 | ~99.3% |
+| Test_ScoreAdmin | ~151 | 1 | ~99.3% |
+| Test_AttemptAdmin | ~201 | 1 | ~99.5% |
+| ModuleEnrollmentAdmin | ~151 | 1 | ~99.3% |
+| VITAL_Test_MapAdmin | ~201 | 1 | ~99.5% |
+| VITAL_ResultAdmin | ~151 | 1 | ~99.3% |
+| MeetingAttendanceAdmin | ~201 | 1 | ~99.5% |
 
 ### Filter Optimization Impact
 
