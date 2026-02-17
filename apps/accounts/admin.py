@@ -58,9 +58,17 @@ class StudentListFilter(SimpleListFilter):
     parameter_name = "student"
 
     def lookups(self, request, model_admin):
-        """Return a sorted list of student names."""
-        res = Account.students.filter(groups__name="Student").order_by("last_name", "first_name")
-        return tuple([(user.username, user.display_name) for user in res.all()])
+        """Return a sorted list of student names.
+        
+        Returns:
+            (tuple): A tuple of (username, display_name) tuples for student options.
+        """
+        students = (
+            Account.students.filter(groups__name="Student")
+            .order_by("last_name", "first_name")
+            .values_list("username", "first_name", "last_name")
+        )
+        return tuple([(username, f"{first} {last}") for username, first, last in students])
 
     def queryset(self, request, queryset):
         """Return the object with a student of the right username."""

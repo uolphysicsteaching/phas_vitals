@@ -54,8 +54,12 @@ class ModuleListFilter(admin.SimpleListFilter):
     parameter_name = "module"
 
     def lookups(self, request, model_admin):
-        """Lookup Module lists."""
-        return [(x.code, str(x)) for x in Module.objects.all().order_by("code")]
+        """Lookup Module lists.
+        
+        Returns:
+            (list of tuples): A list of (code, display_string) tuples for module options.
+        """
+        return list(Module.objects.all().order_by("code").values_list("code", "name"))
 
     def queryset(self, request, queryset):
         """Get the module by code."""

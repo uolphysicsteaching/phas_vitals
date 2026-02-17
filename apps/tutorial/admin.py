@@ -42,9 +42,13 @@ class TutorialListFilter(SimpleListFilter):
     parameter_name = "tutorial"
 
     def lookups(self, request, model_admin):
-        """Return a sorted list of Tutor group names."""
-        res = Tutorial.objects.all().order_by("-cohort__name", "code")
-        return tuple([(x.code, x) for x in res])
+        """Return a sorted list of Tutor group names.
+        
+        Returns:
+            (tuple): A tuple of (code, display_string) tuples for tutorial options.
+        """
+        tutorials = Tutorial.objects.all().order_by("-cohort__name", "code").values_list("code", "code")
+        return tuple(tutorials)
 
     def queryset(self, request, queryset):
         """Return the object with a student of the right username."""

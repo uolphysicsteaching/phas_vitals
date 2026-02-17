@@ -36,9 +36,13 @@ class VITALListFilter(admin.SimpleListFilter):
     parameter_name = "VITAL"
 
     def lookups(self, request, model_admin):
-        """Return a sorted list of student names."""
-        res = VITAL.objects.all().order_by("VITAL_ID")
-        return tuple([(vital.VITAL_ID, str(vital)) for vital in res.all()])
+        """Return a sorted list of student names.
+        
+        Returns:
+            (tuple): A tuple of (VITAL_ID, display_string) tuples for VITAL options.
+        """
+        vitals = VITAL.objects.all().order_by("VITAL_ID").values_list("VITAL_ID", "name")
+        return tuple([(vid, f"{vid} - {name}") for vid, name in vitals])
 
     def queryset(self, request, queryset):
         """Return the object with a student of the right username."""
