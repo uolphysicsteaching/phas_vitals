@@ -41,8 +41,8 @@ class VITALListFilter(admin.SimpleListFilter):
         Returns:
             (tuple): A tuple of (VITAL_ID, display_string) tuples for VITAL options.
         """
-        vital_options = VITAL.objects.all().order_by("VITAL_ID").values_list("VITAL_ID", "name")
-        return tuple([(vid, f"{vid} - {name}") for vid, name in vital_options])
+        vital_data = VITAL.objects.all().order_by("VITAL_ID").values_list("VITAL_ID", "name")
+        return tuple([(vid, f"{vid} - {name}") for vid, name in vital_data])
 
     def queryset(self, request, queryset):
         """Return the object with a student of the right username."""
