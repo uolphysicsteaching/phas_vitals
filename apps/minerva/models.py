@@ -8,7 +8,6 @@ from os import path
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-
 # Django imports
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -287,7 +286,7 @@ class Module(models.Model):
                 school = School.objects.get(code=code)
                 self.school = school
             except School.DoesNotExist:
-                if getattr(self, "module_leader", False) and getatr(self.module_leader, "school", None) is not None:
+                if getattr(self, "module_leader", False) and getattr(self.module_leader, "school", None) is not None:
                     self.school = self.module_leader.school
         super().save(force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)
 
@@ -926,35 +925,36 @@ class Test(models.Model):
             # Django's ORM doesn't support named groups, so rewrite regex to remove them.
             # Firsttry to locate an ID int he name:
             match = re.search(search, column.name)
-            if not match or "name" not in match.groupdict(): # can't go further
+            if not match or "name" not in match.groupdict():  # can't go further
                 continue
 
             if not column.test:
-                test_id=match.groupdict().get("id",match.groupdict().get("name"))
+                test_id = match.groupdict().get("id", match.groupdict().get("name"))
 
                 # Get or create the test with the correct module and test_id
                 try:
-                    test=Test.objects.get(test_id=test_id,module=module)
-                    test.category=column.category
-                    test.name=match.groupdict().get("name")
+                    test = Test.objects.get(test_id=test_id, module=module)
+                    test.category = column.category
+                    test.name = match.groupdict().get("name")
                 except Test.DoesNotExist:
-                    test=Test(module=module,test_id=test_id, name=match.groupdict().get("name"),category=column.category)
+                    test = Test(
+                        module=module, test_id=test_id, name=match.groupdict().get("name"), category=column.category
+                    )
                 test.save()
             else:
-                test=column.test
-
+                test = column.test
 
             if test:  # We found, or created a test, so update test properties
-                test.grading_attemptsAllowed = dictionary.get("grading",{}).get("attemptsAllowed",None)
-                test.score_possible = dictionary.get("score",{}).get("possible",None)
-                if due:=dictionary.get("grading",{}).get("due", None):
-                    due=due.replace(tzinfo=UK)
-                    test.recommended_date=due
-                    test.grading_due=due+timedelta(days=14)
+                test.grading_attemptsAllowed = dictionary.get("grading", {}).get("attemptsAllowed", None)
+                test.score_possible = dictionary.get("score", {}).get("possible", None)
+                if due := dictionary.get("grading", {}).get("due", None):
+                    due = due.replace(tzinfo=UK)
+                    test.recommended_date = due
+                    test.grading_due = due + timedelta(days=14)
                 else:
                     print(f"No due date for {test} {dictionary.get("grading",{}).get("due", None)}")
-                if modified:=dictionary.get("modified",None):
-                    modified=modified.replace(tzinfo=UK)
+                if modified := dictionary.get("modified", None):
+                    modified = modified.replace(tzinfo=UK)
                     test.release_date = modified
                 else:
                     print(f"No modified date for {test} {dictionary.get("modified",None)}")

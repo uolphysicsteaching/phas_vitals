@@ -23,8 +23,8 @@ from eps_success import celery_app
 from eps_success.tasks import PHASTask
 
 # app imports
-from .models import GradebookColumn, SummaryScore, TestCategory
 from . import json
+from .models import GradebookColumn, SummaryScore, TestCategory
 
 logger = logging.getLogger("celery_tasks")
 
@@ -40,7 +40,7 @@ def import_module_list():
         year, crn, code = data["courseId"].split("_")
         year = Cohort.objects.get(name=year)
         school = School.from_code(code[:4])
-        crn=data["courseId"].split("_")[1]
+        crn = data["courseId"].split("_")[1]
         name = " ".join(data["name"].split(" ")[1:-1])
         mod, _ = Module.objects.get_or_create(uuid=data["uuid"], courseId=crn, year=year, code=code)
         mod.name = name

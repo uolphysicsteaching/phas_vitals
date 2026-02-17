@@ -32,4 +32,9 @@ stop:
 	sudo systemctl stop celery_eps_success
 	sudo systemctl stop celery_beat_eps_success
 
+stop:
+	sudo systemctl stop gunicorn
+	sudo systemctl stop celery
+	sudo systemctl stop celery_beat
+
 FORCE:

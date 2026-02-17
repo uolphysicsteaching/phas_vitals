@@ -214,7 +214,7 @@ class StudentSummaryPageView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
         context["plots"] = {}
         context["scores"] = {}
         for category in categories.values():
-            if category.tag!="test":
+            if category.tag != "test":
                 plotter = getattr(self, f"{category.tag}_plot", partial(self.test_plot, category.text))
             else:
                 plotter = partial(self.test_plot, category.text)
