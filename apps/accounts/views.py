@@ -185,13 +185,11 @@ class StudentSummaryPageView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
         """Get the context data for the tests page only."""
         context = super().get_context_data(**kwargs)
         required = {}
-        # Prefetch test_results to avoid N+1 queries when checking each required test
-        required_tests = self.user.required_tests.prefetch_related(
-            "test_results__test"
-        ).all()
+        # Convert to list to avoid evaluating the queryset multiple times
+        required_tests = list(self.user.required_tests.all())
         # Build a dict of test results for faster lookup
         test_results_dict = {tr.test: tr for tr in self.user.test_results.filter(test__in=required_tests)}
-        
+
         for test in required_tests:
             if test in test_results_dict:
                 required[test] = test_results_dict[test]
