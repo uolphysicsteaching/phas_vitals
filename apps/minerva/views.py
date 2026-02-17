@@ -601,7 +601,7 @@ class ShowAllTestResultsViiew(IsSuperuserViewMixin, BaseShowTestResultsView):
             Account.objects.filter(module_enrollments__in=enroillments)
             .annotate(status=Subquery(status))
             .select_related("programme")
-            .prefetch_related("test_results")
+            .prefetch_related("test_results__test")
             .order_by("last_name", "first_name")
         )
         return qs
@@ -618,7 +618,7 @@ class ShowTutorTestResultsViiew(IsStaffViewMixin, BaseShowTestResultsView):
             Account.objects.filter(module_enrollments__in=enroillments, tutorial_group__tutor=self.request.user)
             .annotate(status=Subquery(status))
             .select_related("programme")
-            .prefetch_related("test_results")
+            .prefetch_related("test_results__test")
             .order_by("last_name", "first_name")
         )
         return qs
