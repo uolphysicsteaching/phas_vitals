@@ -107,7 +107,7 @@ class MeetingsSummary(IsSuperuserViewMixin, FormMixin, SingleTableView):
         except (ObjectDoesNotExist, MultipleObjectsReturned):
             cohort = None
         students = Account.objects.filter(students_Q).prefetch_related(
-            "tutorial_group_assignment__tutorial", "tutorial_group_assignment__tutorial__tutor"
+            "tutorial_group_assignment__tutorial", "tutorial_group_assignment__tutorial__tutor", "meetings"
         )
         meetings = Meeting.objects.all()
         if cohort:
@@ -126,8 +126,10 @@ class MeetingsSummary(IsSuperuserViewMixin, FormMixin, SingleTableView):
             record["student"] = format_html('<a href="/accounts/staff_view/{}">{}</a>', student.username, student)
             if hasattr(student, "tutorial_group") and student.tutorial_group.first():
                 record["tutor"] = student.tutorial_group.first().tutor.initials
+            # Convert student.meetings to a set for efficient lookup
+            student_meetings = set(student.meetings.all())
             for meeting in meetings:
-                if meeting in student.meetings.all():
+                if meeting in student_meetings:
                     record[meeting.slug] = "<img src='/static/admin/img/icon-yes.svg' alt='Yes'/>"
             table.append(record)
         return table

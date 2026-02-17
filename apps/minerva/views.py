@@ -141,6 +141,8 @@ class StreamingImportTestsView(ImportTestsView):
         module = self.form.cleaned_data["module"]
         alt = False
         tests = {}
+        # Fetch sub_modules once to avoid N+1 queries in the student loop
+        sub_modules = list(self.module.sub_modules.all())
         for df in self.data:
             for col in df.columns:
                 if match := self.test_name.search(col):
@@ -200,7 +202,7 @@ class StreamingImportTestsView(ImportTestsView):
                     user.save()
                     yield f"<tr class='tb-{cls}'>{'Added' if new else 'Updated'} {user.display_name}</td></tr>"
                     ModuleEnrollment.objects.get_or_create(module=self.module, student=user)
-                    for mod in self.module.sub_modules.all():
+                    for mod in sub_modules:
                         ModuleEnrollment.objects.get_or_create(module=mod, student=user)
                     alt = not alt
                     if new:
@@ -599,7 +601,7 @@ class ShowAllTestResultsViiew(IsSuperuserViewMixin, BaseShowTestResultsView):
             Account.objects.filter(module_enrollments__in=enroillments)
             .annotate(status=Subquery(status))
             .select_related("programme")
-            .prefetch_related("test_results")
+            .prefetch_related("test_results__test")
             .order_by("last_name", "first_name")
         )
         return qs
@@ -616,7 +618,7 @@ class ShowTutorTestResultsViiew(IsStaffViewMixin, BaseShowTestResultsView):
             Account.objects.filter(module_enrollments__in=enroillments, tutorial_group__tutor=self.request.user)
             .annotate(status=Subquery(status))
             .select_related("programme")
-            .prefetch_related("test_results")
+            .prefetch_related("test_results__test")
             .order_by("last_name", "first_name")
         )
         return qs
@@ -670,7 +672,19 @@ class StudentPerformanceSpreadsheetView(IsSuperuserViewMixin, FormView):
             "Required Work": "required_tests",
         }
         rows = []
-        for student in module.students.all():
+        # Optimize query by prefetching all related test and vital data to avoid N+1 queries
+        students = module.students.prefetch_related(
+            "passed_tests",
+            "failed_tests",
+            "passed_labs",
+            "failed_labs",
+            "passed_coding",
+            "failed_coding",
+            "passed_vitals",
+            "failed_vitals",
+            "required_tests",
+        )
+        for student in students:
             data = {"Student": student.display_name, "SID": student.number, "Programme": student.programme}
             for col, attr in cols.items():
                 data[col] = ",\n".join([str(x) for x in getattr(student, attr).all()])

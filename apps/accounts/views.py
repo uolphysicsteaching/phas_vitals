@@ -185,10 +185,15 @@ class StudentSummaryPageView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
         """Get the context data for the tests page only."""
         context = super().get_context_data(**kwargs)
         required = {}
-        for test in self.user.required_tests.all():
-            try:
-                required[test] = self.user.test_results.get(test=test)
-            except ObjectDoesNotExist:
+        # Convert to list to avoid evaluating the queryset multiple times
+        required_tests = list(self.user.required_tests.all())
+        # Build a dict of test results for faster lookup
+        test_results_dict = {tr.test: tr for tr in self.user.test_results.filter(test__in=required_tests)}
+
+        for test in required_tests:
+            if test in test_results_dict:
+                required[test] = test_results_dict[test]
+            else:
                 new_tr = self.user.test_results.model(user=self.user, test=test, passed=False, score=None)
                 new_tr.test_status = new_tr.manual_test_satus
                 new_tr.standing = "Missing"
@@ -424,11 +429,13 @@ class CohortFilterActivityScoresExportView(CohortFilterActivityScoresView):
         }
         form = self.form.cleaned_data
         module = form["module"]
-        fields.update({f"_{x.text}": x.label for x in module.categories.filter(dashboard_plot=True)})
+        # Cache the categories query to avoid repeating it in the loop
+        dashboard_categories = list(module.categories.filter(dashboard_plot=True))
+        fields.update({f"_{x.text}": x.label for x in dashboard_categories})
         fields["_activity_score"] = "Overall Activity"
         data = context["students"].values(*list([x for x in fields if not x.startswith("_")]))
         for student, row in zip(context["students"], data):
-            for category in module.categories.filter(dashboard_plot=True):
+            for category in dashboard_categories:
                 try:
                     row[f"_{category.text}"] = student.summary_scores.get(category=category).score
                 except ObjectDoesNotExist:

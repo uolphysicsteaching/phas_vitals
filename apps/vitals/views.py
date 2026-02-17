@@ -185,7 +185,10 @@ class Row_Dict:
             module: The module object to filter results by.
         """
         self.student = student
-        self.vital_results = student.vital_results.filter(vital__module=module).all()
+        # Convert to list to avoid multiple database hits
+        self.vital_results = list(student.vital_results.filter(vital__module=module))
+        # Build a dict for faster lookup
+        self.vital_results_dict = {vr.vital.pk: vr for vr in self.vital_results}
         self.vitals = vitals
         dd = self.__dict__
 
@@ -210,16 +213,13 @@ class Row_Dict:
             case "status":
                 return self.student.status
             case "Overall":
-                if self.vital_results.count() != len(self.vitals):
+                if len(self.vital_results) != len(self.vitals):
                     return {"passed": None}
-                if self.vital_results.filter(passed=False).count() > 0:
+                if any(not vr.passed for vr in self.vital_results):
                     return {"passed": False}
                 return {"passed": True}
             case vital if vital in self.vitals:
-                try:
-                    return self.vital_results.get(vital__pk=self.vitals[vital])
-                except ObjectDoesNotExist:
-                    return None
+                return self.vital_results_dict.get(self.vitals[vital])
             case _:
                 return False
 
@@ -237,7 +237,7 @@ class ShowAllVitalResultsView(IsSuperuserViewMixin, BaseShowvitalResults):
             Account.objects.filter(module_enrollments__in=enroillments)
             .annotate(status=Subquery(status))
             .select_related("programme")
-            .prefetch_related("vital_results")
+            .prefetch_related("vital_results__vital")
             .order_by("last_name", "first_name")
         )
         return qs
@@ -256,7 +256,7 @@ class ShowTutorVitalResultsView(IsStaffViewMixin, BaseShowvitalResults):
             Account.objects.filter(module_enrollments__in=enroillments, tutorial_group__tutor=self.request.user)
             .annotate(status=Subquery(status))
             .select_related("programme")
-            .prefetch_related("vital_results")
+            .prefetch_related("vital_results__vital")
             .order_by("last_name", "first_name")
         )
         return qs
