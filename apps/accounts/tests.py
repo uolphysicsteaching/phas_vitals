@@ -3,6 +3,7 @@
 # Django imports
 from django.contrib.auth import get_user_model
 from django.db.utils import IntegrityError
+from django.utils import timezone
 
 # external imports
 import pytest

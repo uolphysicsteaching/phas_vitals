@@ -11,6 +11,6 @@ class UtilConfig(AppConfig):
     name = "util"
 
     def ready(self):
-        """Run initialization when application is ready."""
+        """Hook when application is ready."""
         # app imports
         from . import tree  # pylint: disable=unused-import

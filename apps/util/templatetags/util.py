@@ -13,7 +13,9 @@ register = template.Library()
 
 @register.simple_tag
 def urlencoded_form_data(form):
-    """Urlencode all form data for template use."""
+    """
+    A template tag to urlencode all form data.
+    """
     if form.is_valid():
         data = form.cleaned_data
     else:

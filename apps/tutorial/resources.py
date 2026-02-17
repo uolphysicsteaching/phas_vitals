@@ -2,6 +2,7 @@
 # Python imports
 """Import Export resources for tutorial app."""
 # Python imports
+import re
 
 # external imports
 from accounts.models import Account, Cohort

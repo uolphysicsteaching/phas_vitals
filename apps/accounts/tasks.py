@@ -15,10 +15,12 @@ from django.db.models import Count, Q
 import numpy as np
 import pandas as pd
 from celery import shared_task
+from constance import config
 from django_auth_adfs.config import provider_config
 
 # app imports
 from phas_vitals import celery_app
+from phas_vitals.tasks import PHASTask
 
 # app imports
 from .models import Account
@@ -69,7 +71,6 @@ def update_all_users():
         summaries = account.summary_scores.filter(module__in=account.modules.all())
         for summary in summaries:
             summary.save()
-        summaries.bulk_update(summaries, ["score", "data"])
         try:
             summary = np.array(summaries.values_list("module__credits", "category__weighting", "score")).astype(float)
             if summary.size == 0:  # No results must be a zero score

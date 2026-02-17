@@ -207,7 +207,7 @@ class SectionAdmin(ImportExportModelAdmin):
 
     @action(description="Export Minerva Groups")
     def export_groups(self, request, queryset):
-        """Export a Minerva groups csv file."""
+        """Action to export a Minerva groups csv file."""
 
         def rows(queryset):
             """Generate CSV rows for streaming response."""
@@ -259,7 +259,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
                 "fields": [
                     ("username", "number"),
                     ("title", "first_name", "givenName", "last_name"),
-                    ("email"),
+                    ("school", "email"),
                     ("programme", "registration_status", "year", "section"),
                 ],
                 "classes": [
@@ -343,7 +343,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
 
     @action(description="Export Gradescope roster")
     def export_roster(self, request, queryset):
-        """Export Gradescope Roster file."""
+        """Action to export Gradescope Roster file."""
 
         def rows(queryset):
             """Generate CSV rows for streaming response."""
@@ -378,7 +378,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
 
     @action(description="Export Minerva Groups")
     def export_groups(self, request, queryset):
-        """Export a Minerva groups csv file."""
+        """Action to export a Minerva groups csv file."""
 
         def rows(queryset):
             """Generate CSV rows for streaming response."""

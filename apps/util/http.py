@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Custom http classes for phas-vitals."""
+"""Custom http classes for eps-success."""
 
 # Python imports
 import base64 as b64

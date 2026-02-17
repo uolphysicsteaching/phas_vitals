@@ -546,11 +546,11 @@ REST_FRAMEWORK = {
 # #### Celery Config settings ##############################
 
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_RESULT_EXTENDED = True
 CELERY_TASK_DEFAULT_QUEUE = "phas_vitals.default"
-
+CELERY_TASK_TIME_LIMIT = 3600  # hard limit
+CELERY_TASK_SOFT_TIME_LIMIT = 2400  # soft limit
 # ### SITETREE Customisation ##############################
 
 SITETREE_CLS = "util.tree.CustomSiteTree"

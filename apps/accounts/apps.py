@@ -3,6 +3,7 @@ from os.path import basename, dirname
 
 # Django imports
 from django.apps import AppConfig
+from django.db.utils import ProgrammingError
 
 
 class AccountsConfig(AppConfig):
@@ -15,4 +16,4 @@ class AccountsConfig(AppConfig):
         """When app is up and running, import api."""
         # app imports
         from . import api  # pylint: disable=unused-import
-        from . import signals  # pylint: disable=unused-import
+        from . import signals

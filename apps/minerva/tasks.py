@@ -20,8 +20,10 @@ from minerva.models import Module
 
 # app imports
 from phas_vitals import celery_app
+from phas_vitals.tasks import PHASTask
 
 # app imports
+from . import json
 from .models import GradebookColumn, SummaryScore, TestCategory
 
 logger = logging.getLogger("celery_tasks")
@@ -38,16 +40,15 @@ def import_module_list():
         year, crn, code = data["courseId"].split("_")
         year = Cohort.objects.get(name=year)
         school = School.from_code(code[:4])
+        crn = data["courseId"].split("_")[1]
         name = " ".join(data["name"].split(" ")[1:-1])
-        mod, _ = Module.objects.get_or_create(uuid=data["uuid"], courseId=data["courseId"], year=year, code=code)
+        mod, _ = Module.objects.get_or_create(uuid=data["uuid"], courseId=crn, year=year, code=code)
         mod.name = name
         mod.school = school
         mod.level = int(mod.code[4])
         mod.semester = int(data["name"].split(" ")[0][-2])
         mod.save()
-        mod.create_test_categories_from_json()
-        mod.create_tests_columns_from_json()
-        mod.create_module_entrollments_from_json()
+        mod.update_from_json(categories=True, tests=True, enrollments=True, columns=True, grades=True)
 
 
 @shared_task

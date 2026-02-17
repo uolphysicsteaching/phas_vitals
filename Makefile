@@ -27,4 +27,9 @@ restart:
 	sudo systemctl restart celery
 	sudo systemctl restart celery_beat
 
+stop:
+	sudo systemctl stop gunicorn
+	sudo systemctl stop celery
+	sudo systemctl stop celery_beat
+
 FORCE:

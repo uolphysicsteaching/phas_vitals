@@ -1,6 +1,7 @@
 """Tests for the minerva app models and utilities."""
 
 # Python imports
+import re
 
 # Django imports
 from django.core.exceptions import ValidationError

@@ -125,7 +125,6 @@ class School(models.Model):
     def save(
         self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None
     ):  #  pylint: disable=arguments-differ
-        """Normalise module codes before saving."""
         if self.module_codes in ["", None]:
             self.module_codes = self.code
         self.module_codes = ",".join([x[:4].upper().strip() for x in self.module_codes.split(",")])
@@ -386,7 +385,7 @@ class TermDate(models.Model):
         ordering = ["start"]
 
     def __str__(self):
-        """Make string representation."""
+        """Make string representation"""
         return f"{self.cohort} W{self.week} {self.start}"
 
     @property
@@ -440,7 +439,7 @@ class TermDate(models.Model):
 
     @classmethod
     def find(cls, target):
-        """Return the TermDate object that matches the target."""
+        """Return the TermDate object that matches the target,"""
         match target:
             case date():
                 target = datetime.combine(target, time.min)
@@ -489,7 +488,7 @@ class TermDate(models.Model):
 
     @classmethod
     def start_s1(cls, cohort=None):
-        """Return the start date/time of the start of semester 1."""
+        """Return the start date/time of the start of semester 1"""
         if cohort is None:
             cohort = Cohort.current
         ret = cls.reverse(cohort, 1, 0)
@@ -497,7 +496,7 @@ class TermDate(models.Model):
 
     @classmethod
     def end_s1(cls, cohort=None):
-        """Return the end date/time of semester 1."""
+        """Return the start date/time of the start of semester 1"""
         if cohort is None:
             cohort = Cohort.current
         ret = cls.reverse(cohort, 11, 5)
@@ -505,7 +504,7 @@ class TermDate(models.Model):
 
     @classmethod
     def start_s2(cls, cohort=None):
-        """Return the start date/time of semester 2."""
+        """Return the start date/time of the start of semester 1"""
         if cohort is None:
             cohort = Cohort.current
         ret = cls.reverse(cohort, 14, 0)
@@ -513,7 +512,7 @@ class TermDate(models.Model):
 
     @classmethod
     def end_s2(cls, cohort=None):
-        """Return the end date/time of semester 2."""
+        """Return the start date/time of the start of semester 1"""
         if cohort is None:
             cohort = Cohort.current
         ret = cls.reverse(cohort, 24, 5)
