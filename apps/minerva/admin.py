@@ -171,7 +171,7 @@ class ModuleAdmin(ImportExportModelAdmin):
     list_display = ("id", "year", "code", "courseId", "name")
     list_filter = list_display
     search_fields = ["name", "description", "module__year"]
-    list_select_related = ("year", "parent_module", "module_leader")
+    list_select_related = ("year",)
     inlines = [
         ModuleEnrollmentInline,
     ]

@@ -65,8 +65,8 @@ class Test_ScoreAdmin(ImportExportModelAdmin):
 ### apps/minerva/admin.py
 
 #### ModuleAdmin
-- **Added**: `list_select_related = ('year', 'parent_module', 'module_leader')`
-- **Impact**: Reduces queries when displaying module list with year and leader information
+- **Added**: `list_select_related = ('year',)`
+- **Impact**: Reduces queries when displaying module list with year information
 
 #### TestAdmin
 - **Added**: `list_select_related = ('module', 'category')`
