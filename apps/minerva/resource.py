@@ -2,6 +2,7 @@
 
 # Python imports
 import logging
+import re
 
 # Django imports
 from django.apps import apps
@@ -63,6 +64,29 @@ class VITALsWidget(widgets.ManyToManyWidget):
             return ""
         ids = [str(obj.VITAL_ID) for obj in value.all()]
         return self.separator.join(ids)
+
+
+class TestCategoryWidget(widgets.ForeignKeyWidget):
+    """Import export ediget that looks up Test categories in module aware ways."""
+
+    def clean(self, value, row=None, *args, **kwargs):
+        """Do a lookup attempting to match code or name."""
+        if match := re.match(r"^(?P<text>[^(]+)\((?P<code>[^\)]+)\)$", value):
+            text = match.groupdict()["text"].strip()
+            code = match.groupdict()["code"].strip()
+            query = Q(module__code=code, text=text)
+        else:
+            query = Q(text=text)
+        qs = TestCategory.objects.filter(query)
+        if qs.count() < 1:
+            return None
+        return qs.last()
+
+    def render(self, value, obj=None, **kwargs):
+        """Return text and module code when rendering."""
+        if value is None:
+            return ""
+        return f"{value.text} ({value.module.code})"
 
 
 class ModuleResource(resources.ModelResource):
@@ -136,7 +160,7 @@ class TestResource(resources.ModelResource):
     category = fields.Field(
         column_name="category",
         attribute="category",
-        widget=widgets.ForeignKeyWidget(TestCategory, "text"),
+        widget=TestCategoryWidget(TestCategory, "text"),
     )
 
     VITALs = fields.Field(
