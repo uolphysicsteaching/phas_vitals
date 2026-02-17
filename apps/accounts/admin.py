@@ -327,6 +327,7 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
         "section__name",
         "number",
     )
+    list_select_related = ("year", "programme", "section")
     actions = ["rebuild_vitals", "export_roster", "export_groups"]
 
     def get_export_resource_class(self):
@@ -430,6 +431,7 @@ class TermDateAdmin(ImportExportModelAdmin):
     list_filter = [CohortListFilter, "week", "start"]
     list_editable = ["cohort", "week", "start"]
     search_fields = ["cohort__name"]
+    list_select_related = ("cohort",)
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
