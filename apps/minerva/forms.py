@@ -227,6 +227,3 @@ class GradebookColumnForm(forms.ModelForm):
 
         model = GradebookColumn
         fields = "__all__"
-        widgets = {
-            "test": autocomplete.ModelSelect2(url="minerva:Test_lookup"),
-        }

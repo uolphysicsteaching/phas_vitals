@@ -59,7 +59,7 @@ class StudentListFilter(SimpleListFilter):
 
     def lookups(self, request, model_admin):
         """Return a sorted list of student names.
-        
+
         Returns:
             (tuple): A tuple of (username, display_name) tuples for student options.
         """

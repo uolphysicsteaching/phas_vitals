@@ -23,6 +23,7 @@ import numpy as np
 import pytz
 from accounts.models import Account, School
 from constance import config
+from smart_selects.db_fields import ChainedForeignKey
 from util.models import patch_model
 from util.spreadsheet import Spreadsheet
 
@@ -714,7 +715,19 @@ class Test(models.Model):
     suppress_numerical_score = models.BooleanField(
         default=False, blank=True, null=True, verbose_name="Do not reveal numerical score to students"
     )
-    category = models.ForeignKey(TestCategory, on_delete=models.SET_NULL, null=True, related_name="tests")
+    category = ChainedForeignKey(
+        TestCategory,
+        chained_field="module",  # field on THIS model
+        chained_model_field="module",  # field on TestCategory
+        show_all=False,
+        auto_choose=True,
+        sort=True,
+        on_delete=models.CASCADE,
+        related_name="tests",
+        blank=True,
+        null=True,
+    )
+
     score_possible = models.FloatField(default=100, verbose_name="Maximum possible score")
     passing_score = models.FloatField(null=True, blank=True, verbose_name="Passing score")
     grading_due = models.DateTimeField(blank=True, null=True, verbose_name="Minerva Due Date")
@@ -804,9 +817,7 @@ class Test(models.Model):
             return
         # Cache columns query to avoid multiple database hits
         ordered_columns = list(self.columns.all().order_by("priority"))
-        categories = np.unique(
-            [x.category_id for x in ordered_columns if x.category_id is not None]
-        )
+        categories = np.unique([x.category_id for x in ordered_columns if x.category_id is not None])
         match categories.size:
             case 0:
                 pass
@@ -952,15 +963,19 @@ class Test(models.Model):
             if test:  # We found, or created a test, so update test properties
                 test.grading_attemptsAllowed = dictionary.get("grading", {}).get("attemptsAllowed", None)
                 test.score_possible = dictionary.get("score", {}).get("possible", None)
-                if due := dictionary.get("grading", {}).get("due", None):
+                if due := dictionary.get("grading", {}).get("due", None) and not test.recommened_date:
                     due = due.replace(tzinfo=UK)
                     test.recommended_date = due
                     test.grading_due = due + timedelta(days=14)
+                elif test.recommened_date:
+                    pass
                 else:
                     print(f"No due date for {test} {dictionary.get("grading",{}).get("due", None)}")
-                if modified := dictionary.get("modified", None):
+                if modified := dictionary.get("modified", None) and not test.release_date:
                     modified = modified.replace(tzinfo=UK)
                     test.release_date = modified
+                elif test.release_date:
+                    pass
                 else:
                     print(f"No modified date for {test} {dictionary.get("modified",None)}")
                 test.save()
@@ -985,12 +1000,30 @@ class GradebookColumn(models.Model):
     """A representation of a single column in Minerva Gradebook that links to a Test."""
 
     gradebook_id = models.CharField(max_length=255)
-    test = models.ForeignKey(
-        Test, on_delete=models.CASCADE, to_field="id", related_name="columns", blank=True, null=True
+    test = ChainedForeignKey(
+        Test,
+        chained_field="module",  # field on THIS model
+        chained_model_field="module",  # field on Test
+        show_all=False,
+        auto_choose=True,
+        sort=True,
+        on_delete=models.CASCADE,
+        related_name="columns",
+        blank=True,
+        null=True,
     )
     name = models.CharField(max_length=255, null=True)
-    category = models.ForeignKey(
-        TestCategory, on_delete=models.SET_NULL, blank=True, null=True, related_name="columns"
+    category = ChainedForeignKey(
+        TestCategory,
+        chained_field="module",  # field on THIS model
+        chained_model_field="module",  # field on TestCategory
+        show_all=False,
+        auto_choose=True,
+        sort=True,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="columns",
     )
     module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name="gradebook_columns")
     priority = models.IntegerField(

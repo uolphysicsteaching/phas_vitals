@@ -47,26 +47,36 @@ from .resource import (
 logger = logging.getLogger("celery_tasks")
 
 
-class ModuleListFilter(admin.SimpleListFilter):
-    """Filter for selecting modules by their code."""
+def ModuleListFilter(subfield=None):
+    """Construct a module filter on demand."""
+    title = f"{subfield.title()} Module" if subfield else "Module"
+    parameter = f"{subfield}_module" if subfield else "module"
 
-    title = "Module"
-    parameter_name = "module"
+    class _ModuleListFilter(admin.SimpleListFilter):
+        """Filter for selecting modules by their code."""
 
-    def lookups(self, request, model_admin):
-        """Lookup Module lists.
-        
-        Returns:
-            (list of tuples): A list of (code, display_string) tuples for module options.
-        """
-        return list(Module.objects.all().order_by("code").values_list("code", "name"))
+        def lookups(self, request, model_admin):
+            """Lookup Module lists.
 
-    def queryset(self, request, queryset):
-        """Get the module by code."""
-        if self.value():
-            if "module" in [field.name for field in queryset.model._meta.get_fields()]:
-                queryset = queryset.filter(module__code=self.value())
-        return queryset
+            Returns:
+                (list of tuples): A list of (code, display_string) tuples for module options.
+            """
+            return [(mod.code, str(mod)) for mod in Module.objects.all().order_by("code")]
+
+        def queryset(self, request, queryset):
+            """Get the module by code."""
+            if self.value():
+                if self.subfield:
+                    query = {f"{self.subfield}__module__code": self.value()}
+                else:
+                    query = {"module__code": self.value()}
+                queryset = queryset.filter(**query)
+            return queryset
+
+    _ModuleListFilter.title = title
+    _ModuleListFilter.parameter_name = parameter
+    _ModuleListFilter.subfield = subfield
+    return _ModuleListFilter
 
 
 class TestCategoryFilter(admin.SimpleListFilter):
@@ -337,7 +347,7 @@ class TestAdmin(ImportExportModelAdmin):
         "recommended_date",
     ]
     list_filter = (
-        ModuleListFilter,
+        ModuleListFilter(),
         TestCategoryFilter,
         "grading_due",
         "release_date",
@@ -381,7 +391,7 @@ class TestAdmin(ImportExportModelAdmin):
             },
         ),
     )
-    actions = ["update_dates"]
+    actions = ["update_dates", "clear_test_results"]
 
     @admin.action(description="Update dates for current cohort.")
     def update_dates(self, request, queryset):
@@ -394,6 +404,16 @@ class TestAdmin(ImportExportModelAdmin):
                 obj.save()
             except ValueError:
                 pass
+
+    @admin.action(description="Clear test results.")
+    def clear_test_results(self, request, queryset):
+        """Delete all the test results for this tests.
+
+        Notes:
+            In general this will not be a permanent effect as the next update will likely regenerate test results.
+        """
+        for obj in queryset.all():
+            obj.results.all().delete()
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
@@ -410,7 +430,7 @@ class TestCategoryAdmin(SortableAdminMixin, ImportExportModelAdmin):
 
     list_display = ["module", "text", "in_dashboard", "dashboard_plot", "label", "search", "weighting"]
     list_display_links = ["text"]
-    list_filter = [ModuleListFilter, "text", "in_dashboard", "dashboard_plot"]
+    list_filter = [ModuleListFilter(), "text", "in_dashboard", "dashboard_plot"]
     search_fields = ["module__name", "module__code", "text", "label"]
     list_editable = ["in_dashboard", "dashboard_plot", "label", "weighting"]
     list_select_related = ("module",)
@@ -432,7 +452,7 @@ class GradebookColumnAdmin(ImportExportModelAdmin):
     form = GradebookColumnForm
 
     list_display = ("gradebook_id", "name", "module", "test", "category", "priority")
-    list_filter = ["test", ModuleListFilter, TestCategoryFilter]
+    list_filter = ["test", ModuleListFilter(), TestCategoryFilter]
     search_fields = [
         "gradebook_id",
         "name",
@@ -558,7 +578,7 @@ class ModuleEnrollmentAdmin(ImportExportModelAdmin):
 
     list_display = ("module", "student", "status")
     list_editable = ("status",)
-    list_filter = (ModuleListFilter, StudentListFilter, "status")
+    list_filter = (ModuleListFilter(), StudentListFilter, "status")
     search_fields = [
         "module__name",
         "module__code",

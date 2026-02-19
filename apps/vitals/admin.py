@@ -8,6 +8,7 @@ from django.contrib import admin
 from accounts.admin import StudentListFilter
 from accounts.models import Account
 from import_export.admin import ImportExportModelAdmin
+from minerva.admin import ModuleListFilter
 from util.admin import add_action, add_inlines
 
 # app imports
@@ -37,7 +38,7 @@ class VITALListFilter(admin.SimpleListFilter):
 
     def lookups(self, request, model_admin):
         """Return a sorted list of VITAL options.
-        
+
         Returns:
             (tuple): A tuple of (VITAL_ID, display_string) tuples for VITAL options.
         """
@@ -113,7 +114,7 @@ class VITALAdmin(ImportExportModelAdmin):
     """Admin class for VITALs."""
 
     list_display = ("name", "module", "VITAL_ID")
-    list_filter = list_display
+    list_filter = ("name", ModuleListFilter(), "VITAL_ID")
     search_fields = ["name", "description", "module__name", "VITAL_ID"]
     list_select_related = ("module",)
     inlines = [VITAL_Test_Map_VITAL_Inline, VITAL_ResultInline]
@@ -145,8 +146,8 @@ class VITAL_Test_MapAdmin(ImportExportModelAdmin):
     """Admin Interface for Mappings between Tests and VITALs."""
 
     list_display = ("test", "vital", "necessary", "sufficient")
-    list_filter = list_display
-    search_fields = ["test__name", "vital__name", "vital__module__name", "test__module__name"]
+    list_filter = (ModuleListFilter("test"), ModuleListFilter("vital"), "necessary", "sufficient")
+    search_fields = ["test__name", "vital__name", "vital__module__code", "test__module__code"]
     list_select_related = ("test", "test__module", "vital", "vital__module")
 
     def get_export_resource_class(self):
@@ -165,7 +166,7 @@ class VITAL_ResultAdmin(ImportExportModelAdmin):
     list_display = ("vital", "user", "passed", "date_passed")
     list_editable = ("passed",)
     list_filter = (VITALListFilter, StudentListFilter, "passed", "date_passed")
-    search_fields = ["vital__name", "user__first_name", "user__last_name", "user__username", "vital__module__name"]
+    search_fields = ["vital__name", "user__first_name", "user__last_name", "user__username", "vital__module__code"]
     list_select_related = ("vital", "vital__module", "user")
 
     def get_export_resource_class(self):

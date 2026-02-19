@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import logging
 import string
 from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 # Django imports
 from django.conf import settings
@@ -48,6 +49,7 @@ LEVEL_OF_STUDY = [
     (5, "Masters"),
 ]
 
+TIMEZONE = ZoneInfo(settings.TIME_ZONE)
 
 # ### Model Classes #####################################################################################
 
@@ -416,7 +418,7 @@ class TermDate(models.Model):
     @property
     def datetime(self):
         """Get a datetime from the date and time arts."""
-        return datetime.combine(self.date, self.time)
+        return datetime.combine(self.date, self.time, tzinfo=TIMEZONE)
 
     @datetime.setter
     def datetime(self, value):
@@ -483,6 +485,14 @@ class TermDate(models.Model):
         if cohort is None:
             cohort = int(target.cohort) + 101
         ret = cls.reverse(cohort, target.week, target.day)
+        ret.time = target.time
+        return ret
+
+    @classmethod
+    def next_week(cls, target):
+        """Lookup a target date and remap to the next academic year."""
+        target = cls.find(target)
+        ret = cls.reverse(target.cohort, target.week + 1, target.day)
         ret.time = target.time
         return ret
 

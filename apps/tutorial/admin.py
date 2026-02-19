@@ -43,7 +43,7 @@ class TutorialListFilter(SimpleListFilter):
 
     def lookups(self, request, model_admin):
         """Return a sorted list of Tutor group names.
-        
+
         Returns:
             (tuple): A tuple of (code, display_string) tuples for tutorial options.
         """

@@ -31,6 +31,7 @@ urlpatterns = [
     # url(r'^blog/', include('blog.urls')),
     path("", HomeView.as_view()),
     path("ajax_select/", include(ajax_select_urls)),
+    path("chaining/", include("smart_selects.urls")),
     path("riaradh/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api-auth/", include("rest_framework.urls")),

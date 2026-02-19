@@ -441,6 +441,6 @@ def required_tests(self):
         tests.append(best_test)
         data.loc[:, data.loc[best_test] == 1.0] = 0.0
 
-    tests = vital.tests.model.objects.filter(test_pk__in=tests).distinct().order_by("category__text", "release_date")
+    tests = vital.tests.model.objects.filter(pk__in=tests).distinct().order_by("category__text", "release_date")
 
     return tests
