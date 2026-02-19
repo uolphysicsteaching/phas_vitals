@@ -424,7 +424,7 @@ def required_tests(self):
     for vital in self.applicable_vitals.exclude(pk__in=[x.pk for x in self.passed_vitals.all()]):
         row = {"VITAL": vital.VITAL_ID}
         for test in vital.tests.all():
-            row[test.test_id] = 1
+            row[test.pk] = 1
         data.append(row)
     if not len(data):
         Test = apps.get_model("minerva", "Test")
@@ -441,6 +441,6 @@ def required_tests(self):
         tests.append(best_test)
         data.loc[:, data.loc[best_test] == 1.0] = 0.0
 
-    tests = vital.tests.model.objects.filter(test_id__in=tests).distinct().order_by("category__text", "release_date")
+    tests = vital.tests.model.objects.filter(test_pk__in=tests).distinct().order_by("category__text", "release_date")
 
     return tests
