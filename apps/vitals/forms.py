@@ -45,4 +45,5 @@ class VITAL_ResultForm(forms.ModelForm):
         fields = "__all__"
         widgets = {
             "vital": autocomplete.ModelSelect2(url="vitals:VITAL_lookup"),
+            "user": autocomplete.ModelSelect2(url="accounts:Student_lookup"),
         }
