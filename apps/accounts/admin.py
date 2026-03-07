@@ -6,6 +6,7 @@ from io import StringIO
 
 # Django imports
 from django.apps import apps
+from django.contrib import messages
 from django.contrib.admin import (
     SimpleListFilter,
     action,
@@ -424,11 +425,13 @@ class AccountAdmin(ImportExportMixin, UserAdmin):
     def rebuild_vitals(self, request, queryset):
         """Remove all the VITAL results and then rebuild them from test results."""
         accounts = queryset.exclude(override_vitals=True)
+        count = accounts.count()
         VITAL_Result = apps.get_model("vitals", "vital_result")
         results = VITAL_Result.objects.filter(user__in=accounts)
         accounts.update(update_vitals=True)
         results.delete()
         update_all_users.delay()
+        self.message_user(request, f"Rebuilding VITALs results for {count} account(s).", messages.SUCCESS)
 
 
 @register(TermDate)

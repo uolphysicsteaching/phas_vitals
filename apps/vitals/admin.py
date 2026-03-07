@@ -2,7 +2,7 @@
 import logging
 
 # Django imports
-from django.contrib import admin
+from django.contrib import admin, messages
 
 # external imports
 from accounts.admin import StudentListFilter
@@ -106,11 +106,13 @@ add_inlines("minerva.Module", VITALInline, "VITALS")
 @admin.action(description="Force Update of VITAL")
 def update_vital_users(modelAdmin, request, queryset):
     """Force an update of all users for the selected VITALs."""
+    count = queryset.count()
     for vital in queryset.all():
         for student in vital.module.students.all():
             vital.passed(student)
             ss = student.summaries.filter(module=vital.module, category__text="VITALs").first()
             ss.save()
+    modelAdmin.message_user(request, f"Updated VITAL status for {count} VITAL(s).", messages.SUCCESS)
 
 
 @admin.register(VITAL)

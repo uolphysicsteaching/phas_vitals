@@ -238,8 +238,10 @@ class ModuleAdmin(ImportExportModelAdmin):
             request: The HTTP request object.
             queryset: The queryset of selected modules.
         """
+        count = queryset.count()
         for module in queryset.all():
             module.update_from_json(categories=True, grades=False)
+        self.message_user(request, f"Updated categories for {count} module(s).", messages.SUCCESS)
 
     @admin.action(description="Update the Grades for module")
     def update_grades(self, request, queryset):
@@ -249,8 +251,10 @@ class ModuleAdmin(ImportExportModelAdmin):
             request: The HTTP request object.
             queryset: The queryset of selected modules.
         """
+        count = queryset.count()
         for module in queryset.all():
             module.update_from_json(grades=True)
+        self.message_user(request, f"Updated grades for {count} module(s).", messages.SUCCESS)
 
     @admin.action(description="Update the enrollments for module")
     def update_enrollments(self, request, queryset):
@@ -260,8 +264,10 @@ class ModuleAdmin(ImportExportModelAdmin):
             request: The HTTP request object.
             queryset: The queryset of selected modules.
         """
+        count = queryset.count()
         for module in queryset.all():
             module.update_from_json(enrollments=True, grades=False)
+        self.message_user(request, f"Updated enrollments for {count} module(s).", messages.SUCCESS)
 
     @admin.action(description="Update Tests for module")
     def update_tests(self, request, queryset):
@@ -271,14 +277,18 @@ class ModuleAdmin(ImportExportModelAdmin):
             request: The HTTP request object.
             queryset: The queryset of selected modules.
         """
+        count = queryset.count()
         for module in queryset.all():
             module.update_from_json(tests=True, grades=False)
+        self.message_user(request, f"Updated tests for {count} module(s).", messages.SUCCESS)
 
     @admin.action(description="Update Gradescope Columns for module")
     def update_columns(self, request, queryset):
         """Call the GradescopoeColumns generation from json method for the selected module."""
+        count = queryset.count()
         for module in queryset.all():
             module.update_from_json(columns=True, grades=False)
+        self.message_user(request, f"Updated Gradescope columns for {count} module(s).", messages.SUCCESS)
 
     @admin.action(description="Full update of categories, columns, tests and grades for Module")
     def update_all(self, request, queryset):
@@ -288,8 +298,10 @@ class ModuleAdmin(ImportExportModelAdmin):
             request: The HTTP request object.
             queryset: The queryset of selected modules.
         """
+        count = queryset.count()
         for module in queryset.all():
             module.update_from_json(tests=True, grades=True, columns=True, categories=True, enrollments=True)
+        self.message_user(request, f"Fully updated {count} module(s).", messages.SUCCESS)
 
     @admin.action(description="Generate Tests-VITAL mapping for module")
     def mapping_export(self, request, queryset):
@@ -399,14 +411,17 @@ class TestAdmin(ImportExportModelAdmin):
     @admin.action(description="Update dates for current cohort.")
     def update_dates(self, request, queryset):
         """Increment all test dates for the current year."""
+        updated = 0
         for obj in queryset.all():
             try:
                 obj.release_date = TermDate.next_year(obj.release_date, Cohort.current).datetime
                 obj.recommended_date = TermDate.next_year(obj.recommended_date, cohort=Cohort.current).datetime
                 obj.grading_due = TermDate.next_year(obj.grading_due, cohort=Cohort.current).datetime
                 obj.save()
+                updated += 1
             except ValueError:
                 pass
+        self.message_user(request, f"Updated dates for {updated} test(s).", messages.SUCCESS)
 
     @admin.action(description="Clear test results.")
     def clear_test_results(self, request, queryset):
@@ -415,8 +430,10 @@ class TestAdmin(ImportExportModelAdmin):
         Notes:
             In general this will not be a permanent effect as the next update will likely regenerate test results.
         """
+        count = queryset.count()
         for obj in queryset.all():
             obj.results.all().delete()
+        self.message_user(request, f"Cleared test results for {count} test(s).", messages.SUCCESS)
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
