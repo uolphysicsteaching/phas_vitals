@@ -180,3 +180,117 @@ class TestVITAL:
         """
         vital = VITAL.objects.create(name="ID VITAL", module=sample_module, VITAL_ID="V001")
         assert vital.VITAL_ID == "V001"
+
+
+@pytest.mark.django_db
+@pytest.mark.unit
+class TestVITALAdminActions:
+    """Test the underlying model operations used by the VITALAdmin action methods."""
+
+    def test_delete_vital_results_removes_results(self, sample_vital, sample_user):
+        """Test that deleting VITAL_Result objects via queryset filter works correctly.
+
+        This validates the model operation performed by the delete_vital_results admin action.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+
+        Examples:
+            >>> VITAL_Result.objects.create(vital=vital, user=user)
+            >>> VITAL_Result.objects.filter(vital__in=[vital]).delete()
+            >>> assert VITAL_Result.objects.filter(vital=vital).count() == 0
+        """
+        VITAL_Result.objects.create(vital=sample_vital, user=sample_user)
+        assert VITAL_Result.objects.filter(vital=sample_vital).count() == 1
+
+        queryset = VITAL.objects.filter(pk=sample_vital.pk)
+        VITAL_Result.objects.filter(vital__in=queryset).delete()
+
+        assert VITAL_Result.objects.filter(vital=sample_vital).count() == 0
+
+    def test_delete_vital_results_only_affects_selected_vitals(self, sample_vital, sample_user, sample_module):
+        """Test that the delete operation only removes results for VITALs in the queryset.
+
+        This validates the selectivity of the model operation used by delete_vital_results.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_module (Module): A test module instance.
+
+        Examples:
+            >>> VITAL_Result.objects.create(vital=vital1, user=user)
+            >>> VITAL_Result.objects.create(vital=vital2, user=user)
+            >>> VITAL_Result.objects.filter(vital__in=[vital1]).delete()
+            >>> assert VITAL_Result.objects.filter(vital=vital2).count() == 1
+        """
+        other_vital = VITAL.objects.create(name="Other VITAL", module=sample_module, VITAL_ID="V002")
+        VITAL_Result.objects.create(vital=sample_vital, user=sample_user)
+        VITAL_Result.objects.create(vital=other_vital, user=sample_user)
+
+        queryset = VITAL.objects.filter(pk=sample_vital.pk)
+        VITAL_Result.objects.filter(vital__in=queryset).delete()
+
+        assert VITAL_Result.objects.filter(vital=sample_vital).count() == 0
+        assert VITAL_Result.objects.filter(vital=other_vital).count() == 1
+
+    def test_check_vital_creates_result_for_passing_student(
+        self, sample_vital, sample_user, sample_test, sample_module
+    ):
+        """Test that check_vital creates a passing VITAL_Result when a student has passed a sufficient test.
+
+        This validates the model operation performed by the create_vital_results admin action.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+
+        Examples:
+            >>> mapping = VITAL_Test_Map.objects.create(test=test, vital=vital, sufficient=True, condition="pass")
+            >>> Test_Score.objects.create(test=test, user=user, passed=True)
+            >>> vital.check_vital(user)
+            >>> assert VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
+        """
+        from minerva.models import Test_Score
+
+        # Enrol the user in the module
+        sample_module.students.add(sample_user)
+
+        # Create a sufficient mapping
+        VITAL_Test_Map.objects.create(test=sample_test, vital=sample_vital, sufficient=True, condition="pass")
+
+        # Create a passing test score for the student
+        Test_Score.objects.get_or_create(
+            test=sample_test,
+            user=sample_user,
+            defaults={"score": 80.0, "passed": True},
+        )
+
+        sample_vital.check_vital(sample_user)
+
+        assert VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+
+    def test_check_vital_does_not_pass_student_without_results(self, sample_vital, sample_user, sample_test):
+        """Test that check_vital does not mark a student as passed without any matching test scores.
+
+        This validates the model operation performed by the create_vital_results admin action
+        when a student has not met the requirements.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+
+        Examples:
+            >>> mapping = VITAL_Test_Map.objects.create(test=test, vital=vital, necessary=True, condition="pass")
+            >>> vital.check_vital(user)
+            >>> assert not VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
+        """
+        VITAL_Test_Map.objects.create(test=sample_test, vital=sample_vital, necessary=True, condition="pass")
+
+        sample_vital.check_vital(sample_user)
+
+        assert not VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
