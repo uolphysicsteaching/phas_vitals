@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 # Django imports
-from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
 

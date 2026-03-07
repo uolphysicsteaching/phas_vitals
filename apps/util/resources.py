@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Import-Export Resources for util app."""
 # external imports
-from import_export import fields, resources, widgets
+from import_export import resources
 
 # app imports
 from .models import APIKey

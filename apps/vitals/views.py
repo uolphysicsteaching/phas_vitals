@@ -5,7 +5,6 @@ from collections import namedtuple
 
 # Django imports
 # Create your views here.
-from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import OuterRef, Q, Subquery
 from django.utils.html import format_html
 from django.views.generic import DetailView, FormView

@@ -5,14 +5,12 @@ import hashlib
 import hmac
 import logging
 import os
-from collections.abc import Mapping
 from json import JSONDecodeError
 
 # Django imports
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AnonymousUser, Group
-from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
-from django.utils.encoding import force_bytes
+from django.contrib.auth.models import AnonymousUser
+from django.core.exceptions import PermissionDenied
 
 # external imports
 import jsondatetime as json

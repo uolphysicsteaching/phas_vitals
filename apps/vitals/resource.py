@@ -5,7 +5,6 @@ import logging
 
 # Django imports
 from django.apps import apps
-from django.db.models import Q
 
 # external imports
 from import_export import fields, resources, widgets

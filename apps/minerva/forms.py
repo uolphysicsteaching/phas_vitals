@@ -7,14 +7,13 @@ from django.forms.widgets import Select
 
 # external imports
 from accounts import lookups  # NoQA force early import of lookups
-from accounts.models import Section
 from dal import autocomplete
 from htmx_views.widgets import HTMXSelectWidget
 from util.forms import get_mime
 
 # app imports
 from . import lookups  # NoQA force early import of lookups
-from .models import GradebookColumn, Module, Test, Test_Score, TestCategory
+from .models import GradebookColumn, Module, Test_Score, TestCategory
 
 
 class TestImportForm(forms.Form):

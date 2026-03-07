@@ -4,11 +4,7 @@
 # Python imports
 from pprint import pprint
 
-# Django imports
-from django.core.exceptions import ObjectDoesNotExist
-
 # external imports
-import numpy as np
 import pandas as pd
 from minerva.models import Test
 from vitals.models import VITAL, VITAL_Test_Map

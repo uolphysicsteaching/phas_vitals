@@ -20,7 +20,6 @@ from minerva.models import Module
 
 # app imports
 from phas_vitals import celery_app
-from phas_vitals.tasks import PHASTask
 
 # app imports
 from . import json

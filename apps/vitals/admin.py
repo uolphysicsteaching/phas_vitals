@@ -6,13 +6,9 @@ from django.contrib import admin, messages
 
 # external imports
 from accounts.admin import StudentListFilter
-from accounts.models import Account
 from import_export.admin import ImportExportModelAdmin
 from minerva.admin import ModuleListFilter
-from util.admin import add_action, add_inlines
-
-# app imports
-from phas_vitals import celery_app
+from util.admin import add_inlines
 
 # app imports
 from .forms import VITAL_ResultForm, VITAL_Test_MapForm, VITALForm
