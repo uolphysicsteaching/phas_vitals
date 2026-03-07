@@ -124,6 +124,8 @@ class VITALAdmin(ImportExportModelAdmin):
     inlines = [VITAL_Test_Map_VITAL_Inline, VITAL_ResultInline]
     actions = [
         update_vital_users,
+        "delete_vital_results",
+        "create_vital_results",
     ]
 
     fieldsets = (
@@ -135,6 +137,42 @@ class VITALAdmin(ImportExportModelAdmin):
             },
         ),
     )
+
+    @admin.action(description="Delete all VITAL Results for selected VITALs")
+    def delete_vital_results(self, request, queryset):
+        """Delete all VITAL_Result objects associated with the selected VITALs.
+
+        Args:
+            request (HttpRequest):
+                The current admin request.
+            queryset (QuerySet):
+                The selected VITAL objects.
+        """
+        deleted_count, _ = VITAL_Result.objects.filter(vital__in=queryset).delete()
+        self.message_user(request, f"Deleted {deleted_count} VITAL result(s).")
+
+    @admin.action(description="Create VITAL Results based on mapping conditions")
+    def create_vital_results(self, request, queryset):
+        """Create or update VITAL_Result objects based on VITAL mapping conditions.
+
+        For each selected VITAL, checks whether each enrolled student has met the
+        requirements defined by the VITAL mapping objects and creates or updates
+        the corresponding VITAL_Result accordingly.
+
+        Args:
+            request (HttpRequest):
+                The current admin request.
+            queryset (QuerySet):
+                The selected VITAL objects.
+        """
+        updated_count = 0
+        for vital in queryset.select_related("module").prefetch_related("module__students"):
+            if vital.module is None:
+                continue
+            for student in vital.module.students.all():
+                if vital.check_vital(student):
+                    updated_count += 1
+        self.message_user(request, f"Created or updated {updated_count} VITAL result(s).")
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
