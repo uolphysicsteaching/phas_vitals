@@ -359,14 +359,7 @@ class TestAdmin(ImportExportModelAdmin):
         "recommended_date",
         "locked",
     ]
-    list_filter = (
-        ModuleListFilter(),
-        TestCategoryFilter,
-        "grading_due",
-        "release_date",
-        "recommended_date",
-        "locked"
-    )
+    list_filter = (ModuleListFilter(), TestCategoryFilter, "grading_due", "release_date", "recommended_date", "locked")
     search_fields = ["name", "module__name", "module__year__name", "category__text"]
     list_select_related = ("module", "category")
     inlines = [

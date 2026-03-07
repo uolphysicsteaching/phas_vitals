@@ -254,6 +254,7 @@ class TestVITALAdminActions:
             >>> vital.check_vital(user)
             >>> assert VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
         """
+        # external imports
         from minerva.models import Test_Score
 
         # Enrol the user in the module

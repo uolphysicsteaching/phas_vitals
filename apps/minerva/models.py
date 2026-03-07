@@ -747,7 +747,9 @@ class Test(models.Model):
         help_text="Grades awaiting marking do not overwrite existing scores",
         verbose_name="Doin't replace grades with ungraded attempts",
     )
-    locked = models.BooleanField(default=False,blank=True,null=True, help_text="Do not update test from Minerva data.")
+    locked = models.BooleanField(
+        default=False, blank=True, null=True, help_text="Do not update test from Minerva data."
+    )
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["module", "name"], name="Singleton name of a test per module")]
