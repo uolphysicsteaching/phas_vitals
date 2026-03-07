@@ -111,6 +111,16 @@ class Test_ScoreAdmin(ImportExportModelAdmin):
 - **Added**: `list_select_related = ('vital', 'vital__module', 'user')`
 - **Impact**: Optimises vital and user access with nested module relationship
 
+#### VITAL_ResultInline (Change View Optimisation)
+- **Added**: `get_queryset()` override with `.select_related('user', 'vital', 'vital__module')`
+- **Impact**: Eliminates N+1 queries when rendering student-result rows inside the VITAL change view
+
+#### VITAL_ResultForm (Change View Optimisation)
+- **Added**: `autocomplete.ModelSelect2(url='accounts:Student_lookup')` widget for the `user` field
+- **Impact**: Replaces the full `<select>` dropdown (all Account rows) with a lazy-loaded autocomplete
+  widget, removing the O(n²) HTML-rendering bottleneck (n results × n account options) that caused
+  the VITAL change page to time out
+
 #### VITALListFilter (Filter Optimization)
 - **Changed**: From `[(vital.VITAL_ID, str(vital)) for vital in res.all()]`
 - **To**: `values_list('VITAL_ID', 'name')` with formatted display

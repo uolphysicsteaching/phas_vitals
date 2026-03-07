@@ -85,6 +85,10 @@ class VITAL_ResultInline(admin.StackedInline):
     form = VITAL_ResultForm
     extra = 0
 
+    def get_queryset(self, request):
+        """Return optimised queryset with select_related to avoid N+1 queries."""
+        return super().get_queryset(request).select_related("user", "vital", "vital__module")
+
 
 class VITALInline(admin.StackedInline):
     """Inline admin for VITALS."""
