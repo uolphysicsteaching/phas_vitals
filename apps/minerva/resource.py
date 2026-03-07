@@ -148,6 +148,7 @@ class TestResource(resources.ModelResource):
             "recommended_date",
             "grading_attemptsAllowed",
             "VITALS",
+            "locked",
         )
         import_id_fields = ["id"]
 

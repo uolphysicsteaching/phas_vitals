@@ -747,6 +747,7 @@ class Test(models.Model):
         help_text="Grades awaiting marking do not overwrite existing scores",
         verbose_name="Doin't replace grades with ungraded attempts",
     )
+    locked = models.BooleanField(default=False,blank=True,null=True, help_text="Do not update test from Minerva data.")
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["module", "name"], name="Singleton name of a test per module")]
@@ -960,22 +961,18 @@ class Test(models.Model):
             else:
                 test = column.test
 
-            if test:  # We found, or created a test, so update test properties
+            if test and not test.locked:  # We found, or created a test, so update test properties
                 test.grading_attemptsAllowed = dictionary.get("grading", {}).get("attemptsAllowed", None)
                 test.score_possible = dictionary.get("score", {}).get("possible", None)
-                if due := dictionary.get("grading", {}).get("due", None) and not test.recommened_date:
+                if due := dictionary.get("grading", {}).get("due", None) and not test.recommended_date:
                     due = due.replace(tzinfo=UK)
                     test.recommended_date = due
                     test.grading_due = due + timedelta(days=14)
-                elif test.recommened_date:
-                    pass
                 else:
                     print(f"No due date for {test} {dictionary.get("grading",{}).get("due", None)}")
                 if modified := dictionary.get("modified", None) and not test.release_date:
                     modified = modified.replace(tzinfo=UK)
                     test.release_date = modified
-                elif test.release_date:
-                    pass
                 else:
                     print(f"No modified date for {test} {dictionary.get("modified",None)}")
                 test.save()

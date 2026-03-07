@@ -337,7 +337,7 @@ class TestAdmin(ImportExportModelAdmin):
         "grading_due",
         "release_date",
         "recommended_date",
-        "grading_attemptsAllowed",
+        "locked",
     )
     list_editable = [
         "score_possible",
@@ -345,6 +345,7 @@ class TestAdmin(ImportExportModelAdmin):
         "grading_due",
         "release_date",
         "recommended_date",
+        "locked",
     ]
     list_filter = (
         ModuleListFilter(),
@@ -352,6 +353,7 @@ class TestAdmin(ImportExportModelAdmin):
         "grading_due",
         "release_date",
         "recommended_date",
+        "locked"
     )
     search_fields = ["name", "module__name", "module__year__name", "category__text"]
     list_select_related = ("module", "category")
@@ -371,6 +373,7 @@ class TestAdmin(ImportExportModelAdmin):
                     (
                         "category",
                         "name",
+                        "locked",
                     ),
                     "description",
                     ("score_possible", "passing_score", "suppress_numerical_score"),
