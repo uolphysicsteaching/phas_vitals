@@ -7,7 +7,6 @@ import re
 from contextlib import contextmanager
 
 # Django imports
-from django.apps import apps
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.views import View
