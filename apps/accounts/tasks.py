@@ -38,7 +38,6 @@ def update_all_users():
     logger.debug("Running update all users task")
     TestCategory = apps.get_model("minerva", "testcategory")
     SummaryScore = apps.get_model("minerva", "summaryscore")
-    ModuleEnrollment = apps.get_model("minerva", "moduleenrollment")
     accounts = (
         Account.objects.prefetch_related("module_enrollments", "summary_scores", "VITALS")
         .annotate(cnt=Count("modules"))

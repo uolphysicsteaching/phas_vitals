@@ -351,12 +351,10 @@ def calculate_vitals(self):
     """Patch a function to create a summary score object for a VITALs."""
     try:
         all_vitals = VITAL.objects.filter(module__in=self.student.modules.all()).exclude(status="Not Started")
-        missed = all_vitals.exclude(student_results__user=self.student).filter(status="Finished").count()
         in_progress = all_vitals.exclude(student_results__user=self.student).exclude(status="Finished").count()
 
         vitals = self.student.vital_results.filter(vital__module__level=self.student.year.level)
         passed = vitals.filter(passed=True).count()
-        failed = vitals.filter(passed=False).count()
         self.score = np.round((100.0 * passed + 50 * in_progress) / all_vitals.count())
     except (ValueError, ZeroDivisionError):
         self.score = np.nan

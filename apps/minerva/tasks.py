@@ -62,7 +62,7 @@ def import_gradebook():
             logger.debug(f"Module {module.key} data not ready or not being recorded.")
             continue
         TestCategory.update_from_json(module)
-        logger.debug(f"Cleaning up dead columns and creating new ones.")
+        logger.debug("Cleaning up dead columns and creating new ones.")
         module.remove_columns_not_in_json()
         try:
             GradebookColumn.create_or_update_from_json(module)
@@ -91,7 +91,6 @@ def take_time_series():
     """Load DataFrames and add new row for the current date."""
     date = datetime.combine(tz.now().date(), time(0, 0, 0))
     for category in TestCategory.objects.filter(dashboard_plot=True):
-        module = category.module
         data = SummaryScore.objects.filter(category=category)
         if category.xlsx.exists():
             df = pd.read_excel(category.xlsx).set_index("Date")
@@ -137,7 +136,6 @@ def _animate(frame, axes, data, legend):
 def make_gifs():
     """Create an animated gif from the activity data."""
     for category in TestCategory.objects.filter(dashboard_plot=True):
-        module = category.module
         if not (category.xlsx).exists():
             continue
         data = pd.read_excel(category.xlsx).set_index("Date")
