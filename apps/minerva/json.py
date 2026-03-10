@@ -3,6 +3,7 @@
 # Python imports
 import logging
 import os
+import time
 from json import loads as dumb_loads
 
 # Django imports
@@ -14,6 +15,11 @@ from azure.storage.blob import BlobServiceClient
 from jsondatetime import loads as smart_loads
 
 logger = logging.getLogger(__name__)
+
+# Module-level cache for the blob list to avoid repeated network calls during a single task run.
+_blob_list_cache: dict | None = None
+_blob_list_cache_time: float = 0.0
+_BLOB_LIST_CACHE_TTL: float = 60.0  # seconds
 
 # Ensure we lose the http_proxy before accessing web-resources
 if "http_proxy" in os.environ:
@@ -62,7 +68,16 @@ def get_blob_client(blob_name, container_name=None, blob_service_client=None):
 
 
 def get_blob_list(container_client=None):
-    """Build a dictionary of blobs in the store."""
+    """Build a dictionary of blobs in the store.
+
+    Results are cached for up to ``_BLOB_LIST_CACHE_TTL`` seconds when called with the
+    default container client, to avoid repeated network round-trips within a single task run.
+    """
+    global _blob_list_cache, _blob_list_cache_time
+    now = time.monotonic()
+    use_cache = container_client is None
+    if use_cache and _blob_list_cache is not None and (now - _blob_list_cache_time) < _BLOB_LIST_CACHE_TTL:
+        return _blob_list_cache
     if container_client is None:
         container_client = get_container_client()
     blob_list = container_client.list_blobs()
@@ -71,13 +86,16 @@ def get_blob_list(container_client=None):
         name_parts = blob.name.split("/")
         if name_parts[-1].endswith(".json") or name_parts[-1].endswith(".DataReady"):
             ret[name_parts[-1]] = blob
+    if use_cache:
+        _blob_list_cache = ret
+        _blob_list_cache_time = now
     return ret
 
 
 def get_blob_by_name(name, smart_dates=True, raw=False):
     """Read a blob name and convert it to a json data structure."""
     container_client = get_container_client()
-    blobs = get_blob_list(container_client)
+    blobs = get_blob_list()
     loads = smart_loads if smart_dates else dumb_loads
     return_data = []
     if name in blobs:
