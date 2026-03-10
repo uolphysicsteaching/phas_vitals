@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import DEFAULT_DB_ALIAS, models, transaction
-from django.db.models import F, Q
+from django.db.models import F, Prefetch, Q
 from django.forms import ValidationError
 from django.utils import timezone as tz
 from django.utils.html import format_html
@@ -392,9 +392,16 @@ class Module(models.Model):
             return None
         try:
             if grades:
-                for test in self.tests.all():
-                    test.grades_from_columns()
-                    test.attempts_from_columns()
+                tests_qs = self.tests.prefetch_related(
+                    Prefetch(
+                        "columns",
+                        queryset=GradebookColumn.objects.order_by("priority"),
+                        to_attr="_ordered_columns",
+                    )
+                )
+                for test in tests_qs:
+                    test.grades_from_columns(columns=test._ordered_columns)
+                    test.attempts_from_columns(columns=test._ordered_columns)
         except (OSError, IOError):
             return None
         return True
@@ -494,8 +501,7 @@ class TestCategory(models.Model):
         renamed.bulk_update(renamed, ["text"])
 
         # Remove goneaway categories
-        gone = [x.pk for x in cls.objects.filter(module=module) if x.category_id not in categories]
-        cls.objects.filter(pk__in=gone).delete()
+        cls.objects.filter(module=module).exclude(category_id__in=categories.keys()).delete()
 
         # Create new category objects
         for category_id, title in categories.items():
@@ -846,17 +852,21 @@ class Test(models.Model):
             for test_score in self.results.all():  # Update all test_scores for both passes and fails
                 test_score.save()
 
-    def attempts_from_columns(self):
+    def attempts_from_columns(self, columns=None):
         """Create a test attempts and test scores from the individual column hjson files."""
-        for column in self.columns.all().order_by("priority"):
+        if columns is None:
+            columns = self.columns.all().order_by("priority")
+        for column in columns:
             column.update_grades()
             logger.debug(f"Updated grades for column {column}")
             column.update_attempts()
             logger.debug(f"Updated attempts for column {column}")
 
-    def grades_from_columns(self):
+    def grades_from_columns(self, columns=None):
         """Create test scores from each columns json files."""
-        for column in self.columns.all().order_by("priority"):
+        if columns is None:
+            columns = self.columns.all().order_by("priority")
+        for column in columns:
             column.update_grades()
 
     def add_attempt(self, student, mark, date=None, text=None):
@@ -1191,16 +1201,15 @@ class GradebookColumn(models.Model):
         json_data = module.columns_json
         if (json_data := json.get_blob_by_name(module.columns_json, False)) is None:
             raise IOError(f"No JSON file for {module}")
+        category_map = {tc.category_id: tc for tc in TestCategory.objects.filter(module=module).select_related("module")}
         for column_data in json_data:
             column, _ = cls.objects.get_or_create(
                 gradebook_id=column_data["id"], name=column_data["name"], module=module
             )
             column.module = module
             try:
-                column.category = TestCategory.objects.get(
-                    category_id=column_data["gradebookCategoryId"], module=module
-                )
-            except (TestCategory.DoesNotExist, KeyError):
+                column.category = category_map[column_data["gradebookCategoryId"]]
+            except KeyError:
                 pass
             if column.test is None or column.test.module != column.module:
                 column.test = Test.create_or_update_from_json(

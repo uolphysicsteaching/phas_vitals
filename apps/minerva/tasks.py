@@ -58,14 +58,11 @@ def import_gradebook():
     # Really do stuff
     imported_modules = []
     bad_modules = []
-    for module in Module.objects.all():
+    for module in Module.objects.select_related("year", "school").all():
         logger.debug(f"Attempting to import {module.key}")
         if not module.data_ready:
             logger.debug(f"Module {module.key} data not ready or not being recorded.")
             continue
-        TestCategory.update_from_json(module)
-        logger.debug("Cleaning up dead columns and creating new ones.")
-        module.remove_columns_not_in_json()
         try:
             if (
                 module.update_from_json(categories=True, tests=True, enrollments=True, columns=True, grades=True)
