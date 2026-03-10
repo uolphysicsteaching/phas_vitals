@@ -4,6 +4,7 @@
 import logging
 from datetime import datetime, time
 from functools import partial
+from traceback import format_exc
 
 # Django imports
 from django.utils import timezone as tz
@@ -56,6 +57,7 @@ def import_gradebook():
     logger.debug("Running gradebook import")
     # Really do stuff
     imported_modules = []
+    bad_modules = []
     for module in Module.objects.all():
         logger.debug(f"Attempting to import {module.key}")
         if not module.data_ready:
@@ -65,10 +67,6 @@ def import_gradebook():
         logger.debug("Cleaning up dead columns and creating new ones.")
         module.remove_columns_not_in_json()
         try:
-            GradebookColumn.create_or_update_from_json(module)
-        except OSError:  # Probably no JSON File
-            continue
-        try:
             if (
                 module.update_from_json(categories=True, tests=True, enrollments=True, columns=True, grades=True)
                 is None
@@ -76,13 +74,18 @@ def import_gradebook():
                 logger.info(f"Failed import for {module.name}")
             else:
                 imported_modules.append(module.key)
-                config.LAST_MINERVA_UPDATE = module.json_updated
                 logger.debug(f"Imported {module.key} {module.json_updated}")
         except Exception as error:
-            raise RuntimeError(f"Issues processing json for {module=}") from error
+            bad_modules.append(f"Issues processing json for {module=} - {format_exc()}")
+            logger.debug(bad_modules[-1])
 
     logger.debug("Updated constance.config")
     update_all_users.delay()
+    if bad_modules:
+        return bad_modules
+    logger.debug("Updated constance.config")
+    config.LAST_MINERVA_UPDATE = module.json_updated
+
     return imported_modules
 
 

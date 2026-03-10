@@ -956,9 +956,17 @@ class Test(models.Model):
                     test.category = column.category
                     test.name = match.groupdict().get("name")
                 except Test.DoesNotExist:
-                    test = Test(
-                        module=module, test_id=test_id, name=match.groupdict().get("name"), category=column.category
-                    )
+                    try:
+                        name = match.groupdict().get("name")
+                        test = Test.objects.get(name=name, module=module)
+                        test.category = column.category
+                    except Test.DoesNotExist:
+                        test = Test(
+                            module=module,
+                            test_id=test_id,
+                            name=match.groupdict().get("name"),
+                            category=column.category,
+                        )
                 test.save()
             else:
                 test = column.test
