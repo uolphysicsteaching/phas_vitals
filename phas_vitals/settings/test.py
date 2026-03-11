@@ -25,6 +25,11 @@ ALLOWED_HOSTS = ["*", "testserver"]
 # ##### SECRET KEY #########################################
 SECRET_KEY = "test-secret-key-for-testing-only"
 
+# ##### SITETREE CONFIGURATION ############################
+# Disable the custom SiteTree class to avoid the circular-import that arises
+# when util.tree is loaded while sitetree.sitetreeapp is still being imported.
+SITETREE_CLS = None
+
 # ##### APPLICATION CONFIGURATION #########################
 # Use minimal apps for testing to avoid complex dependency issues
 # Note: django.contrib.admin and baton are excluded

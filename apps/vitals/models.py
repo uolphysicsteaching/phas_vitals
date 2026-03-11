@@ -2,6 +2,7 @@
 
 # Python imports
 import re
+from collections import defaultdict
 from datetime import timedelta
 
 # Django imports
@@ -359,6 +360,136 @@ class VITAL(models.Model):
             return self.passed(user)
 
         return self.passed(user, False)
+
+    def check_vital_for_queryset(self, users):
+        """Check whether this VITAL has been passed for each user in a queryset.
+
+        Applies the same logic as :meth:`check_vital` but batches all database queries across the
+        full set of users so that only a small constant number of queries are issued regardless of
+        how many users are supplied.
+
+        Args:
+            users (QuerySet):
+                A queryset of :class:`accounts.models.Account` instances to check.
+
+        Returns:
+            (int):
+                The number of :class:`VITAL_Result` records that were created or updated (i.e.
+                whose ``passed`` status changed).
+
+        Examples:
+            >>> students = module.students.all()
+            >>> updated = vital.check_vital_for_queryset(students)
+            >>> print(f"{updated} record(s) changed.")
+        """
+        TOLERANCE = 0.001
+        now = tz.now()
+        all_mappings = list(self.tests_mappings.all())
+        if not all_mappings:
+            return 0
+
+        user_ids = list(users.values_list("pk", flat=True))
+        if not user_ids:
+            return 0
+
+        TestScore = apps.get_model("minerva", "Test_Score")
+
+        # Fetch all relevant test results for all users in two bulk queries.
+        passed_pairs = (
+            TestScore.objects.filter(
+                test__vitals_mappings__in=all_mappings,
+                user_id__in=user_ids,
+                passed=True,
+            )
+            .values_list("user_id", "test_id")
+            .distinct()
+        )
+        attempted_pairs = (
+            TestScore.objects.filter(
+                test__vitals_mappings__in=all_mappings,
+                user_id__in=user_ids,
+            )
+            .values_list("user_id", "test_id")
+            .distinct()
+        )
+
+        # Build per-user sets of passed and attempted test IDs.
+        passed_by_user = defaultdict(set)
+        for uid, tid in passed_pairs:
+            passed_by_user[uid].add(tid)
+
+        attempted_by_user = defaultdict(set)
+        for uid, tid in attempted_pairs:
+            attempted_by_user[uid].add(tid)
+
+        necessary_mappings = [m for m in all_mappings if m.necessary]
+
+        # Determine desired pass/fail outcome per user.
+        # Maps user_id -> bool. Users with no test results at all are absent (no record written).
+        results_to_set = {}
+        for user_id in user_ids:
+            user_passed = passed_by_user[user_id]
+            user_attempted = attempted_by_user[user_id]
+
+            def is_met(mapping, _passed=user_passed, _attempted=user_attempted):
+                """Return True if the user has satisfied this mapping's condition."""
+                if mapping.condition == "pass":
+                    return mapping.test_id in _passed
+                return mapping.test_id in _attempted
+
+            # Step 1: Award if any sufficient mapping is met.
+            if any(m.sufficient and is_met(m) for m in all_mappings):
+                results_to_set[user_id] = True
+                continue
+
+            # No test results at all for this VITAL – do not record.
+            if not user_attempted:
+                continue
+
+            # Step 2: Block if any necessary mapping is not met.
+            if necessary_mappings and sum(1 for m in necessary_mappings if is_met(m)) != len(necessary_mappings):
+                results_to_set[user_id] = False
+                continue
+
+            # Step 3: Award if the sum of required_fractrion for met conditions >= 1.0.
+            met_sum = sum(m.required_fractrion for m in all_mappings if is_met(m))
+            results_to_set[user_id] = met_sum >= 1.0 - TOLERANCE
+
+        if not results_to_set:
+            return 0
+
+        # Load existing VITAL_Result records for affected users in a single query.
+        existing = {
+            r.user_id: r
+            for r in VITAL_Result.objects.filter(vital=self, user_id__in=results_to_set.keys())
+        }
+
+        to_create = []
+        to_update = []
+        for user_id, should_pass in results_to_set.items():
+            if user_id in existing:
+                result = existing[user_id]
+                if result.passed ^ should_pass:
+                    if should_pass:
+                        result.date_passed = now
+                    result.passed = should_pass
+                    to_update.append(result)
+            else:
+                to_create.append(
+                    VITAL_Result(
+                        vital=self,
+                        user_id=user_id,
+                        passed=should_pass,
+                        date_passed=now if should_pass else None,
+                    )
+                )
+
+        if to_create:
+            VITAL_Result.objects.bulk_create(to_create)
+        if to_update:
+            VITAL_Result.objects.bulk_update(to_update, ["passed", "date_passed"])
+
+        return len(to_create) + len(to_update)
 
     def __str__(self):
         """Use name and code as a string representation."""

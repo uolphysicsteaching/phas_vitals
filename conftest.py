@@ -12,8 +12,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "phas_vitals.settings.test")
 DJANGO_ROOT_PATH = Path(__file__).parent / "phas_vitals"
 PROJECT_ROOT_PATH = Path(__file__).parent
 APPS_PATH = PROJECT_ROOT_PATH / "apps"
-sys.path.insert(0, str(APPS_PATH.absolute()))
 sys.path.insert(0, str(PROJECT_ROOT_PATH.absolute()))
+sys.path.insert(0, str(APPS_PATH.absolute()))
 
 # Django imports
 # Django imports - let pytest-django handle setup
@@ -27,6 +27,26 @@ import pytest
 def user_model():
     """Return the custom User model."""
     return get_user_model()
+
+
+@pytest.fixture
+def sample_status_code(db):
+    """Create a sample status code for testing module enrolments.
+
+    Module enrolments require a StatusCode with code ``'RE'`` (Registered) as the
+    default status.  Without it, SQLite FK checks raise :class:`IntegrityError` at
+    transaction teardown when enrolments are present.
+
+    Args:
+        db: The pytest database fixture.
+
+    Returns:
+        (StatusCode): A test StatusCode instance.
+    """
+    from minerva.models import StatusCode
+
+    code, _ = StatusCode.objects.get_or_create(code="RE", defaults={"explanation": "Registered"})
+    return code
 
 
 @pytest.fixture

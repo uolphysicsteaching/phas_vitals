@@ -167,9 +167,7 @@ class VITALAdmin(ImportExportModelAdmin):
         for vital in queryset.select_related("module").prefetch_related("module__students"):
             if vital.module is None:
                 continue
-            for student in vital.module.students.all():
-                if vital.check_vital(student):
-                    updated_count += 1
+            updated_count += vital.check_vital_for_queryset(vital.module.students.all())
         self.message_user(request, f"Created or updated {updated_count} VITAL result(s).")
 
     def get_export_resource_class(self):

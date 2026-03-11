@@ -535,3 +535,380 @@ class TestVITALAdminActions:
         assert not VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
         # A result should still be recorded (as not passed) because the student has engaged with the VITAL.
         assert VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=False).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.unit
+class TestVITALCheckForQueryset:
+    """Test the check_vital_for_queryset method on the VITAL model.
+
+    Each test mirrors its counterpart in TestVITALAdminActions but exercises
+    check_vital_for_queryset instead of check_vital so that identical semantics
+    are verified for the bulk variant.
+    """
+
+    def test_check_vital_for_queryset_creates_result_for_passing_student(
+        self, sample_vital, sample_user, sample_test, sample_module, sample_status_code
+    ):
+        """Test that check_vital_for_queryset creates a passing VITAL_Result for a sufficient test.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+
+        Examples:
+            >>> mapping = VITAL_Test_Map.objects.create(test=test, vital=vital, sufficient=True)
+            >>> Test_Score.objects.create(test=test, user=user, passed=True)
+            >>> updated = vital.check_vital_for_queryset(module.students.all())
+            >>> assert VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
+        """
+        from minerva.models import Test_Score
+
+        sample_module.students.add(sample_user)
+        VITAL_Test_Map.objects.create(test=sample_test, vital=sample_vital, sufficient=True, condition="pass")
+        score, _ = Test_Score.objects.get_or_create(
+            test=sample_test,
+            user=sample_user,
+            defaults={"score": 80.0},
+        )
+        # Bypass Test_Score.save() which recalculates passed based on attempts.
+        Test_Score.objects.filter(pk=score.pk).update(passed=True)
+
+        sample_vital.check_vital_for_queryset(sample_module.students.all())
+
+        assert VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+
+    def test_check_vital_for_queryset_does_not_pass_student_without_results(
+        self, sample_vital, sample_user, sample_test
+    ):
+        """Test that check_vital_for_queryset does not mark a student passed without test scores.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+
+        Examples:
+            >>> mapping = VITAL_Test_Map.objects.create(test=test, vital=vital, necessary=True)
+            >>> vital.check_vital_for_queryset(Account.objects.filter(pk=user.pk))
+            >>> assert not VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
+        """
+        from accounts.models import Account
+
+        VITAL_Test_Map.objects.create(test=sample_test, vital=sample_vital, necessary=True, condition="pass")
+
+        sample_vital.check_vital_for_queryset(Account.objects.filter(pk=sample_user.pk))
+
+        assert not VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+
+    def test_check_vital_for_queryset_sufficient_attempt_condition(
+        self, sample_vital, sample_user, sample_test, sample_module, sample_status_code
+    ):
+        """Test that check_vital_for_queryset awards VITAL for a sufficient/attempt mapping.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+
+        Examples:
+            >>> mapping = VITAL_Test_Map.objects.create(test=test, vital=vital, sufficient=True, condition="attempt")
+            >>> Test_Score.objects.create(test=test, user=user, passed=False)
+            >>> vital.check_vital_for_queryset(module.students.all())
+            >>> assert VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
+        """
+        from minerva.models import Test_Score
+
+        sample_module.students.add(sample_user)
+        VITAL_Test_Map.objects.create(test=sample_test, vital=sample_vital, sufficient=True, condition="attempt")
+        score, _ = Test_Score.objects.get_or_create(
+            test=sample_test,
+            user=sample_user,
+            defaults={"score": 20.0},
+        )
+        # Bypass Test_Score.save() which recalculates passed based on attempts.
+        Test_Score.objects.filter(pk=score.pk).update(passed=False)
+
+        sample_vital.check_vital_for_queryset(sample_module.students.all())
+
+        assert VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+
+    def test_check_vital_for_queryset_necessary_block_prevents_award(
+        self, sample_vital, sample_user, sample_test, sample_module, sample_status_code
+    ):
+        """Test that an unmet necessary mapping prevents the VITAL being awarded.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+
+        Examples:
+            >>> mapping = VITAL_Test_Map.objects.create(test=test, vital=vital, necessary=True, condition="pass")
+            >>> Test_Score.objects.create(test=test, user=user, passed=False)
+            >>> vital.check_vital_for_queryset(module.students.all())
+            >>> assert not VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
+        """
+        from minerva.models import Test_Score
+
+        sample_module.students.add(sample_user)
+        VITAL_Test_Map.objects.create(
+            test=sample_test, vital=sample_vital, necessary=True, sufficient=False, condition="pass"
+        )
+        score, _ = Test_Score.objects.get_or_create(
+            test=sample_test,
+            user=sample_user,
+            defaults={"score": 20.0},
+        )
+        # Bypass Test_Score.save() which recalculates passed based on attempts.
+        Test_Score.objects.filter(pk=score.pk).update(passed=False)
+
+        sample_vital.check_vital_for_queryset(sample_module.students.all())
+
+        assert not VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+
+    def test_check_vital_for_queryset_required_fraction_sum_awards_vital(
+        self, sample_vital, sample_user, sample_test, sample_module, db, sample_status_code
+    ):
+        """Test that VITAL is awarded when required_fraction sum reaches 1.0.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+            db: The pytest database fixture.
+
+        Examples:
+            >>> mapping1 = VITAL_Test_Map.objects.create(..., required_fractrion=0.5)
+            >>> mapping2 = VITAL_Test_Map.objects.create(..., required_fractrion=0.5)
+            >>> # pass both tests
+            >>> vital.check_vital_for_queryset(module.students.all())
+            >>> assert VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
+        """
+        from minerva.models import Test, Test_Score
+
+        sample_module.students.add(sample_user)
+
+        test2, _ = Test.objects.get_or_create(
+            name="Sample Test QS2",
+            module=sample_module,
+            defaults={
+                "test_id": "sample-test-qs-id-2",
+                "description": "A second test for queryset tests",
+                "passing_score": 50.0,
+                "score_possible": 100.0,
+                "release_date": tz.now(),
+                "grading_due": tz.now() + tz.timedelta(days=7),
+                "recommended_date": tz.now() + tz.timedelta(days=5),
+            },
+        )
+
+        VITAL_Test_Map.objects.create(
+            test=sample_test, vital=sample_vital, sufficient=False, necessary=False, required_fractrion=0.5
+        )
+        VITAL_Test_Map.objects.create(
+            test=test2, vital=sample_vital, sufficient=False, necessary=False, required_fractrion=0.5
+        )
+
+        Test_Score.objects.get_or_create(test=sample_test, user=sample_user, defaults={"score": 80.0})
+        Test_Score.objects.filter(test=sample_test, user=sample_user).update(passed=True)
+        score2, _ = Test_Score.objects.get_or_create(test=test2, user=sample_user, defaults={"score": 80.0})
+        Test_Score.objects.filter(pk=score2.pk).update(passed=True)
+
+        sample_vital.check_vital_for_queryset(sample_module.students.all())
+
+        assert VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+
+    def test_check_vital_for_queryset_required_fraction_partial_does_not_award(
+        self, sample_vital, sample_user, sample_test, sample_module, db, sample_status_code
+    ):
+        """Test that VITAL is NOT awarded when required_fraction sum is below 1.0.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+            db: The pytest database fixture.
+
+        Examples:
+            >>> mapping1 = VITAL_Test_Map.objects.create(..., required_fractrion=0.5)
+            >>> mapping2 = VITAL_Test_Map.objects.create(..., required_fractrion=0.5)
+            >>> # pass only one test
+            >>> vital.check_vital_for_queryset(module.students.all())
+            >>> assert not VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
+        """
+        from minerva.models import Test, Test_Score
+
+        sample_module.students.add(sample_user)
+
+        test2, _ = Test.objects.get_or_create(
+            name="Sample Test QS3",
+            module=sample_module,
+            defaults={
+                "test_id": "sample-test-qs-id-3",
+                "description": "A third test for queryset tests",
+                "passing_score": 50.0,
+                "score_possible": 100.0,
+                "release_date": tz.now(),
+                "grading_due": tz.now() + tz.timedelta(days=7),
+                "recommended_date": tz.now() + tz.timedelta(days=5),
+            },
+        )
+
+        VITAL_Test_Map.objects.create(
+            test=sample_test, vital=sample_vital, sufficient=False, necessary=False, required_fractrion=0.5
+        )
+        VITAL_Test_Map.objects.create(
+            test=test2, vital=sample_vital, sufficient=False, necessary=False, required_fractrion=0.5
+        )
+
+        # Student passes only the first test.
+        score1, _ = Test_Score.objects.get_or_create(test=sample_test, user=sample_user, defaults={"score": 80.0})
+        Test_Score.objects.filter(pk=score1.pk).update(passed=True)
+
+        sample_vital.check_vital_for_queryset(sample_module.students.all())
+
+        assert not VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+
+    def test_check_vital_for_queryset_necessary_no_result_blocks_award(
+        self, sample_vital, sample_user, sample_test, sample_module, db, sample_status_code
+    ):
+        """Test that a necessary test with no result at all blocks the award.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+            db: The pytest database fixture.
+        """
+        from minerva.models import Test, Test_Score
+
+        sample_module.students.add(sample_user)
+
+        non_necessary_test, _ = Test.objects.get_or_create(
+            name="Sample Test QS4",
+            module=sample_module,
+            defaults={
+                "test_id": "sample-test-qs-id-4",
+                "description": "A non-necessary test for queryset tests",
+                "passing_score": 50.0,
+                "score_possible": 100.0,
+                "release_date": tz.now(),
+                "grading_due": tz.now() + tz.timedelta(days=7),
+                "recommended_date": tz.now() + tz.timedelta(days=5),
+            },
+        )
+
+        VITAL_Test_Map.objects.create(
+            test=sample_test, vital=sample_vital, necessary=True, sufficient=False, condition="pass"
+        )
+        VITAL_Test_Map.objects.create(
+            test=non_necessary_test, vital=sample_vital, necessary=False, sufficient=False, required_fractrion=0.5
+        )
+
+        # Student passes only the non-necessary test; no result for the necessary test.
+        nn_score, _ = Test_Score.objects.get_or_create(
+            test=non_necessary_test, user=sample_user, defaults={"score": 80.0}
+        )
+        Test_Score.objects.filter(pk=nn_score.pk).update(passed=True)
+
+        sample_vital.check_vital_for_queryset(sample_module.students.all())
+
+        assert not VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+        assert VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=False).exists()
+
+    def test_check_vital_for_queryset_multiple_users(self, sample_vital, sample_test, sample_module, db, sample_status_code):
+        """Test that check_vital_for_queryset handles multiple users correctly in one call.
+
+        One user passes the sufficient test; a second user has no result.  Only the
+        first user should receive a passing VITAL_Result.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+            db: The pytest database fixture.
+        """
+        from accounts.models import Account
+        from minerva.models import Test_Score
+
+        user1, _ = Account.objects.get_or_create(
+            username="qs_user1",
+            defaults={"number": 111001, "email": "qs_user1@example.com", "first_name": "QS", "last_name": "One"},
+        )
+        user2, _ = Account.objects.get_or_create(
+            username="qs_user2",
+            defaults={"number": 111002, "email": "qs_user2@example.com", "first_name": "QS", "last_name": "Two"},
+        )
+
+        sample_module.students.add(user1, user2)
+        VITAL_Test_Map.objects.create(test=sample_test, vital=sample_vital, sufficient=True, condition="pass")
+
+        # Only user1 passes the test.
+        u1_score, _ = Test_Score.objects.get_or_create(test=sample_test, user=user1, defaults={"score": 80.0})
+        Test_Score.objects.filter(pk=u1_score.pk).update(passed=True)
+
+        count = sample_vital.check_vital_for_queryset(sample_module.students.all())
+
+        # user1 should be recorded as passing; user2 has no result so nothing is recorded.
+        assert VITAL_Result.objects.filter(vital=sample_vital, user=user1, passed=True).exists()
+        assert not VITAL_Result.objects.filter(vital=sample_vital, user=user2).exists()
+        assert count == 1
+
+    def test_check_vital_for_queryset_returns_count_of_changes(
+        self, sample_vital, sample_user, sample_test, sample_module, sample_status_code
+    ):
+        """Test that check_vital_for_queryset returns the number of records changed.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+
+        Examples:
+            >>> count = vital.check_vital_for_queryset(module.students.all())
+            >>> assert count == 1  # one record created or updated
+        """
+        from minerva.models import Test_Score
+
+        sample_module.students.add(sample_user)
+        VITAL_Test_Map.objects.create(test=sample_test, vital=sample_vital, sufficient=True, condition="pass")
+        score, _ = Test_Score.objects.get_or_create(
+            test=sample_test,
+            user=sample_user,
+            defaults={"score": 80.0},
+        )
+        Test_Score.objects.filter(pk=score.pk).update(passed=True)
+
+        count = sample_vital.check_vital_for_queryset(sample_module.students.all())
+
+        assert count == 1
+
+        # Second call with no change should return 0.
+        count2 = sample_vital.check_vital_for_queryset(sample_module.students.all())
+        assert count2 == 0
+
+    def test_check_vital_for_queryset_empty_queryset(self, sample_vital, sample_module):
+        """Test that check_vital_for_queryset returns 0 for an empty user queryset.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_module (Module): A test module instance.
+
+        Examples:
+            >>> count = vital.check_vital_for_queryset(Account.objects.none())
+            >>> assert count == 0
+        """
+        from accounts.models import Account
+
+        count = sample_vital.check_vital_for_queryset(Account.objects.none())
+
+        assert count == 0
