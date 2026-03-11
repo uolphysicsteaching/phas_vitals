@@ -3,278 +3,328 @@
 Settings
 ========
 
+The settings module lives in ``phas_vitals/settings/`` and is split across several files to
+separate concerns. The active settings file is determined at runtime by the
+``DJANGO_SETTINGS_MODULE`` environment variable. ``manage.py`` defaults to
+``phas_vitals.settings.development``.
+
 
 common.py
 ---------
 
-This file contains settings which are shared between development- and
-production-settings. The provide sane defaults for developing and a solid base
-for production settings.
+Shared settings used by all environments. All other settings files import from this module
+(directly or transitively via ``secrets.py``).
 
 Path Configuration
 ^^^^^^^^^^^^^^^^^^
 
-``DJANGO_ROOT``
-    Absolute path of the projects Django directory
+``DJANGO_ROOT_PATH``
+    Absolute ``Path`` to the Django project package directory (``phas_vitals/``).
 
-``PROJECT_ROOT``
-    Absolute path of the project directory
+``PROJECT_ROOT_PATH``
+    Absolute ``Path`` to the project root directory.
 
 ``SITE_NAME``
-    The name of our project
+    Derived from the Django root directory name (``phas_vitals``).
 
 ``STATIC_ROOT``
-    The directory to collect static files into. It will be set to
-    ``[project_root]/run/static``. Please refer to the `official settings
-    documentation on STATIC_ROOT <https://docs.djangoproject.com/en/2.2/ref/settings/#static-root>`_
-    and `this howto on static files <https://docs.djangoproject.com/en/2.2/howto/static-files/>`_.
+    Directory where ``collectstatic`` places processed static assets:
+    ``<project_root>/run/static``.
 
 ``MEDIA_ROOT``
-    The directory for user-uploaded files. It will be set to
-    ``[project_root]/run/media``. Please refer to the `official settings
-    documentation on MEDIA_ROOT <https://docs.djangoproject.com/en/2.2/ref/settings/#media-root>`_.
+    Directory for user-uploaded files: ``<project_root>/run/media``.
 
 ``STATICFILES_DIRS``
-    Django will look in these locations for additional static
-    assets to collect. Our settings module adds ``[project_root]/static`` to
-    the list. See the `official settings documentation on STATICFILES_DIRS
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#staticfiles-dirs>`_
-    for more details.
+    Additional locations Django searches for static assets:
+    ``[<project_root>/static]``.
 
 ``PROJECT_TEMPLATES``
-    Django will look in these locations for additional
-    templates. Our settings module adds ``[project_root]/templates``.
+    Directories Django searches for project-wide templates:
+    ``[<project_root>/templates]``.
 
-    This setting was changed to reflect the changes in Django 1.8: Django
-    features the possibility to use multiple different template engines. This
-    is controlled with the TEMPLATES directive and represents the old
-    TEMPLATE_DIRS directive. See the
-    `official settings documentation on TEMPLATES
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#templates>`_
-    for more details.
+``STORAGES``
+    Configures ``whitenoise.storage.CompressedManifestStaticFilesStorage`` for
+    static files and the default ``FileSystemStorage`` for uploaded media.
 
 Application Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
+``APPS``
+    A dictionary of custom application directories discovered automatically from
+    ``<project_root>/apps/``. Any sub-directory that contains a ``models.py`` file
+    is included.
+
+``CUSTOM_APPS``
+    List of app module names derived from ``APPS``, added to ``INSTALLED_APPS``
+    automatically.
+
 ``DEFAULT_APPS``
-    These are the default apps of ``django-admin startproject``. Please note
-    that this is no official setting. Django operates with ``INSTALLED_APPS``,
-    which will be set in *dev.py*.
+    Full ``INSTALLED_APPS`` list combining Django built-ins, third-party packages,
+    ``CUSTOM_APPS``, and ``baton.autodiscover``. Key third-party apps include:
+
+    * ``baton`` – Baton admin theme
+    * ``adminsortable2`` – drag-and-drop ordering in the admin
+    * ``django_htmx`` – HTMX middleware and utilities
+    * ``ajax_select`` – AJAX autocomplete widgets
+    * ``constance`` – database-backed dynamic settings
+    * ``dal`` / ``dal_select2`` – django-autocomplete-light
+    * ``django_bootstrap5`` – Bootstrap 5 form rendering
+    * ``django_filters`` – queryset filtering
+    * ``django_tables2`` – table rendering
+    * ``django_auth_adfs`` – ADFS / Azure AD single sign-on
+    * ``import_export`` – admin import/export via django-import-export
+    * ``oauth2_provider`` – OAuth2 provider
+    * ``rest_framework`` – Django REST Framework
+    * ``sitetree`` – navigation tree management
+    * ``tinymce`` – TinyMCE rich-text editor
+    * ``django_celery_results`` / ``django_celery_beat`` – Celery task backend
 
 ``MIDDLEWARE``
-    *(new in 1.2; Django 1.10)*
-    These are the default middleware classes, directly taken from the default
-    settings created by ``django-admin startproject``. See the
-    `official settings documentation on MIDDLEWARE
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#middleware>`_
-    for more details. (Please note: This was used to be called
-    *MIDDLEWARE_CLASSES*)
+    Standard Django middleware plus:
+
+    * ``django_htmx.middleware.HtmxMiddleware``
+    * ``whitenoise.middleware.WhiteNoiseMiddleware``
+    * ``django.contrib.flatpages.middleware.FlatpageFallbackMiddleware``
 
 ``TEMPLATES``
-    This setting reflects the new feature of multiple template engines, which
-    was introduced in Django 1.8. The value is taken from the
-    `official upgrading guide <https://docs.djangoproject.com/en/dev/ref/templates/upgrading/>`_
-    and adjusted to include our project templates, defined in *PROJECT_TEMPLATES*.
+    Single Django template backend with ``APP_DIRS = True``. Context processors
+    include those for auth, constance, request, i18n, media, static, and messages.
+    Built-in template tags include ``django.templatetags.static``,
+    ``mathfilters``, and ``phas_vitals.templatetags.phas_tags``.
+
+Authentication Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``AUTH_USER_MODEL``
+    Set to ``accounts.Account`` – the project's custom user model.
+
+``LOGIN_URL``
+    ``django_auth_adfs:login`` – users are sent to the ADFS login page by default.
+
+``LOGIN_REDIRECT_URL``
+    ``"/"`` – redirect to home after successful login.
+
+``LOGOUT_REDIRECT_URL``
+    ``"/"`` – redirect to home after logout.
+
+``AUTHENTICATION_BACKENDS``
+    Ordered list:
+
+    1. ``util.backend.LeedsAdfsBaseBackend`` – University of Leeds ADFS backend
+    2. ``django.contrib.auth.backends.ModelBackend`` – standard Django backend
+
+``AUTH_ADFS``
+    ADFS / Azure AD configuration including claim mapping for ``first_name``,
+    ``last_name``, and ``email``.
 
 Security Configuration
 ^^^^^^^^^^^^^^^^^^^^^^
 
 ``SECRET_FILE``
-    Django uses a ``SECRET_KEY`` for security purposes. As you can clearly see,
-    this is a very sensitive information. We will store this key in a file.
-    This file's location is set up here. Default value is ``[project_root]/run/SECRET.key``.
+    Path to a file holding the Django ``SECRET_KEY``:
+    ``<project_root>/run/SECRET.key``. The key is auto-generated on first run if
+    the file does not exist.
 
-``ADMINS``
-    You will have to fill this setting yourself, please refer to `official
-    settings documentation on ADMINS
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#admins>`_.
+``ADMINS`` / ``MANAGERS``
+    Set to the project maintainer. These accounts receive error notification
+    e-mails.
 
-``MANAGERS``
-    You will have to fill this setting yourself, please refer to `official
-    settings documentation on MANAGERS
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#managers>`_.
+``ALLOWED_HOSTS``
+    Automatically populated from the server's DNS name and IP address, plus
+    ``localhost`` and ``127.0.0.1``. Additional test-server entries are included.
+
+``CSRF_TRUSTED_ORIGINS``
+    HTTPS origins derived from ``ALLOWED_HOSTS``.
+
+``SESSION_EXPIRE_AT_BROWSER_CLOSE``
+    ``True`` – sessions end when the browser is closed.
+
+``SESSION_COOKIE_AGE``
+    ``7200`` seconds (2 hours) before a session expires.
 
 Django Running Configuration
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``WSGI_APPLICATION``
-    This setting determines the path to the WSGI-application. We'll use the
-    default one, so this setting is set to ``[project_name].wsgi.application``.
+    ``phas_vitals.wsgi.application``
 
 ``ROOT_URLCONF``
-    Determines the root URLconf. Set to ``[project_name].urls``. See `official
-    settings documentation on ROOT_URLCONF
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#root-urlconf>`_.
+    ``phas_vitals.urls``
 
 ``SITE_ID``
-    *(removed in 1.2)*
-    A unique ID of the site. See `official settings documentation on SITE_ID
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#site-id>`_.
+    ``1``
 
 ``STATIC_URL``
-    Determines, under which URL static files are served. You will want to
-    adjust this in a production scenario. Our default value is ``/static/``.
-    See `official settings documentation on STATIC_URL
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#static-url>`_.
+    ``/static/``
 
 ``MEDIA_URL``
-    Determines, under which URL media files are served. You will want to
-    adjust this in a production scenario. Our default value is ``/media/``.
-    See `official settings documentation on MEDIA_URL
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#media-url>`_.
+    ``/media/``
 
-Debug Configuration
-^^^^^^^^^^^^^^^^^^^
+``DEFAULT_AUTO_FIELD``
+    ``django.db.models.AutoField``
 
 ``DEBUG``
-    Activates debugging. In this file, this is set to ``False``, because these
-    are our common settings, which are shared between all configurations. We
-    just want debugging while we are developing, so debugging will be activated
-    in *dev.py*. See `official settings documentation on DEBUG
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#debug>`_ for additional
-    information.
+    ``False`` in ``common.py``; overridden per environment (see below).
 
-Internationalization
+Internationalisation
 ^^^^^^^^^^^^^^^^^^^^
 
 ``LANGUAGE_CODE``
-    *(removed in 1.3)*
+    ``"en"``
 
 ``TIME_ZONE``
-    *(removed in 1.3)*
+    ``"Europe/London"``
 
 ``USE_I18N``
-    *(modified in 1.2:* ``False`` *)*
-    The setting is activated in ``i18n.py``.
-
-``USE_L10N``
-    *(removed in 1.3)*
+    ``True``
 
 ``USE_TZ``
-    *(removed in 1.3)*
+    ``True``
+
+Logging
+^^^^^^^
+
+Log files are written to ``<project_root>/logs/``:
+
+* ``django.log`` – general debug log (verbose format)
+* ``htmx.log`` – HTMX view debug log
+* ``form_data.log`` – form-processing info log
+* ``debug.log`` – additional debug output
+
+Error-level messages are also e-mailed to ``ADMINS`` via ``AdminEmailHandler``
+(with a filter to suppress routine noise).
+
+E-mail Configuration
+^^^^^^^^^^^^^^^^^^^^
+
+``EMAIL_BACKEND``
+    ``django.core.mail.backends.smtp.EmailBackend``
+
+``EMAIL_HOST``
+    ``smtp.leeds.ac.uk``
+
+``EMAIL_PORT``
+    ``25``
+
+``DEFAULT_FROM_EMAIL``
+    ``no-reply@phas_vitals.leeds.ac.uk``
+
+Constance (Dynamic Settings)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``CONSTANCE_BACKEND``
+    ``constance.backends.database.DatabaseBackend`` – settings are stored in the
+    database and editable through the admin.
+
+``CONSTANCE_CONFIG``
+    ``SUBJECT_PREFIX`` – the module subject code prefix used when searching for
+    modules (default ``"PHAS"``).
+
+Third-party App Settings
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``BATON``
+    Configures the Baton admin theme: site header, title, dark mode, gravatar
+    support, and the custom admin navigation menu.
+
+``DJANGO_TABLES2_TEMPLATE``
+    ``"django_tables2/bootstrap5-responsive.html"``
+
+``REST_FRAMEWORK``
+    Requires admin permission by default. Supports session and basic authentication.
+    Uses ``DjangoFilterBackend`` and rate-throttling (100/hour anonymous,
+    1000/hour authenticated).
+
+``CELERY_RESULT_BACKEND``
+    ``"django-db"`` – task results are stored in the database via
+    ``django-celery-results``.
+
+``SITETREE_CLS`` / ``SITETREE_MODEL_TREE`` / ``SITETREE_MODEL_TREE_ITEM``
+    Customise the sitetree navigation library to use the project's
+    ``GroupedTree`` and ``GroupedTreeItem`` models from the ``util`` app.
+
+Per-app Settings
+^^^^^^^^^^^^^^^^
+
+Each app in ``CUSTOM_APPS`` may provide a ``settings.py`` module. Settings are
+automatically imported from each such module:
+
+* Dictionary settings are merged into the global setting.
+* List/tuple settings are appended.
+* Other settings replace the global value.
 
 
 development.py
 --------------
 
-*(modified in 1.2: renamed* ``dev.py`` *to* ``development.py`` *)*
-This file contains development settings. Plase note, that ``manage.py`` will
-now automatically use this setting-file as its default, while ``wsgi.py``
-still refers to ``production.py``.
+Used for local development. Imports ``secrets.py`` (not in version control) which
+provides ``DATABASES`` and any other local overrides::
 
-Debug Configuration
-^^^^^^^^^^^^^^^^^^^
+    from .secrets import *  # noqa
+
+Additionally sets:
 
 ``DEBUG``
-    We are developing, so activate debugging.
+    ``False`` (override to ``True`` in your ``secrets.py`` when needed).
 
 ``ALLOWED_HOSTS``
-    *(new in 1.2)*
-    Allow all hostnames to be used to access the server/project. See `official
-    settings documentation on ALLOWED_HOSTS
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#allowed-hosts>`_.
-
-``LOGIN_URL``
-    *(new in 1.3)*
-    The URL of Django's built-in login view. See `official
-    settings documentation on LOGIN_URL
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#login-url>`_.
-
-``LOGIN_REDIRECT_URL``
-    *(new in 1.3)*
-    Django will redirect the user to this URL after login, if no specific URL is given.
-    See `official settings documentation on LOGIN_REDIRECT_URL
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#login-redirect-url>`_.
-
-``LOGOUT_REDIRECT_URL``
-    *(new in 1.3)*
-    Django will redirect the user to this URL after logout, if no specific URL is given.
-    See `official settings documentation on LOGIN_REDIRECT_URL
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#login-redirect-url>`_.
-
-Database Configuration
-^^^^^^^^^^^^^^^^^^^^^^
-
-``DATABASES``
-    I use SQLite for development. The database file will be created in
-    ``[project_root]/run/dev.sqlite3``.
-
-Application Configuration
-^^^^^^^^^^^^^^^^^^^^^^^^^
+    ``["*"]`` – accept connections from any host.
 
 ``INSTALLED_APPS``
-    We have set the default apps. Now we build the (required)
-    ``INSTALLED_APPS``-setting by using ``DEFAULT_APPS`` and add any app we
-    need for development.
-
-
-i18n.py
--------
-
-*(created in 1.3)*
-This file contains all settings, that affect internationalisation (i18n). These
-settings were taken from other parts of the configuration (see ``common.py``).
-The ``LocaleMiddleware`` will automatically be inserted into the ``MIDDLEWARE``
-list.
-
-The i18n-settings are not included by default. They have to be imported in
-``development.py`` or ``production.py``.
-
-``LANGUAGE_CODE``
-    This is the default language of your project. Django will fall back to this
-    language, if the localization-middleware can't determine the user's
-    preferred language. See `official settings documentation on
-    LANGUAGE_CODE <https://docs.djangoproject.com/en/2.2/ref/settings/#language-code>`_.
-
-``TIME_ZONE``
-    Sets the time zone of this project. See `official settings documentation
-    on TIME_ZONE
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#time-zone>`_.
-
-``USE_I18N``
-    Activates Django's translation system. See `official settings documentation
-    on USE_I18N
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#use-i18n>`_.
-
-``USE_L10N``
-    Activates Django's localization engine. See `official settings documentation
-    on USE_L10N
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#use-l10n>`_.
-
-``USE_TZ``
-    Make datetimes timezone aware. See `official settings documentation on
-    USE_TZ
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#use-tz>`_.
-
-``LANGUAGES``
-    A list of supported languages. Django will only provide translation for
-    these. See `official settings documentation on
-    LANGUAGES
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#languages>`_.
-
-``LOCALE_PATHS``
-    A list of file system locations, to look for translations. See `official
-    settings documentation on LOCALE_PATHS
-    <https://docs.djangoproject.com/en/2.2/ref/settings/#locale-paths>`_.
-    Please note: Django's ``LocaleMiddleware`` will automatically look for
-    translation files in each apps ``locale`` directory, so they don't need
-    to be added here.
+    Set to ``DEFAULT_APPS`` (includes all auto-discovered custom apps).
 
 
 production.py
 -------------
 
-*(modified in 1.2)*
-This file should contain production settings. Currently, it just reverts some
-development specific configuration values, ``DEBUG`` and ``ALLOWED_HOSTS``.
-Please note, that the behaviour of ``manage.py`` changed: It now uses the
-settings in ``development.py`` automatically, while ``[project_root]/wsgi.py``
-refers to the settings in ``production.py``.
+Imports all settings from ``development.py`` and then adds security hardening:
+
+``SECURE_HSTS_SECONDS``
+    ``3600``
+
+``SECURE_SSL_REDIRECT``
+    ``True`` – redirect all HTTP requests to HTTPS.
+
+``SESSION_COOKIE_SECURE`` / ``CSRF_COOKIE_SECURE`` / ``CSRF_COOKIE_HTTPONLY``
+    All ``True``.
+
+``X_FRAME_OPTIONS``
+    ``"DENY"``
+
+``SECURE_HSTS_INCLUDE_SUBDOMAINS``
+    ``True``
 
 
-djangodefault.py
-----------------
+i18n.py
+-------
 
-*(removed in 1.2)*
-This are the saved settings from ``django-admin startproject``. We just keep
-them for completeness, these settings are not actually used.
+Optional file containing internationalisation and localisation settings.
+Import it explicitly in ``development.py`` or ``production.py`` if required.
+
+``LANGUAGE_CODE``, ``TIME_ZONE``, ``USE_I18N``, ``USE_L10N``, ``USE_TZ``
+    Standard Django i18n settings.
+
+``LANGUAGES``
+    A list of languages supported by the project.
+
+``LOCALE_PATHS``
+    Filesystem locations for translation catalogues.
+
+
+test.py
+-------
+
+Settings for the test suite (used by ``pytest-django``). Overrides:
+
+* Database to use an in-memory SQLite instance.
+* Disables password hashing to speed up tests.
+* Sets ``CELERY_TASK_ALWAYS_EAGER = True`` so tasks run synchronously.
+
+
+secrets.py
+----------
+
+**Not included in version control.** Must be created manually in
+``phas_vitals/settings/``. At a minimum it should import from ``common.py`` and
+define ``DATABASES``. See :ref:`quickstart <label-quickstart-secrets>` for an
+example SQLite configuration.
