@@ -42,10 +42,25 @@ class VITAL_Test_Map(models.Model):
 
     test = models.ForeignKey("minerva.Test", on_delete=models.CASCADE, to_field="id", related_name="vitals_mappings")
     vital = models.ForeignKey("VITAL", on_delete=models.CASCADE, related_name="tests_mappings")
-    necessary = models.BooleanField(default=False)
-    sufficient = models.BooleanField(default=True)
-    condition = models.CharField(max_length=10, choices=PASS_OPTIONS, default="pass")
-    required_fractrion = models.FloatField(default=1.0)
+    necessary = models.BooleanField(
+        default=False, help_text="Students must meet this requirement for the VITAL to be awarded."
+    )
+    sufficient = models.BooleanField(
+        default=True, help_text="Students who meet this requirement are awarded the VITAL"
+    )
+    condition = models.CharField(
+        max_length=10,
+        choices=PASS_OPTIONS,
+        default="pass",
+        help_text="What students need to do to meet this requirement",
+    )
+    required_fractrion = models.FloatField(
+        default=1.0,
+        help_text=(
+            "Controls how mahy of these requirements the students must meet in order to be awarded the VITAL."
+            + " The sum of this field for all met conditions must be equal or greater than 1."
+        ),
+    )
 
     def __str__(self):
         """Provide a sensible string for logging etc."""
@@ -467,10 +482,7 @@ class VITAL(models.Model):
             return 0
 
         # Load existing VITAL_Result records for affected users in a single query.
-        existing = {
-            r.user_id: r
-            for r in VITAL_Result.objects.filter(vital=self, user_id__in=results_to_set.keys())
-        }
+        existing = {r.user_id: r for r in VITAL_Result.objects.filter(vital=self, user_id__in=results_to_set.keys())}
 
         to_create = []
         to_update = []

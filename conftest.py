@@ -43,6 +43,7 @@ def sample_status_code(db):
     Returns:
         (StatusCode): A test StatusCode instance.
     """
+    # external imports
     from minerva.models import StatusCode
 
     code, _ = StatusCode.objects.get_or_create(code="RE", defaults={"explanation": "Registered"})

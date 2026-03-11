@@ -626,9 +626,7 @@ class SummaryScore(models.Model):
         else:
             taken = tests.filter(results__user=self.student).distinct().order_by("id")
             not_taken = tests.exclude(results__user=self.student).distinct().filter(status="Overdue").order_by("id")
-            in_progress = tests.exclude(results__user=self.student).distinct().filter(status="Released").count()
             passed = taken.filter(results__passed=True, results__user=self.student).count()
-            failed = taken.exclude(results__passed=True, results__user=self.student).count()
             if taken.count() + not_taken.count() == 0:
                 self.score = np.nan
             else:
@@ -1201,7 +1199,9 @@ class GradebookColumn(models.Model):
         json_data = module.columns_json
         if (json_data := json.get_blob_by_name(module.columns_json, False)) is None:
             raise IOError(f"No JSON file for {module}")
-        category_map = {tc.category_id: tc for tc in TestCategory.objects.filter(module=module).select_related("module")}
+        category_map = {
+            tc.category_id: tc for tc in TestCategory.objects.filter(module=module).select_related("module")
+        }
         for column_data in json_data:
             column, _ = cls.objects.get_or_create(
                 gradebook_id=column_data["id"], name=column_data["name"], module=module

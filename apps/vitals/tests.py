@@ -314,6 +314,7 @@ class TestVITALAdminActions:
             >>> vital.check_vital(user)
             >>> assert VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
         """
+        # external imports
         from minerva.models import Test_Score
 
         sample_module.students.add(sample_user)
@@ -348,6 +349,7 @@ class TestVITALAdminActions:
             >>> vital.check_vital(user)
             >>> assert not VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
         """
+        # external imports
         from minerva.models import Test_Score
 
         sample_module.students.add(sample_user)
@@ -388,8 +390,10 @@ class TestVITALAdminActions:
             >>> vital.check_vital(user)
             >>> assert VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
         """
+        # Django imports
         from django.utils import timezone as tz
 
+        # external imports
         from minerva.models import Test, Test_Score
 
         sample_module.students.add(sample_user)
@@ -445,8 +449,10 @@ class TestVITALAdminActions:
             >>> vital.check_vital(user)
             >>> assert not VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
         """
+        # Django imports
         from django.utils import timezone as tz
 
+        # external imports
         from minerva.models import Test, Test_Score
 
         sample_module.students.add(sample_user)
@@ -495,8 +501,10 @@ class TestVITALAdminActions:
             sample_module (Module): A test module instance.
             db: The pytest database fixture.
         """
+        # Django imports
         from django.utils import timezone as tz
 
+        # external imports
         from minerva.models import Test, Test_Score
 
         sample_module.students.add(sample_user)
@@ -564,6 +572,7 @@ class TestVITALCheckForQueryset:
             >>> updated = vital.check_vital_for_queryset(module.students.all())
             >>> assert VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
         """
+        # external imports
         from minerva.models import Test_Score
 
         sample_module.students.add(sample_user)
@@ -595,6 +604,7 @@ class TestVITALCheckForQueryset:
             >>> vital.check_vital_for_queryset(Account.objects.filter(pk=user.pk))
             >>> assert not VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
         """
+        # external imports
         from accounts.models import Account
 
         VITAL_Test_Map.objects.create(test=sample_test, vital=sample_vital, necessary=True, condition="pass")
@@ -620,6 +630,7 @@ class TestVITALCheckForQueryset:
             >>> vital.check_vital_for_queryset(module.students.all())
             >>> assert VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
         """
+        # external imports
         from minerva.models import Test_Score
 
         sample_module.students.add(sample_user)
@@ -653,6 +664,7 @@ class TestVITALCheckForQueryset:
             >>> vital.check_vital_for_queryset(module.students.all())
             >>> assert not VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
         """
+        # external imports
         from minerva.models import Test_Score
 
         sample_module.students.add(sample_user)
@@ -690,6 +702,7 @@ class TestVITALCheckForQueryset:
             >>> vital.check_vital_for_queryset(module.students.all())
             >>> assert VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
         """
+        # external imports
         from minerva.models import Test, Test_Score
 
         sample_module.students.add(sample_user)
@@ -743,6 +756,7 @@ class TestVITALCheckForQueryset:
             >>> vital.check_vital_for_queryset(module.students.all())
             >>> assert not VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
         """
+        # external imports
         from minerva.models import Test, Test_Score
 
         sample_module.students.add(sample_user)
@@ -788,6 +802,7 @@ class TestVITALCheckForQueryset:
             sample_module (Module): A test module instance.
             db: The pytest database fixture.
         """
+        # external imports
         from minerva.models import Test, Test_Score
 
         sample_module.students.add(sample_user)
@@ -824,7 +839,9 @@ class TestVITALCheckForQueryset:
         assert not VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
         assert VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=False).exists()
 
-    def test_check_vital_for_queryset_multiple_users(self, sample_vital, sample_test, sample_module, db, sample_status_code):
+    def test_check_vital_for_queryset_multiple_users(
+        self, sample_vital, sample_test, sample_module, db, sample_status_code
+    ):
         """Test that check_vital_for_queryset handles multiple users correctly in one call.
 
         One user passes the sufficient test; a second user has no result.  Only the
@@ -836,6 +853,7 @@ class TestVITALCheckForQueryset:
             sample_module (Module): A test module instance.
             db: The pytest database fixture.
         """
+        # external imports
         from accounts.models import Account
         from minerva.models import Test_Score
 
@@ -877,6 +895,7 @@ class TestVITALCheckForQueryset:
             >>> count = vital.check_vital_for_queryset(module.students.all())
             >>> assert count == 1  # one record created or updated
         """
+        # external imports
         from minerva.models import Test_Score
 
         sample_module.students.add(sample_user)
@@ -907,6 +926,7 @@ class TestVITALCheckForQueryset:
             >>> count = vital.check_vital_for_queryset(Account.objects.none())
             >>> assert count == 0
         """
+        # external imports
         from accounts.models import Account
 
         count = sample_vital.check_vital_for_queryset(Account.objects.none())
@@ -936,6 +956,7 @@ class TestVITALCheckForQueryset:
             >>> count = sample_vital.check_vital_for_queryset(sample_module.students.all())
             >>> assert VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
         """
+        # external imports
         from minerva.models import Test_Score
 
         sample_module.students.add(sample_user)
