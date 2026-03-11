@@ -31,11 +31,11 @@ fields that control how a test contributes to a VITAL pass decision:
     met, all *necessary* conditions must be met for the VITAL to be awarded.
 
 ``required_fractrion`` *(FloatField, default* ``1.0`` *)*
-    Unless a *sufficient* requirement is mnet, then the sum of all *required_fraction* fields of all conditions that 
+    Unless a *sufficient* requirement is met, then the sum of all *required_fraction* fields of all conditions that
     are met must be equal or greater than 1.0 for the VITAL to be awarded.
 
 Thus, a *sufficient* condition being met definitely awards the VITAL. A *necessary* condition not being met definitely
-results in the VITAL not being awarded. A sum of *required_fraction* of met conditions must be greater or equakl to 1.0 for 
+results in the VITAL not being awarded. A sum of *required_fraction* of met conditions must be greater or equal to 1.0 for
 the VITAL to be awarded. *NB* Floating point conditions should be evaluated with a tolerance of 0.001 to allow for rounding
 errors.
 
@@ -50,86 +50,72 @@ satisfied the conditions for a VITAL, then calls :meth:`~vitals.models.VITAL.pas
 result. The method works through the following steps in order; the first condition that is satisfied
 terminates the check.
 
-Step 1 – Sufficient Test Passed
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The method begins by fetching two sets of test IDs for the student from the database:
+
+* **passed tests** – tests in this VITAL's mappings where the student has ``Test_Score.passed = True``
+* **attempted tests** – tests in this VITAL's mappings where the student has any ``Test_Score`` record
+
+A helper then determines whether a single mapping is *met* based on those sets:
 
 ::
 
-    sufficient = self.tests_mappings.filter(sufficient=True)
-    if user.test_results.filter(
-            test__vitals_mappings__in=sufficient.all(), passed=True
-    ).count() > 0:
+    def is_met(mapping):
+        if mapping.condition == "pass":
+            return mapping.test_id in user_passed_test_ids
+        return mapping.test_id in user_attempted_test_ids
+
+Step 1 – Sufficient Condition Met
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+::
+
+    if any(m.sufficient and is_met(m) for m in all_mappings):
         return self.passed(user)
 
-All ``VITAL_Test_Map`` records for this VITAL where ``sufficient=True`` are retrieved (this
-includes both ``condition="pass"`` and ``condition="attempt"`` mappings). If the student has **at
-least one** ``Test_Score`` record for any of these tests where ``passed=True``, the VITAL is
-awarded.
+If **any** mapping with ``sufficient=True`` is met (according to its own ``condition`` field), the
+VITAL is awarded immediately.
 
 .. note::
 
-   The ``condition`` field is not used in this check. A mapping with ``sufficient=True`` and
-   ``condition="attempt"`` is treated in the same way as one with ``condition="pass"``: the
-   student must have a *passing* result rather than merely an *attempted* result.
+   Unlike the previous implementation, ``condition`` is now respected for sufficient mappings.
+   A mapping with ``sufficient=True`` and ``condition="attempt"`` is satisfied by any attempt,
+   not just a passing result.
 
-Step 2 – All Necessary/Pass Tests Passed
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-::
-
-    necessary = self.tests_mappings.filter(necessary=True, condition="pass").distinct()
-    if (
-        necessary.count() > 0
-        and user.test_results.filter(
-                test__vitals_mappings__in=necessary.all(), passed=True
-        ).distinct().count() == necessary.count()
-    ):
-        return self.passed(user)
-
-The mappings where ``necessary=True`` and ``condition="pass"`` are retrieved. If there is at least
-one such mapping, and the number of distinct passing ``Test_Score`` records the student has for
-those tests equals the total number of necessary/pass mappings, the VITAL is awarded.
-
-In plain terms: **every** test that is marked as both *necessary* and requiring a *pass* must
-have been passed.
-
-Step 3 – Sufficient Necessary/Attempt Tests Attempted
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Step 2 – No Test Results
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ::
 
-    necessary = self.tests_mappings.filter(necessary=True, condition="attempt").distinct()
-    needed = necessary.aggregate(needed=models.Sum("required_fractrion"))["needed"]
-    if (
-        necessary.count() > 0
-        and user.test_results.filter(
-                test__vitals_mappings__in=necessary.all()
-        ).distinct().count() >= needed
-    ):
-        return self.passed(user)
-
-The mappings where ``necessary=True`` and ``condition="attempt"`` are retrieved. The minimum
-required number of tests is calculated by summing the ``required_fractrion`` field
-(note: typo in field name) across all those mappings. If there is at least one such mapping, and
-the number of distinct ``Test_Score`` records the student has for those tests (regardless of pass
-or fail) is greater than or equal to that sum, the VITAL is awarded.
-
-In plain terms: the student must have **attempted** at least the required number of tests that
-are marked as *necessary* with an *attempt* condition.
-
-Step 4 – No Test Results at All
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-::
-
-    if user.test_results.filter(
-            test__vitals_mappings__in=self.tests_mappings.all()
-    ).count() == 0:
+    if not user_attempted_test_ids:
         return False
 
 If the student has no ``Test_Score`` records for *any* test linked to this VITAL, the method
 returns ``False`` immediately **without** updating the student's ``VITAL_Result`` record. No fail
 is recorded; the student is simply treated as not yet having engaged with the VITAL.
+
+Step 3 – Necessary Condition Not Met
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+::
+
+    if any(m.necessary and not is_met(m) for m in all_mappings):
+        return self.passed(user, False)
+
+If **any** mapping with ``necessary=True`` is *not* met, the VITAL cannot be awarded and the
+student is recorded as not having passed.
+
+Step 4 – Required-Fraction Sum
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+::
+
+    met_sum = sum(m.required_fractrion for m in all_mappings if is_met(m))
+    if met_sum >= 1.0 - TOLERANCE:
+        return self.passed(user)
+
+The ``required_fractrion`` values (note: typo preserved from field name) of all *met* mappings
+are summed. If the total is at least 1.0 (within a floating-point tolerance of 0.001), the VITAL
+is awarded. This allows several partial-credit mappings to combine to form a complete pass.
 
 Step 5 – Default: Record as Not Passed
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -138,44 +124,45 @@ Step 5 – Default: Record as Not Passed
 
     return self.passed(user, False)
 
-If none of the pass conditions above were met, and the student does have at least one test result
-for this VITAL, the :meth:`~vitals.models.VITAL.passed` method is called with ``passed=False``.
-This creates or updates the student's ``VITAL_Result`` to record a failure.
+If none of the award conditions above were met, the :meth:`~vitals.models.VITAL.passed` method is
+called with ``passed=False``. This creates or updates the student's ``VITAL_Result`` to record a
+failure.
 
 Summary Table
 -------------
 
-The following table summarises every combination of ``necessary``, ``sufficient``, and
-``condition`` that appears in :meth:`~vitals.models.VITAL.check_vital`, and what must be true for
-that mapping type to contribute to a VITAL pass:
+The following table summarises how each combination of ``sufficient``, ``necessary``, and
+``condition`` is evaluated by :meth:`~vitals.models.VITAL.check_vital`:
 
 .. list-table::
    :header-rows: 1
    :widths: 12 12 12 64
 
-   * - ``necessary``
-     - ``sufficient``
+   * - ``sufficient``
+     - ``necessary``
      - ``condition``
      - Behaviour in ``check_vital``
-   * - –
-     - ``True``
-     - ``"pass"``
-     - Passing this test alone is sufficient to award the VITAL (Step 1).
-   * - –
-     - ``True``
-     - ``"attempt"``
-     - **Also** requires ``passed=True`` due to Step 1 treating all sufficient mappings
-       identically, regardless of ``condition``.
    * - ``True``
      - –
      - ``"pass"``
-     - All mappings of this type must be passed; checked collectively in Step 2.
+     - Any passing result for this test immediately awards the VITAL (Step 1).
    * - ``True``
      - –
      - ``"attempt"``
-     - A minimum number of these tests (determined by the sum of ``required_fractrion``,
-       the fraction field — note the typo in the field name) must be attempted; checked
-       collectively in Step 3.
+     - Any attempt at this test (pass or fail) immediately awards the VITAL (Step 1).
+   * - –
+     - ``True``
+     - ``"pass"``
+     - This test must be passed; if not, the award is blocked (Step 3).
+   * - –
+     - ``True``
+     - ``"attempt"``
+     - This test must be attempted; if not, the award is blocked (Step 3).
+   * - –
+     - –
+     - ``"pass"`` or ``"attempt"``
+     - Contributes its ``required_fractrion`` to the running total when met; VITAL awarded
+       when the total reaches 1.0 (Step 4).
 
 Flow Diagram
 ------------
@@ -185,17 +172,7 @@ Flow Diagram
     check_vital(user)
          │
          ▼
-    Any sufficient test passed? ──► YES ──► VITAL awarded (passed)
-         │
-         NO
-         │
-         ▼
-    All necessary/pass tests passed? ──► YES ──► VITAL awarded (passed)
-         │
-         NO
-         │
-         ▼
-    Enough necessary/attempt tests attempted? ──► YES ──► VITAL awarded (passed)
+    Any sufficient mapping met (respecting condition)? ──► YES ──► VITAL awarded
          │
          NO
          │
@@ -205,4 +182,14 @@ Flow Diagram
          YES
          │
          ▼
-    VITAL recorded as not passed (failed)
+    Any necessary mapping NOT met? ──► YES ──► VITAL recorded as not passed
+         │
+         NO
+         │
+         ▼
+    Sum of required_fractrion for met conditions >= 1.0? ──► YES ──► VITAL awarded
+         │
+         NO
+         │
+         ▼
+    VITAL recorded as not passed
