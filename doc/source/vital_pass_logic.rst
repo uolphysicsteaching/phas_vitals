@@ -15,14 +15,6 @@ associated with a module. The relationship between a VITAL and the tests used to
 encoded in the :class:`~vitals.models.VITAL_Test_Map` model. Each mapping record carries four
 fields that control how a test contributes to a VITAL pass decision:
 
-``necessary`` *(BooleanField, default* ``False`` *)*
-    When ``True``, this test is a *necessary* condition for the VITAL. All necessary tests of a
-    given condition type must be satisfied before the VITAL can be awarded on that condition alone.
-
-``sufficient`` *(BooleanField, default* ``True`` *)*
-    When ``True``, satisfying this test alone is *sufficient* to award the VITAL, regardless of
-    any other mappings.
-
 ``condition`` *(CharField, choices* ``"pass"`` *or* ``"attempt"`` *)*
     Defines what action by the student satisfies the mapping:
 
@@ -30,11 +22,22 @@ fields that control how a test contributes to a VITAL pass decision:
     * ``"attempt"`` – the student need only make an attempt at the test (any recorded result
       counts), without needing to pass.
 
+``sufficient`` *(BooleanField, default* ``True`` *)*
+    When ``True``, satisfying this test alone is *sufficient* to award the VITAL, regardless of
+    any other mappings.
+
+``necessary`` *(BooleanField, default* ``False`` *)*
+    When ``True``, this test is a *necessary* condition for the VITAL. Unless a *sufficient* condition is
+    met, all *necessary* conditions must be met for the VITAL to be awarded.
+
 ``required_fractrion`` *(FloatField, default* ``1.0`` *)*
-    Only meaningful when ``condition="attempt"`` and ``necessary=True``. The sum of
-    ``required_fractrion`` (note: the field name contains a typo in the codebase) across all
-    *necessary/attempt* mappings gives the minimum number (or fraction) of those tests that
-    must be attempted for the VITAL to be awarded on that condition.
+    Unless a *sufficient* requirement is mnet, then the sum of all *required_fraction* fields of all conditions that 
+    are met must be equal or greater than 1.0 for the VITAL to be awarded.
+
+Thus, a *sufficient* condition being met definitely awards the VITAL. A *necessary* condition not being met definitely
+results in the VITAL not being awarded. A sum of *required_fraction* of met conditions must be greater or equakl to 1.0 for 
+the VITAL to be awarded. *NB* Floating point conditions should be evaluated with a tolerance of 0.001 to allow for rounding
+errors.
 
 The pass/fail outcome for a specific student is stored in a :class:`~vitals.models.VITAL_Result`
 record, with a ``passed`` boolean field and an optional ``date_passed`` timestamp.
