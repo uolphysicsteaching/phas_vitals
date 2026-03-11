@@ -68,9 +68,15 @@ class VITAL_Test_Map(models.Model):
 
     def __str__(self):
         """Provide a sensible string for logging etc."""
+        if self.sufficient:
+            return f" {dict(self.PASS_OPTIONS)[self.condition]} {self.test.name} to pass {self.vital.name}"
+        if self.necessary:
+            return (
+                f" {dict(self.PASS_OPTIONS)[self.condition]} {self.test.name} is necessary to pass {self.vital.name}"
+            )
         return (
-            f"Mapping: {dict(self.PASS_OPTIONS)[self.condition]} {self.test.name} to pass {self.vital.name} "
-            + f"{'neccessary' if self.necessary else ''} {'sufficient' if self.sufficient else ''}"
+            " {dict(self.PASS_OPTIONS)[self.condition]} {self.test.name} controbutes"
+            + " {self.requiredd_fraction*100:.0f}% to passing {self.vital.name}"
         )
 
 
