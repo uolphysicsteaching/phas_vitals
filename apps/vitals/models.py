@@ -81,6 +81,10 @@ class VITAL_ResultManager(models.Manager):
         ).order_by("vital__module", "vital_start_date")
         return qs
 
+    def bulk_update(self, objs, fields, batch_size=None):
+        """Override to use a plain queryset, avoiding FieldError from ordering by aggregates."""
+        return super().get_queryset().bulk_update(objs, fields, batch_size=batch_size)
+
 
 class VITAL_Result(models.Model):
     """Provide a model for connecting a VITAL to a student."""
@@ -194,6 +198,10 @@ class VITAL_Manager(models.Manager):
             )
         ).order_by("module", "start_date")
         return qs
+
+    def bulk_update(self, objs, fields, batch_size=None):
+        """Override to use a plain queryset, avoiding FieldError from ordering by aggregates."""
+        return super().get_queryset().bulk_update(objs, fields, batch_size=batch_size)
 
 
 class VITAL(models.Model):
