@@ -912,3 +912,45 @@ class TestVITALCheckForQueryset:
         count = sample_vital.check_vital_for_queryset(Account.objects.none())
 
         assert count == 0
+
+    def test_check_vital_for_queryset_updates_existing_result(
+        self, sample_vital, sample_user, sample_test, sample_module, sample_status_code
+    ):
+        """Test that check_vital_for_queryset updates an existing VITAL_Result without raising FieldError.
+
+        Regression test for the FieldError "Cannot update when ordering by an aggregate" that
+        occurred when bulk_update was called through a manager whose queryset ordered by an
+        aggregate annotation (e.g. Min(release_date)).
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+            sample_status_code: A test status code fixture.
+
+        Examples:
+            >>> # Pre-create a failing result, then add a passing score and re-check.
+            >>> VITAL_Result.objects.create(vital=sample_vital, user=sample_user, passed=False)
+            >>> Test_Score.objects.filter(pk=score.pk).update(passed=True)
+            >>> count = sample_vital.check_vital_for_queryset(sample_module.students.all())
+            >>> assert VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+        """
+        from minerva.models import Test_Score
+
+        sample_module.students.add(sample_user)
+        VITAL_Test_Map.objects.create(test=sample_test, vital=sample_vital, sufficient=True, condition="pass")
+
+        # Pre-create a VITAL_Result with passed=False so that the next call will trigger an UPDATE
+        # (via bulk_update) rather than a CREATE (via bulk_create).
+        VITAL_Result.objects.create(vital=sample_vital, user=sample_user, passed=False)
+
+        # Now give the user a passing score so the VITAL should be awarded.
+        score, _ = Test_Score.objects.get_or_create(test=sample_test, user=sample_user, defaults={"score": 80.0})
+        Test_Score.objects.filter(pk=score.pk).update(passed=True)
+
+        # This call must not raise FieldError and must update the existing record.
+        count = sample_vital.check_vital_for_queryset(sample_module.students.all())
+
+        assert count == 1
+        assert VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
