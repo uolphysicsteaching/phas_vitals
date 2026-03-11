@@ -478,3 +478,60 @@ class TestVITALAdminActions:
         sample_vital.check_vital(sample_user)
 
         assert not VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+
+    def test_check_vital_necessary_no_result_blocks_award(
+        self, sample_vital, sample_user, sample_test, sample_module, db
+    ):
+        """Test that a necessary test with no result at all counts as not met and blocks the award.
+
+        A student may have results for non-necessary VITAL tests but have never attempted the
+        necessary test.  The necessary test having no result must be treated as "not positively
+        passed", so the VITAL should be recorded as not passed rather than simply returning False.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+            db: The pytest database fixture.
+        """
+        from django.utils import timezone as tz
+
+        from minerva.models import Test, Test_Score
+
+        sample_module.students.add(sample_user)
+
+        # A second test that is non-necessary; the student will have a result for this one.
+        non_necessary_test, _ = Test.objects.get_or_create(
+            name="Sample Test 4",
+            module=sample_module,
+            defaults={
+                "test_id": "sample-test-id-4",
+                "description": "A non-necessary test",
+                "passing_score": 50.0,
+                "score_possible": 100.0,
+                "release_date": tz.now(),
+                "grading_due": tz.now() + tz.timedelta(days=7),
+                "recommended_date": tz.now() + tz.timedelta(days=5),
+            },
+        )
+
+        # sample_test is necessary; non_necessary_test is not.
+        VITAL_Test_Map.objects.create(
+            test=sample_test, vital=sample_vital, necessary=True, sufficient=False, condition="pass"
+        )
+        VITAL_Test_Map.objects.create(
+            test=non_necessary_test, vital=sample_vital, necessary=False, sufficient=False, required_fractrion=0.5
+        )
+
+        # Student passes the non-necessary test only — no result at all for the necessary test.
+        Test_Score.objects.get_or_create(
+            test=non_necessary_test, user=sample_user, defaults={"score": 80.0, "passed": True}
+        )
+
+        sample_vital.check_vital(sample_user)
+
+        # The necessary test was never attempted, so it counts as not met: VITAL must not be awarded.
+        assert not VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+        # A result should still be recorded (as not passed) because the student has engaged with the VITAL.
+        assert VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=False).exists()

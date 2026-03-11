@@ -98,11 +98,22 @@ Step 3 – Necessary Condition Not Met
 
 ::
 
-    if any(m.necessary and not is_met(m) for m in all_mappings):
+    necessary_mappings = [m for m in all_mappings if m.necessary]
+    if (
+        len(necessary_mappings) > 0
+        and sum(1 for m in necessary_mappings if is_met(m)) != len(necessary_mappings)
+    ):
         return self.passed(user, False)
 
-If **any** mapping with ``necessary=True`` is *not* met, the VITAL cannot be awarded and the
-student is recorded as not having passed.
+The number of necessary mappings that are *positively met* (i.e. the student actively satisfied the
+mapping's ``condition``) is compared against the total number of necessary mappings. The VITAL is
+blocked and the student recorded as not having passed unless that count equals the total.
+
+.. note::
+
+   A necessary test for which the student has **no result at all** is explicitly *not* positively
+   met and therefore reduces the met count, causing the block to fire exactly as it would for a
+   test that was attempted but not passed.
 
 Step 4 – Required-Fraction Sum
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

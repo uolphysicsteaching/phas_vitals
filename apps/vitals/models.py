@@ -346,7 +346,11 @@ class VITAL(models.Model):
             return False
 
         # Step 2: Block the award if any necessary mapping is not met.
-        if any(m.necessary and not is_met(m) for m in all_mappings):
+        # The condition is that the number of necessary mappings positively met (including the case
+        # where a necessary test has no result at all, which counts as not met) equals the total
+        # number of necessary mappings.
+        necessary_mappings = [m for m in all_mappings if m.necessary]
+        if len(necessary_mappings) > 0 and sum(1 for m in necessary_mappings if is_met(m)) != len(necessary_mappings):
             return self.passed(user, False)
 
         # Step 3: Award if the sum of required_fractrion for all met conditions >= 1.0.
