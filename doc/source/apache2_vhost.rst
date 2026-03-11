@@ -1,73 +1,66 @@
 .. _label-apache2-vhost:
 
 Apache2 Virtual Host Configuration
-==================================
+====================================
 
-This is an Apache2 configuration file for name based virtual hosting.
-
-As you can see in the following listing, there are several placeholders,
-that must be filled to make this work.
+A sample Apache2 configuration for deploying PHAS VITALs with ``mod_wsgi`` is
+provided at ``configs/apache2_vhost.sample``.
 
 Usage
 -----
 
-As you may notice, there are three different types of placeholders.
+The file contains two types of placeholders:
 
 ``[[placeholder_name]]``
-    These placeholders must be filled manually. Most noticable is line 4,
-    where you **must** set the server name.
+    Must be replaced manually. Most notably:
 
-    ``ServerName    [[SERVER_NAME]]``
+    * ``[[SERVER_NAME]]`` – the fully qualified domain name of the server (e.g.
+      ``phas-vitals.leeds.ac.uk``).
+    * ``[[your email]]`` – the server administrator's e-mail address.
 
-``${placeholder_name}``
-    These placeholders are filled by Apache itsself. Only mess with them, if
-    you do exactly know what you are doing.
-
-``{{ placeholder_name }}``
-    These placeholders do look familiar, don't they? These are Django
-    templatetags. You may fill them manually (please refer to the provided
-    resources in the comments), but you can Django let them fill them for you
-    during project creation. This will render the file through Django's
-    template engine and fill these placeholders::
-
-    $ django-admin startproject --template=/path/to/template --name apache2_vhost.sample
-
+``W:\\phas_vitals\\phas_vitals/…``
+    File system paths. Replace with the actual absolute path to the project root
+    on your server (Linux paths use forward slashes, Windows paths use backslashes).
 
 Concept
 -------
 
-This will set up a name based virtual host that uses *mod_wsgi* to interact
-with Django.
+The configuration sets up a name-based virtual host on port 80 that serves the
+application via ``mod_wsgi`` in daemon mode. Static and media files are served
+directly by Apache to avoid routing them through Django.
 
-It will serve static- and media-files from the default locations set in
-``settings/common.py``. This is not a production-setting, but is well suited
-for development purposes.
+Key directives
+^^^^^^^^^^^^^^
 
-Line 10: ``Alias /static/   {{ project_directory }}/run/static``
-    Serve static files from ``STATIC_ROOT`` under ``STATIC_URL``. Note lines
-    36 - 40, where the directory is made accessible for Apache.
+``Alias /static/   <project_root>/run/static/``
+    Serve static files from ``STATIC_ROOT`` under ``STATIC_URL``. Remember to
+    run ``python manage.py collectstatic`` before starting Apache.
 
-Line 15: ``Alias /media/    {{ project_directory }}/run/media``
-    Serve media files from ``MEDIA_ROOT`` under ``MEDIA_URL``. Note lines
-    45 - 49, where the directory is made accessible for Apache.
+``Alias /media/   <project_root>/run/media/``
+    Serve user-uploaded media from ``MEDIA_ROOT`` under ``MEDIA_URL``.
 
-The dynamic Django content is served using the *WSGI-application*. Apache2 will
-use *mod_wsgi* in Daemon-mode. This is in fact the preferred way of deploying
-Django with Apache2, so you will not have to mess with these settings.
+``WSGIScriptAlias /   <project_root>/phas_vitals/wsgi.py``
+    Route all other requests through the Django WSGI application.
 
-Line 18: ``WSGIScriptAlias  /   {{ project_directory }}/{{ project_name }}/wsgi.py``
-    This must be set to the absolute filesystem path to the *WSGI-application*.
+``WSGIDaemonProcess phas_vitals python-path=<project_root>``
+    Run the WSGI process as a daemon named ``phas_vitals``. Add the project root
+    to the Python path so that Django can find the ``phas_vitals`` package.
 
-Line 27: ``WSGIDaemonProcess ...``
-    This sets the name of the daemon process. Using Django's template engine,
-    this will be set to the name of your project. Please notice the
-    ``python-path``-parameter. It is prepared to a virtualenv-setup, but
-    frankly, it must contain the *project directory* and the path to Python's
-    *site-packages*.
+``WSGIProcessGroup phas_vitals``
+    Associate the virtual host with the daemon process group.
 
-Line 31: ``WSGIProcessGroup ...``
-    Specifies a distinct name for the daemon process's group.
+Production Considerations
+--------------------------
 
+* For production use SSL/TLS (HTTPS). The ``production.py`` settings module
+  enables ``SECURE_SSL_REDIRECT``, so HTTP requests will be redirected to HTTPS.
+  Configure a port 443 virtual host with a valid certificate.
+* Set ``DEBUG = False`` in your ``secrets.py``.
+* Ensure the ``run/`` directory (including ``logs/``, ``media/``, and ``static/``)
+  is writable by the Apache process user.
+* The ``run/SECRET.key`` file should be readable only by the Apache process user.
+* Consider using ``mod_wsgi``'s ``WSGIApplicationGroup %{GLOBAL}`` directive if
+  you run multiple Django applications on the same server.
 
 Source
 ------
@@ -75,4 +68,3 @@ Source
 .. literalinclude:: ../../configs/apache2_vhost.sample
     :language: apache
     :linenos:
-

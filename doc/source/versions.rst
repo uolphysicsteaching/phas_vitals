@@ -1,41 +1,25 @@
 .. _label-versions:
 
-Versions
-========
-``development``
-    suitable for Django version: **1.11, 2.0, 2.1, 2.2**::
+Changelog
+=========
 
-    $ django-admin startproject --template=https://github.com/Mischback/django-project-skeleton/archive/development.zip [projectname]
+1.0 (2024/25)
+-------------
 
-``1.4, master``
-    suitable for Django version: **1.11, 2.0, 2.1, 2.2**::
+Initial release supporting the 2024/25 Physics and Astronomy Programmes at the
+University of Leeds.
 
-    $ django-admin startproject --template=https://github.com/Mischback/django-project-skeleton/archive/1.4.zip [projectname]
-
-
-``1.3``
-    suitable for Django version: **1.9, 1.10, 1.11, 2.0**::
-
-    $ django-admin startproject --template=https://github.com/Mischback/django-project-skeleton/archive/1.3.zip [projectname]
-
-
-``1.2``
-    suitable for Django version: **1.11**::
-
-    $ django-admin startproject --template=https://github.com/Mischback/django-project-skeleton/archive/1.2.zip [projectname]
-
-
-``1.1``
-    suitable for Django version: **1.8**::
-
-    $ django-admin startproject --template=https://github.com/Mischback/django-project-skeleton/archive/1.1.zip [projectname]
-
-
-``1.0``
-    suitable for Django version: **1.7.4**::
-
-    $ django-admin startproject --template=https://github.com/Mischback/django-project-skeleton/archive/1.0.zip [projectname]
-
-    This is the initial release, development reflects the Django version 1.7.4.
-    Should be suitable for most versions of release 1.7, but please be aware
-    that only 1.7.4 is tested.
+* Custom ``Account`` user model with academic metadata.
+* Minerva (Blackboard Ultra) gradebook CSV import for tests and attempt histories.
+* VITAL (Verifiable Indicators of Threshold Ability and Learning) definitions and
+  automated pass/fail computation.
+* Tutorial group management, attendance recording, and engagement scoring.
+* Excel mark-sheet and performance spreadsheet generation.
+* Baton-themed Django admin with custom navigation menus.
+* HTMX-powered interactive UI components.
+* Django REST Framework API with API-key authentication.
+* Integration with University of Leeds ADFS single sign-on (``django-auth-adfs``).
+* Celery background task processing with ``django-celery-results`` and
+  ``django-celery-beat``.
+* Whitenoise for static file serving.
+* Sitetree-based navigation with group-level access control.
