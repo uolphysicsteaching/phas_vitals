@@ -35,4 +35,5 @@ Contents
     structure
     settings
     apache2_vhost
+    vital_pass_logic
     versions

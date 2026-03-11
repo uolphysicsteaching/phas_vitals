@@ -316,29 +316,48 @@ class VITAL(models.Model):
 
     def check_vital(self, user):
         """Check whether a VITAL has been passed by a user."""
-        # Check if any sufficient tests passed
-        sufficient = self.tests_mappings.filter(sufficient=True)
-        if user.test_results.filter(test__vitals_mappings__in=sufficient.all(), passed=True).count() > 0:
+        TOLERANCE = 0.001
+        all_mappings = list(self.tests_mappings.all())
+
+        # Determine which tests the user has passed or merely attempted for this VITAL.
+        user_passed_test_ids = frozenset(
+            user.test_results.filter(test__vitals_mappings__in=all_mappings, passed=True)
+            .values_list("test_id", flat=True)
+            .distinct()
+        )
+        user_attempted_test_ids = frozenset(
+            user.test_results.filter(test__vitals_mappings__in=all_mappings)
+            .values_list("test_id", flat=True)
+            .distinct()
+        )
+
+        def is_met(mapping):
+            """Return True if the user has satisfied this mapping's condition."""
+            if mapping.condition == "pass":
+                return mapping.test_id in user_passed_test_ids
+            return mapping.test_id in user_attempted_test_ids
+
+        # Step 1: Award the VITAL if any sufficient mapping is met.
+        if any(m.sufficient and is_met(m) for m in all_mappings):
             return self.passed(user)
-        # Check all necessary tests are passed.
-        necessary = self.tests_mappings.filter(necessary=True, condition="pass").distinct()
-        if (
-            necessary.count() > 0
-            and user.test_results.filter(test__vitals_mappings__in=necessary.all(), passed=True).distinct().count()
-            == necessary.count()
-        ):
-            return self.passed(user)
-        necessary = self.tests_mappings.filter(necessary=True, condition="attempt").distinct()
-        needed = necessary.aggregate(needed=models.Sum("required_fractrion"))["needed"]
-        if (
-            necessary.count() > 0
-            and user.test_results.filter(test__vitals_mappings__in=necessary.all()).distinct().count() >= needed
-        ):
-            return self.passed(user)
-        if (
-            user.test_results.filter(test__vitals_mappings__in=self.tests_mappings.all()).count() == 0
-        ):  # No test results
+
+        # No test results at all for this VITAL — return without recording.
+        if not user_attempted_test_ids:
             return False
+
+        # Step 2: Block the award if any necessary mapping is not met.
+        # The condition is that the number of necessary mappings positively met (including the case
+        # where a necessary test has no result at all, which counts as not met) equals the total
+        # number of necessary mappings.
+        necessary_mappings = [m for m in all_mappings if m.necessary]
+        if len(necessary_mappings) > 0 and sum(1 for m in necessary_mappings if is_met(m)) != len(necessary_mappings):
+            return self.passed(user, False)
+
+        # Step 3: Award if the sum of required_fractrion for all met conditions >= 1.0.
+        met_sum = sum(m.required_fractrion for m in all_mappings if is_met(m))
+        if met_sum >= 1.0 - TOLERANCE:
+            return self.passed(user)
+
         return self.passed(user, False)
 
     def __str__(self):

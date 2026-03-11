@@ -295,3 +295,243 @@ class TestVITALAdminActions:
         sample_vital.check_vital(sample_user)
 
         assert not VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+
+    def test_check_vital_sufficient_attempt_condition(self, sample_vital, sample_user, sample_test, sample_module):
+        """Test that check_vital awards VITAL when a sufficient/attempt mapping is merely attempted.
+
+        A mapping with sufficient=True and condition="attempt" should be satisfied by any
+        result (pass or fail), not only by a passing score.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+
+        Examples:
+            >>> mapping = VITAL_Test_Map.objects.create(test=test, vital=vital, sufficient=True, condition="attempt")
+            >>> Test_Score.objects.create(test=test, user=user, passed=False)
+            >>> vital.check_vital(user)
+            >>> assert VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
+        """
+        from minerva.models import Test_Score
+
+        sample_module.students.add(sample_user)
+        VITAL_Test_Map.objects.create(test=sample_test, vital=sample_vital, sufficient=True, condition="attempt")
+
+        # Student attempted but did NOT pass
+        Test_Score.objects.get_or_create(
+            test=sample_test,
+            user=sample_user,
+            defaults={"score": 20.0, "passed": False},
+        )
+
+        sample_vital.check_vital(sample_user)
+
+        assert VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+
+    def test_check_vital_necessary_block_prevents_award(self, sample_vital, sample_user, sample_test, sample_module):
+        """Test that an unmet necessary mapping prevents the VITAL being awarded.
+
+        Even when the student has some results, a necessary condition that is not met must
+        block the award.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+
+        Examples:
+            >>> mapping = VITAL_Test_Map.objects.create(test=test, vital=vital, necessary=True, condition="pass")
+            >>> Test_Score.objects.create(test=test, user=user, passed=False)  # attempted, not passed
+            >>> vital.check_vital(user)
+            >>> assert not VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
+        """
+        from minerva.models import Test_Score
+
+        sample_module.students.add(sample_user)
+        VITAL_Test_Map.objects.create(
+            test=sample_test, vital=sample_vital, necessary=True, sufficient=False, condition="pass"
+        )
+
+        # Student attempted but did NOT pass the necessary test
+        Test_Score.objects.get_or_create(
+            test=sample_test,
+            user=sample_user,
+            defaults={"score": 20.0, "passed": False},
+        )
+
+        sample_vital.check_vital(sample_user)
+
+        assert not VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+
+    def test_check_vital_required_fraction_sum_awards_vital(
+        self, sample_vital, sample_user, sample_test, sample_module, db
+    ):
+        """Test that VITAL is awarded when the sum of required_fractrion for met conditions reaches 1.0.
+
+        Two mappings each with required_fractrion=0.5 should together satisfy the threshold
+        when both are met.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+            db: The pytest database fixture.
+
+        Examples:
+            >>> mapping1 = VITAL_Test_Map.objects.create(..., required_fractrion=0.5)
+            >>> mapping2 = VITAL_Test_Map.objects.create(..., required_fractrion=0.5)
+            >>> # pass both tests
+            >>> vital.check_vital(user)
+            >>> assert VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
+        """
+        from django.utils import timezone as tz
+
+        from minerva.models import Test, Test_Score
+
+        sample_module.students.add(sample_user)
+
+        test2, _ = Test.objects.get_or_create(
+            name="Sample Test 2",
+            module=sample_module,
+            defaults={
+                "test_id": "sample-test-id-2",
+                "description": "A second test",
+                "passing_score": 50.0,
+                "score_possible": 100.0,
+                "release_date": tz.now(),
+                "grading_due": tz.now() + tz.timedelta(days=7),
+                "recommended_date": tz.now() + tz.timedelta(days=5),
+            },
+        )
+
+        VITAL_Test_Map.objects.create(
+            test=sample_test, vital=sample_vital, sufficient=False, necessary=False, required_fractrion=0.5
+        )
+        VITAL_Test_Map.objects.create(
+            test=test2, vital=sample_vital, sufficient=False, necessary=False, required_fractrion=0.5
+        )
+
+        # Student passes both tests
+        Test_Score.objects.get_or_create(test=sample_test, user=sample_user, defaults={"score": 80.0, "passed": True})
+        Test_Score.objects.get_or_create(test=test2, user=sample_user, defaults={"score": 80.0, "passed": True})
+
+        sample_vital.check_vital(sample_user)
+
+        assert VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+
+    def test_check_vital_required_fraction_partial_does_not_award(
+        self, sample_vital, sample_user, sample_test, sample_module, db
+    ):
+        """Test that VITAL is NOT awarded when the required_fractrion sum falls below 1.0.
+
+        Two mappings each with required_fractrion=0.5 where only one is met should not
+        satisfy the threshold.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+            db: The pytest database fixture.
+
+        Examples:
+            >>> mapping1 = VITAL_Test_Map.objects.create(..., required_fractrion=0.5)
+            >>> mapping2 = VITAL_Test_Map.objects.create(..., required_fractrion=0.5)
+            >>> # pass only one test
+            >>> vital.check_vital(user)
+            >>> assert not VITAL_Result.objects.filter(vital=vital, user=user, passed=True).exists()
+        """
+        from django.utils import timezone as tz
+
+        from minerva.models import Test, Test_Score
+
+        sample_module.students.add(sample_user)
+
+        test2, _ = Test.objects.get_or_create(
+            name="Sample Test 3",
+            module=sample_module,
+            defaults={
+                "test_id": "sample-test-id-3",
+                "description": "A third test",
+                "passing_score": 50.0,
+                "score_possible": 100.0,
+                "release_date": tz.now(),
+                "grading_due": tz.now() + tz.timedelta(days=7),
+                "recommended_date": tz.now() + tz.timedelta(days=5),
+            },
+        )
+
+        VITAL_Test_Map.objects.create(
+            test=sample_test, vital=sample_vital, sufficient=False, necessary=False, required_fractrion=0.5
+        )
+        VITAL_Test_Map.objects.create(
+            test=test2, vital=sample_vital, sufficient=False, necessary=False, required_fractrion=0.5
+        )
+
+        # Student passes only the first test
+        Test_Score.objects.get_or_create(test=sample_test, user=sample_user, defaults={"score": 80.0, "passed": True})
+
+        sample_vital.check_vital(sample_user)
+
+        assert not VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+
+    def test_check_vital_necessary_no_result_blocks_award(
+        self, sample_vital, sample_user, sample_test, sample_module, db
+    ):
+        """Test that a necessary test with no result at all counts as not met and blocks the award.
+
+        A student may have results for non-necessary VITAL tests but have never attempted the
+        necessary test.  The necessary test having no result must be treated as "not positively
+        passed", so the VITAL should be recorded as not passed rather than simply returning False.
+
+        Args:
+            sample_vital (VITAL): A test VITAL instance.
+            sample_user (Account): A test user instance.
+            sample_test (Test): A test Test instance.
+            sample_module (Module): A test module instance.
+            db: The pytest database fixture.
+        """
+        from django.utils import timezone as tz
+
+        from minerva.models import Test, Test_Score
+
+        sample_module.students.add(sample_user)
+
+        # A second test that is non-necessary; the student will have a result for this one.
+        non_necessary_test, _ = Test.objects.get_or_create(
+            name="Sample Test 4",
+            module=sample_module,
+            defaults={
+                "test_id": "sample-test-id-4",
+                "description": "A non-necessary test",
+                "passing_score": 50.0,
+                "score_possible": 100.0,
+                "release_date": tz.now(),
+                "grading_due": tz.now() + tz.timedelta(days=7),
+                "recommended_date": tz.now() + tz.timedelta(days=5),
+            },
+        )
+
+        # sample_test is necessary; non_necessary_test is not.
+        VITAL_Test_Map.objects.create(
+            test=sample_test, vital=sample_vital, necessary=True, sufficient=False, condition="pass"
+        )
+        VITAL_Test_Map.objects.create(
+            test=non_necessary_test, vital=sample_vital, necessary=False, sufficient=False, required_fractrion=0.5
+        )
+
+        # Student passes the non-necessary test only — no result at all for the necessary test.
+        Test_Score.objects.get_or_create(
+            test=non_necessary_test, user=sample_user, defaults={"score": 80.0, "passed": True}
+        )
+
+        sample_vital.check_vital(sample_user)
+
+        # The necessary test was never attempted, so it counts as not met: VITAL must not be awarded.
+        assert not VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=True).exists()
+        # A result should still be recorded (as not passed) because the student has engaged with the VITAL.
+        assert VITAL_Result.objects.filter(vital=sample_vital, user=sample_user, passed=False).exists()
