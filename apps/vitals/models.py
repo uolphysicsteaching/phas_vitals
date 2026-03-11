@@ -38,6 +38,10 @@ def test_qs_to_html(queryset):
 class VITAL_Test_Map(models.Model):
     """The object that provides the mapping between minerva.Tests and vitals.VITAL."""
 
+    class Meta:
+        verbose_name = "Award of VITAL Condition"
+        verbose_name_plural = "Award of VITAL Conditions"
+
     PASS_OPTIONS = [("pass", "Pass the test"), ("attempt", "Attempt the test")]
 
     test = models.ForeignKey("minerva.Test", on_delete=models.CASCADE, to_field="id", related_name="vitals_mappings")
