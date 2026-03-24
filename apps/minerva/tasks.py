@@ -59,6 +59,7 @@ def import_gradebook():
     imported_modules = []
     bad_modules = []
     for module in Module.objects.select_related("year", "school").all():
+
         logger.debug(f"Attempting to import {module.key}")
         if not module.data_ready:
             logger.debug(f"Module {module.key} data not ready or not being recorded.")
@@ -76,13 +77,19 @@ def import_gradebook():
             bad_modules.append(f"Issues processing json for {module=} - {format_exc()}")
             logger.debug(bad_modules[-1])
 
-    logger.debug("Updated constance.config")
     update_all_users.delay()
     if bad_modules:
         return bad_modules
     logger.debug("Updated constance.config")
-    config.LAST_MINERVA_UPDATE = module.json_updated
-
+    for module in Module.objects.select_related("year", "school").all():
+        try:
+            config.LAST_MINERVA_UPDATE = module.json_updated
+            logger.debug("Updated constance.config")
+            break
+        except:
+            pass
+    else:
+        logger.debug("Failed to updated constance.config")
     return imported_modules
 
 

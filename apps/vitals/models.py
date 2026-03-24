@@ -75,8 +75,8 @@ class VITAL_Test_Map(models.Model):
                 f" {dict(self.PASS_OPTIONS)[self.condition]} {self.test.name} is necessary to pass {self.vital.name}"
             )
         return (
-            " {dict(self.PASS_OPTIONS)[self.condition]} {self.test.name} controbutes"
-            + " {self.requiredd_fraction*100:.0f}% to passing {self.vital.name}"
+            f" {dict(self.PASS_OPTIONS)[self.condition]} {self.test.name} controbutes"
+            + f" {self.required_fractrion*100:.0f}% to passing {self.vital.name}"
         )
 
 
@@ -610,7 +610,7 @@ def required_tests(self):
     data.columns = data.loc["VITAL"]
     data = data.drop("VITAL")
     tests = []
-    while True:
+    while True and data.sum(axis=1).size > 0:
         best_test = data.index[data.sum(axis=1).argmax()]
         if data.loc[best_test].sum() == 0:
             break

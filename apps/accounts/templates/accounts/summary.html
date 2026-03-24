@@ -62,7 +62,10 @@
 {% load django_bootstrap5 %}
 }
 {% block content %}
-    <p>Minerva data last updated: {{ config.LAST_MINERVA_UPDATE|date:"r"}}</p>
+    <div class="row">
+        <div class="col-md-6">Minerva data last updated: {{ config.LAST_MINERVA_UPDATE|date:"r"}}</div>
+        <div class="col-md-6">User last accessed site: {{ user.last_login|date:"r"}}</div>
+    </div>
     <div class="col-sm-12">
         <div class="row text-sm-center fs-2" style="background-color: {{ user.activity_colour }}; display: block; width:100%; color: {{ user.activity_colour|comp_colour }};">
             <span>{{ user.friendly_name }} ({{ user.SID }})</span>

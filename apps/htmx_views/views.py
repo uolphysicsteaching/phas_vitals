@@ -130,8 +130,8 @@ class HTMXProcessMixin:
         for elem in self.htmx_elements():
             if (
                 handler := getattr(self, f"get_context_object_name{elem}", False)
-                and callabel(handler)
-                and callabel(handler)
+                and callable(handler)
+                and callable(handler)
             ):
                 with temp_attr(self, "_htmx_get_context_object_name", True):
                     return handler(object_list)
@@ -341,7 +341,7 @@ class _LocalUserPassesTest:
             # Django imports
             from django.contrib.auth.views import redirect_to_login
 
-            return redirect_to_login(self.request.get_full_path(), self.login_url(), self.redirect_field_name())
+            return redirect_to_login(self.request.get_full_path(), self.login_url, self.redirect_field_name())
         return super().dispatch(request, *args, **kwargs)
 
 

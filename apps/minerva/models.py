@@ -103,6 +103,46 @@ def vital_qs_to_html(queryset, user):
     return format_html(ret)
 
 
+def match_column_to_test(column, module):
+    """Match a GradebookColumn to a test if possible."""
+    if column.category is None:  # No category on column, so can't be assigned to a test automatically.
+        return False
+    if column.gradebook_id not in module.column_data:
+        return False
+    # First try to match column to existing Test
+    search = column.category.search
+    # Django's ORM doesn't support named groups, so rewrite regex to remove them.
+    # Firsttry to locate an ID int he name:
+    match = re.search(search, column.name)
+    if not match or "name" not in match.groupdict():  # can't go further
+        return False
+
+    if not column.test:
+        test_id = match.groupdict().get("id", match.groupdict().get("name"))
+
+        # Get or create the test with the correct module and test_id
+        try:
+            test = Test.objects.get(test_id=test_id, module=module)
+            test.category = column.category
+            test.name = match.groupdict().get("name")
+        except Test.DoesNotExist:
+            try:
+                name = match.groupdict().get("name")
+                test = Test.objects.get(name=name, module=module)
+                test.category = column.category
+            except Test.DoesNotExist:
+                test = Test(
+                    module=module,
+                    test_id=test_id,
+                    name=match.groupdict().get("name"),
+                    category=column.category,
+                )
+        test.save()
+    else:
+        test = column.test
+    return test
+
+
 class ModuleManager(models.Manager):
     """Add extra calculated attributes to the queryset."""
 
@@ -943,42 +983,16 @@ class Test(models.Model):
         else:
             columns = [column]
         for column in columns:
-            if column.category is None:  # No category on column, so can't be assigned to a test automatically.
-                continue
-            if (dictionary := column_data.get(column.gradebook_id)) is None:  # No JSON column
-                continue
-            # First try to match column to existing Test
-            search = column.category.search
-            # Django's ORM doesn't support named groups, so rewrite regex to remove them.
-            # Firsttry to locate an ID int he name:
-            match = re.search(search, column.name)
-            if not match or "name" not in match.groupdict():  # can't go further
-                continue
-
-            if not column.test:
-                test_id = match.groupdict().get("id", match.groupdict().get("name"))
-
-                # Get or create the test with the correct module and test_id
-                try:
-                    test = Test.objects.get(test_id=test_id, module=module)
-                    test.category = column.category
-                    test.name = match.groupdict().get("name")
-                except Test.DoesNotExist:
-                    try:
-                        name = match.groupdict().get("name")
-                        test = Test.objects.get(name=name, module=module)
-                        test.category = column.category
-                    except Test.DoesNotExist:
-                        test = Test(
-                            module=module,
-                            test_id=test_id,
-                            name=match.groupdict().get("name"),
-                            category=column.category,
-                        )
-                test.save()
-            else:
-                test = column.test
-
+            test = match_column_to_test(column, module)
+            match test:
+                case False:
+                    continue
+                case Test():
+                    dictionary = column_data.get(column.gradebook_id)
+                    column.test = test
+                    column.save()
+                case _:
+                    raise TypeError(f"Got a {type(test)} {test} instead of a Test object.")
             if test and not test.locked:  # We found, or created a test, so update test properties
                 test.grading_attemptsAllowed = dictionary.get("grading", {}).get("attemptsAllowed", None)
                 test.score_possible = dictionary.get("score", {}).get("possible", None)
@@ -994,8 +1008,6 @@ class Test(models.Model):
                 else:
                     print(f"No modified date for {test} {dictionary.get("modified",None)}")
                 test.save()
-                column.test = test
-                column.save()
 
     def remove_columns_not_in_json(self, remove_column=True):
         """Check to see whether all the columns for a test are in the json or not."""
