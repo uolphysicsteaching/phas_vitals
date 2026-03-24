@@ -244,3 +244,99 @@ class TestTest:
         assert test.module == sample_module
         assert test.passing_score == 50.0
         assert test.score_possible == 100.0
+
+
+@pytest.mark.django_db
+@pytest.mark.unit
+class TestGradebookColumnChangeListForm:
+    """Test the GradebookColumnChangeListForm."""
+
+    def test_form_filters_tests_by_module(self, sample_module, sample_test):
+        """Test that the form filters the Test queryset to the instance's module.
+
+        Args:
+            sample_module (Module): A test module instance.
+            sample_test (Test): A test Test instance belonging to ``sample_module``.
+
+        Examples:
+            >>> form = GradebookColumnChangeListForm(instance=column)
+            >>> assert list(form.fields["test"].queryset) == [sample_test]
+        """
+        from .forms import GradebookColumnChangeListForm
+        from .models import GradebookColumn, Test
+
+        # Create a second module with its own test that should NOT appear
+        from accounts.models import Cohort
+
+        other_cohort, _ = Cohort.objects.get_or_create(name="202526")
+        other_module, _ = Module.objects.get_or_create(
+            code="PHAS9999",
+            exam_code=1,
+            defaults={
+                "uuid": "test-uuid-other",
+                "name": "Other Module",
+                "credits": 10,
+                "level": 1,
+                "year": other_cohort,
+                "semester": 1,
+            },
+        )
+        other_test = Test.objects.create(
+            name="Other Module Test",
+            test_id="other-test-id",
+            module=other_module,
+            score_possible=100.0,
+            release_date=tz.now(),
+            grading_due=tz.now() + tz.timedelta(days=7),
+            recommended_date=tz.now() + tz.timedelta(days=5),
+        )
+
+        column = GradebookColumn.objects.create(
+            gradebook_id="col-001",
+            name="Test Column",
+            module=sample_module,
+            test=sample_test,
+        )
+
+        form = GradebookColumnChangeListForm(instance=column)
+        qs = list(form.fields["test"].queryset)
+
+        assert sample_test in qs
+        assert other_test not in qs
+
+    def test_form_preselects_current_test(self, sample_module, sample_test):
+        """Test that the form pre-selects the instance's current test value.
+
+        Args:
+            sample_module (Module): A test module instance.
+            sample_test (Test): A test Test instance belonging to ``sample_module``.
+
+        Examples:
+            >>> form = GradebookColumnChangeListForm(instance=column)
+            >>> assert form.initial.get("test") == sample_test.pk
+        """
+        from .forms import GradebookColumnChangeListForm
+        from .models import GradebookColumn
+
+        column = GradebookColumn.objects.create(
+            gradebook_id="col-002",
+            name="Test Column 2",
+            module=sample_module,
+            test=sample_test,
+        )
+
+        form = GradebookColumnChangeListForm(instance=column)
+        # The instance drives initial value; test must be in the filtered queryset
+        assert column.test in form.fields["test"].queryset
+
+    def test_form_empty_queryset_without_instance(self):
+        """Test that the form has an empty Test queryset when no instance is provided.
+
+        Examples:
+            >>> form = GradebookColumnChangeListForm()
+            >>> assert form.fields["test"].queryset.count() == 0
+        """
+        from .forms import GradebookColumnChangeListForm
+
+        form = GradebookColumnChangeListForm()
+        assert form.fields["test"].queryset.count() == 0

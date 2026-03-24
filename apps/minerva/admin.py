@@ -21,7 +21,7 @@ from tinymce.widgets import TinyMCE
 from util.admin import add_inlines
 
 # app imports
-from .forms import GradebookColumnForm, Test_ScoreForm
+from .forms import GradebookColumnChangeListForm, GradebookColumnForm, Test_ScoreForm
 from .models import (
     GradebookColumn,
     Module,
@@ -477,6 +477,23 @@ class GradebookColumnAdmin(ImportExportModelAdmin):
     ]
     list_editable = ["test", "priority"]
     list_select_related = ("module", "test", "category")
+
+    def get_changelist_form(self, request, **kwargs):
+        """Return a form for the changelist with module-filtered Test choices.
+
+        Args:
+            request (HttpRequest):
+                The current HTTP request.
+
+        Keyword Parameters:
+            **kwargs: Additional keyword arguments (unused).
+
+        Returns:
+            (GradebookColumnChangeListForm):
+                The form class that limits the ``test`` dropdown to tests belonging
+                to the same module as each row's :class:`GradebookColumn` instance.
+        """
+        return GradebookColumnChangeListForm
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
