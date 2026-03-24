@@ -176,6 +176,8 @@ class ProgrammeAdmin(ImportExportModelAdmin):
 class CohortAdmin(ImportExportModelAdmin):
     """Minimal Cohort Admin Interface."""
 
+    search_fields = ["name"]
+
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
         return CohortResource
@@ -188,6 +190,8 @@ class CohortAdmin(ImportExportModelAdmin):
 @register(School)
 class SchoolAdmin(ImportExportModelAdmin):
     """Minimal School Admin Interface."""
+
+    search_fields = ["name", "code"]
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
