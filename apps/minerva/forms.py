@@ -13,7 +13,7 @@ from util.forms import get_mime
 
 # app imports
 from . import lookups  # NoQA force early import of lookups
-from .models import GradebookColumn, Module, Test_Score, TestCategory
+from .models import GradebookColumn, Module, Test, Test_Score, TestCategory
 
 
 class TestImportForm(forms.Form):
@@ -226,3 +226,45 @@ class GradebookColumnForm(forms.ModelForm):
 
         model = GradebookColumn
         fields = "__all__"
+
+
+class GradebookColumnChangeListForm(forms.ModelForm):
+    """Form for the GradebookColumn changelist that filters Test choices by the row's Module.
+
+    In the admin changelist view, the ``module`` field is not editable, so the
+    ``ChainedForeignKey`` widget used by :class:`GradebookColumnForm` cannot determine
+    which tests to display.  This form replaces the ``test`` field with a plain
+    :class:`~django.forms.ModelChoiceField` whose queryset is limited to tests that
+    belong to the same module as the current :class:`GradebookColumn` instance, and
+    pre-selects the current value.
+
+    Attributes:
+        test (ModelChoiceField): Override of the ``ChainedForeignKey`` field that uses a
+            simple select widget filtered to the instance's module.
+    """
+
+    test = forms.ModelChoiceField(
+        queryset=Test.objects.none(),
+        required=False,
+    )
+
+    class Meta:
+        """Form metadata for GradebookColumn changelist."""
+
+        model = GradebookColumn
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        """Initialise form, filtering the Test queryset to the instance's module.
+
+        Args:
+            *args: Positional arguments forwarded to :class:`~django.forms.ModelForm`.
+
+        Keyword Parameters:
+            **kwargs: Keyword arguments forwarded to :class:`~django.forms.ModelForm`.
+        """
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and self.instance.module_id:
+            self.fields["test"].queryset = Test.objects.filter(
+                module_id=self.instance.module_id
+            ).order_by("name")
