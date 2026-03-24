@@ -149,11 +149,16 @@ class Test_AttemptInline(admin.StackedInline):
     )
 
 
-class ModuleEnrollmentInline(admin.StackedInline):
+class ModuleEnrollmentInline(admin.TabularInline):
     """Inline admin for module enrollments."""
 
     model = ModuleEnrollment
     extra = 0
+    autocomplete_fields = ("student",)
+
+    def get_queryset(self, request):
+        """Return an optimised queryset with select_related to avoid N+1 queries."""
+        return super().get_queryset(request).select_related("student", "status")
 
 
 class TestCategoryInline(admin.StackedInline):
@@ -182,6 +187,7 @@ class ModuleAdmin(ImportExportModelAdmin):
     list_filter = list_display
     search_fields = ["name", "description", "module__year"]
     list_select_related = ("year",)
+    autocomplete_fields = ("year", "school", "module_leader", "team_members", "parent_module", "updater")
     inlines = [
         ModuleEnrollmentInline,
     ]
