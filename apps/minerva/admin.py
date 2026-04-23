@@ -7,6 +7,7 @@ import logging
 from django.contrib import admin, messages
 from django.contrib.flatpages.admin import FlatPageAdmin
 from django.contrib.flatpages.models import FlatPage
+from django.db.models import F, Prefetch, Q
 from django.http import HttpResponse
 from django.urls import reverse
 
@@ -21,7 +22,11 @@ from tinymce.widgets import TinyMCE
 from util.admin import add_inlines
 
 # app imports
-from .forms import GradebookColumnChangeListForm, GradebookColumnForm, Test_ScoreForm
+from .forms import (
+    GradebookColumnChangeListForm,
+    GradebookColumnForm,
+    Test_ScoreForm,
+)
 from .models import (
     GradebookColumn,
     Module,
@@ -405,7 +410,7 @@ class TestAdmin(ImportExportModelAdmin):
             },
         ),
     )
-    actions = ["update_dates", "clear_test_results"]
+    actions = ["update_dates", "clear_test_results", "update_test_results"]
 
     @admin.action(description="Update dates for current cohort.")
     def update_dates(self, request, queryset):
@@ -421,6 +426,27 @@ class TestAdmin(ImportExportModelAdmin):
             except ValueError:
                 pass
         self.message_user(request, f"Updated dates for {updated} test(s).", messages.SUCCESS)
+
+    @admin.action(description="Update test results from json.")
+    def update_test_results(self, request, queryset):
+        """Update the test results for this tests.
+
+        Notes:
+            This should then be followed with a call to update the users records to award VITALs etc.
+        """
+
+        tests_qs = queryset.prefetch_related(
+            Prefetch(
+                "columns",
+                queryset=GradebookColumn.objects.order_by("priority"),
+                to_attr="_ordered_columns",
+            )
+        )
+        for test in tests_qs:
+            test.grades_from_columns(columns=test._ordered_columns)
+            test.attempts_from_columns(columns=test._ordered_columns)
+            self.message_user(request, f"Updated test results for {test.name}", messages.SUCCESS)
+        self.message_user(request, "Run update all users background task to update VITALs now", messages.SUCCESS)
 
     @admin.action(description="Clear test results.")
     def clear_test_results(self, request, queryset):

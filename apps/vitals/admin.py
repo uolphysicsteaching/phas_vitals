@@ -201,9 +201,9 @@ class VITAL_Test_MapAdmin(ImportExportModelAdmin):
 class VITAL_ResultAdmin(ImportExportModelAdmin):
     """Admin interface for VITAL Results."""
 
-    list_display = ("vital", "user", "passed", "date_passed")
-    list_editable = ("passed",)
-    list_filter = (VITALListFilter, StudentListFilter, "passed", "date_passed")
+    list_display = ("vital", "user", "passed", "date_passed", "locked")
+    list_editable = ("passed", "locked")
+    list_filter = (VITALListFilter, StudentListFilter, "passed", "date_passed", "locked")
     search_fields = ["vital__name", "user__first_name", "user__last_name", "user__username", "vital__module__code"]
     list_select_related = ("vital", "vital__module", "user")
 

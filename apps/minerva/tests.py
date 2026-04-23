@@ -262,11 +262,13 @@ class TestGradebookColumnChangeListForm:
             >>> form = GradebookColumnChangeListForm(instance=column)
             >>> assert list(form.fields["test"].queryset) == [sample_test]
         """
-        from .forms import GradebookColumnChangeListForm
-        from .models import GradebookColumn, Test
-
+        # external imports
         # Create a second module with its own test that should NOT appear
         from accounts.models import Cohort
+
+        # app imports
+        from .forms import GradebookColumnChangeListForm
+        from .models import GradebookColumn, Test
 
         other_cohort, _ = Cohort.objects.get_or_create(name="202526")
         other_module, _ = Module.objects.get_or_create(
@@ -315,6 +317,7 @@ class TestGradebookColumnChangeListForm:
             >>> form = GradebookColumnChangeListForm(instance=column)
             >>> assert form.initial.get("test") == sample_test.pk
         """
+        # app imports
         from .forms import GradebookColumnChangeListForm
         from .models import GradebookColumn
 
@@ -336,6 +339,7 @@ class TestGradebookColumnChangeListForm:
             >>> form = GradebookColumnChangeListForm()
             >>> assert form.fields["test"].queryset.count() == 0
         """
+        # app imports
         from .forms import GradebookColumnChangeListForm
 
         form = GradebookColumnChangeListForm()

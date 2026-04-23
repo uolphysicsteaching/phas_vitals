@@ -641,7 +641,7 @@ class DeactivateStudentView(IsSuperuserViewMixin, MultiFormMixin, TemplateRespon
 class AwardVITALView(IsSuperuserViewMixin, MultiFormMixin, TemplateResponseMixin, ProcessMultipleFormsView):
     """View to locate a student recortd and then edit to set account activity flag."""
 
-    form_classes = {"search": StudentSelectForm, "update": ToggleVITALForm}
+    form_classes = {"search": AllStudentSelectForm, "update": ToggleVITALForm}
     success_urls = {"search": "", "update": ""}
     template_name = "accounts/admin/toggle_vital.html"
     user = None
@@ -662,9 +662,7 @@ class AwardVITALView(IsSuperuserViewMixin, MultiFormMixin, TemplateResponseMixin
 
         self.vital = form.cleaned_data["VITAL"]
         vr, _ = Account.vital_results.field.model.objects.get_or_create(user=self.user, vital=self.vital)
-        if not vr.passed and form.cleaned_data["passed"]:
-            self.user.override_vitals = True
-            self.user.save()
+        vr.locked = True
         vr.passed = form.cleaned_data["passed"]
         vr.save()
 
@@ -680,7 +678,7 @@ class AwardVITALView(IsSuperuserViewMixin, MultiFormMixin, TemplateResponseMixin
             }
         if self.vital:
             vr, _ = Account.vital_results.field.model.objects.get_or_create(user=self.user, vital=self.vital)
-            kwargs.update({"vital": self.vital, "passed": vr.passed})
+            kwargs["data"].update({"vital": self.vital, "passed": vr.passed})
         kwargs["initial"] = kwargs.get("data", {})
         return ToggleVITALForm(**kwargs)
 
@@ -689,4 +687,4 @@ class AwardVITALView(IsSuperuserViewMixin, MultiFormMixin, TemplateResponseMixin
         if self.user:
             kwargs["data"] = {"user": self.user}
             kwargs["initial"] = kwargs["data"]
-        return StudentSelectForm(**kwargs)
+        return AllStudentSelectForm(**kwargs)

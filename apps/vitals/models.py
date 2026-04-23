@@ -120,6 +120,7 @@ class VITAL_Result(models.Model):
     user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="vital_results")
     passed = models.BooleanField(default=False)
     date_passed = models.DateTimeField(blank=True, null=True, verbose_name="Date Achieved")
+    locked = models.BooleanField(default=False, help_text="VITAL has been manaually awarded so should not be deleted")
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["vital", "user"], name="Singleton mapping student and vital")]
@@ -364,6 +365,10 @@ class VITAL(models.Model):
             .values_list("test_id", flat=True)
             .distinct()
         )
+        try:
+            vr = user.VITAL_results(VITAL=self)
+        except VITAL_Result.DoesNotExist:
+            vr = None
 
         def is_met(mapping):
             """Return True if the user has satisfied this mapping's condition."""
@@ -385,12 +390,17 @@ class VITAL(models.Model):
         # number of necessary mappings.
         necessary_mappings = [m for m in all_mappings if m.necessary]
         if len(necessary_mappings) > 0 and sum(1 for m in necessary_mappings if is_met(m)) != len(necessary_mappings):
+            if user.override_vitals or (vr and getattr(vr, "locked", False)):  # Skip if we've locked this user down
+                return False
             return self.passed(user, False)
 
         # Step 3: Award if the sum of required_fractrion for all met conditions >= 1.0.
         met_sum = sum(m.required_fractrion for m in all_mappings if is_met(m))
         if met_sum >= 1.0 - TOLERANCE:
             return self.passed(user)
+
+        if user.override_vitals or (vr and getattr(vr, "locked", False)):  # Skip if we've locked this user down.
+            return False
 
         return self.passed(user, False)
 

@@ -265,6 +265,4 @@ class GradebookColumnChangeListForm(forms.ModelForm):
         """
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk and self.instance.module_id:
-            self.fields["test"].queryset = Test.objects.filter(
-                module_id=self.instance.module_id
-            ).order_by("name")
+            self.fields["test"].queryset = Test.objects.filter(module_id=self.instance.module_id).order_by("name")
