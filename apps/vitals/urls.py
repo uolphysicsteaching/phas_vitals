@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """URL mapping for minerva app."""
+
 # Python imports
 from os.path import basename, dirname
 
@@ -15,4 +16,5 @@ urlpatterns = [
     path("vitals_view/", views.ShowVitralResultsView.as_view()),
     path("detail/<pk>/", views.VitalDetailView.as_view()),
     path("VITALlookup/", views.VITALAutocomplete.as_view(), name="VITAL_lookup"),
+    path("module_cdf/", views.VITALsCDFPlotView.as_view(), name="module_cdf"),
 ]

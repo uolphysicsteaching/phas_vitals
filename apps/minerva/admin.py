@@ -47,6 +47,7 @@ from .resource import (
     TestCategoryResource,
     TestResource,
 )
+from .tasks import rebuild_one_test
 
 # Register your models here.
 logger = logging.getLogger("celery_tasks")
@@ -310,9 +311,14 @@ class ModuleAdmin(ImportExportModelAdmin):
             queryset: The queryset of selected modules.
         """
         count = queryset.count()
+        done = []
         for module in queryset.all():
-            module.update_from_json(tests=True, grades=True, columns=True, categories=True, enrollments=True)
-        self.message_user(request, f"Fully updated {count} module(s).", messages.SUCCESS)
+            import_one_module.delay(module.pk)
+            done.append(str(module))
+        self.message_user(request, f"Requested full update for {','.join(done)}.", messages.SUCCESS)
+        self.message_user(
+            request, "Once jobs have run, run the Update All Users Task to rebuild VITALs", messages.SUCCESS
+        )
 
     @admin.action(description="Generate Tests-VITAL mapping for module")
     def mapping_export(self, request, queryset):
@@ -443,9 +449,8 @@ class TestAdmin(ImportExportModelAdmin):
             )
         )
         for test in tests_qs:
-            test.grades_from_columns(columns=test._ordered_columns)
-            test.attempts_from_columns(columns=test._ordered_columns)
-            self.message_user(request, f"Updated test results for {test.name}", messages.SUCCESS)
+            rebuild_one_test.delay(test.pk)
+            self.message_user(request, f"Update test results for {test.name} requested", messages.SUCCESS)
         self.message_user(request, "Run update all users background task to update VITALs now", messages.SUCCESS)
 
     @admin.action(description="Clear test results.")

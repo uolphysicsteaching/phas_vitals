@@ -7,6 +7,7 @@ from functools import partial
 from traceback import format_exc
 
 # Django imports
+from django.db.models import F, Prefetch, Q
 from django.utils import timezone as tz
 
 # external imports
@@ -24,7 +25,7 @@ from phas_vitals import celery_app
 
 # app imports
 from . import json
-from .models import GradebookColumn, SummaryScore, TestCategory
+from .models import GradebookColumn, SummaryScore, Test, TestCategory
 
 logger = logging.getLogger("celery_tasks")
 
@@ -53,7 +54,7 @@ def import_module_list():
 
 @shared_task
 def import_gradebook():
-    """Import a spreadsheet of the full Minerva gradebook download."""
+    """Update the module marks and VITALs from json for all modules."""
     logger.debug("Running gradebook import")
     # Really do stuff
     imported_modules = []
@@ -91,6 +92,53 @@ def import_gradebook():
     else:
         logger.debug("Failed to updated constance.config")
     return imported_modules
+
+
+@shared_task
+def import_one_module(module_pk):
+    """Update a single module from JSON."""
+    logger.debug("Running gradebook import")
+    # Really do stuff
+    imported_modules = []
+    bad_modules = []
+    module = Module.objects.select_related("year", "school").get(pk=module_pk)
+
+    logger.debug(f"Attempting to import {module.key}")
+    if not module.data_ready:
+        logger.debug(f"Module {module.key} data not ready or not being recorded.")
+        return False
+    try:
+        if module.update_from_json(categories=True, tests=True, enrollments=True, columns=True, grades=True) is None:
+            logger.info(f"Failed import for {module.name}")
+        else:
+            imported_modules.append(module.key)
+            logger.debug(f"Imported {module.key} {module.json_updated}")
+    except Exception as error:
+        bad_modules.append(f"Issues processing json for {module=} - {format_exc()}")
+        logger.debug(bad_modules[-1])
+
+    if bad_modules:
+        return bad_modules
+    return imported_modules
+
+
+@shared_task()
+def rebuild_one_test(test_pk):
+    """Rebuild the results and VITALs for one test."""
+    test = (
+        Test.objects.filter(pk=test_pk)
+        .prefetch_related(
+            Prefetch(
+                "columns",
+                queryset=GradebookColumn.objects.order_by("priority"),
+                to_attr="_ordered_columns",
+            )
+        )
+        .first()
+    )
+    test.grades_from_columns(columns=test._ordered_columns)
+    test.attempts_from_columns(columns=test._ordered_columns)
+    return f"Updated test results for {test.name}"
 
 
 @shared_task()

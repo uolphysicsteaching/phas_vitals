@@ -77,7 +77,11 @@ class GradebookImport(IsStaffViewMixin, SessionWizardView):
         date_guess = self._find_column(force_cols, "attempt")
 
         step = "columns"
-        form_class = deepcopy(ColumnAssignmentForm)
+
+        class ColumnAssignmentForm(forms.Form):
+            """A container form to use with formsetfactory to set up column assignments."""
+
+        form_class = ColumnAssignmentForm
         kwargs = self.get_form_kwargs(step)
         kwargs.update(
             {

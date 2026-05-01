@@ -366,7 +366,7 @@ class VITAL(models.Model):
             .distinct()
         )
         try:
-            vr = user.VITAL_results(VITAL=self)
+            vr = user.vital_results.get(vital=self)
         except VITAL_Result.DoesNotExist:
             vr = None
 

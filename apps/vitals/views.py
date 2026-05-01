@@ -10,6 +10,7 @@ from django.utils.html import format_html
 from django.views.generic import DetailView, FormView
 
 # external imports
+import numpy as np
 from accounts.models import Account
 from accounts.views import StudentSummaryView
 from dal import autocomplete
@@ -18,8 +19,11 @@ from django_tables2.columns import Column
 from django_tables2.paginators import LazyPaginator
 from htmx_views.views import HTMXProcessMixin
 from matplotlib import pyplot as plt
-from minerva.forms import VITALsModuleSelectForm as ModuleSelectForm
-from minerva.models import ModuleEnrollment
+from minerva.forms import (
+    AssessmentModuleSelectForm,
+    VITALsModuleSelectForm as ModuleSelectForm,
+)
+from minerva.models import ModuleEnrollment, SummaryScore
 from util.http import svg_data
 from util.tables import BaseTable
 from util.views import (
@@ -321,3 +325,51 @@ class VITALAutocomplete(autocomplete.Select2QuerySetView):
         if self.q:
             qs = qs.filter(Q(name__icontains=self.q) | Q(VITAL_ID__icontains=self.q)).order_by("VITAL_ID")
         return qs
+
+
+class VITALsCDFPlotView(IsStaffViewMixin, FormView):
+    """Make a CDF plot of the VITALs status for a module."""
+
+    form_class = AssessmentModuleSelectForm
+    template_name = "vitals/module_cdf.html"
+
+    def form_valid(self, form):
+        """Update self.module with the module selected in the form."""
+        self.module = form.cleaned_data["module"]
+        if self.module is not None:
+            self.category = self.module.categories.filter(text="VITALs").first()
+            self.scores = SummaryScore.objects.filter(category=self.category, student__is_active=True).values_list(
+                "score", flat=True
+            )
+        else:
+            self.scores = None
+        return self.render_to_response(self.get_context_data())
+
+    def get_context_data(self, **kwargs):
+        """Get the cohort into context from the slug."""
+        context = super().get_context_data(**kwargs)
+        context["module"] = getattr(self, "module", None)
+        context["category"] = getattr(self, "category", None)
+        if getattr(self, "scores", None):
+            context["plot"] = self._make_plot()
+        return context
+
+    def _prepare_plot(self):
+        """Get aset of axes ready for plotting."""
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        return fig, ax
+
+    def _make_plot(self):
+        """Make a cumulative distribution plot."""
+        figure, ax = self._prepare_plot()
+        entries = np.array(self.scores).ravel()
+        x = np.linspace(0, 101, 102)
+        if len(entries) > 4:  # Insufficient entries to compute a cdf
+            y = np.array([100 * len(entries[entries >= ix]) / len(entries) for ix in x])
+            plt.step(x, y, linewidth=2, label="VITALs")
+        ax.legend(fontsize="small", loc="upper right")
+        ax.set_xlabel("Student VITAL completion %")
+        ax.set_ylabel("% students getting this mark or better")
+        ax.set_title("VILTALs Completion  Cumulative Distribution")
+        return ImageData(svg_data(figure, base64=True), alt=f"Summary pass/fail for all {self.category.text}")
