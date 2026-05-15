@@ -368,6 +368,15 @@ class VITALsCDFPlotView(IsStaffViewMixin, FormView):
         if len(entries) > 4:  # Insufficient entries to compute a cdf
             y = np.array([100 * len(entries[entries >= ix]) / len(entries) for ix in x])
             plt.step(x, y, linewidth=2, label="VITALs")
+            perfect = y[x < 100].min()
+            plt.hlines(perfect, 0, 100, "green")
+            plt.text(0, perfect + (-5 if perfect > 50 else 5), f"{perfect:.1f}%")
+            good = y[x < 90].min()
+            plt.hlines(good, 0, 100, "orange")
+            plt.text(0, good + (-5 if good > 50 else 5), f"{good:.1f}%")
+
+            plt.xlim(0, 105)
+
         ax.legend(fontsize="small", loc="upper right")
         ax.set_xlabel("Student VITAL completion %")
         ax.set_ylabel("% students getting this mark or better")

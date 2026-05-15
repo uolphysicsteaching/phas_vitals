@@ -1204,6 +1204,7 @@ class GradebookColumn(models.Model):
                 attempt.modified = pytz.utc.localize(data.get("modified", datetime.now()))
                 attempt.override = "overridden" in data
                 attempt.save()
+                result.save()
 
     @classmethod
     def create_or_update_from_json(cls, module):

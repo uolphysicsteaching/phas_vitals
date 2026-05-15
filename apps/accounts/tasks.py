@@ -26,6 +26,20 @@ from .models import Account
 logger = logging.getLogger("celery_tasks")
 
 
+@shared_task()
+def update_specified_users(accounts):
+    """Rebuild the VITALs for the specified user accounts.
+
+    Find all users with Account.update_vitals==True and:
+        1. For each passed test, check that the associated VITALs are marked passed.
+        2. recalculate the scores for that user.
+        3. save the user record.
+    """
+    logger.debug("Running update all users task")
+    accounts = Account.objects.filter(pk__in=accounts)
+    _update_engine(accounts)
+
+
 @celery_app.task
 def update_all_users():
     """Update all users marked as needing records updated.
@@ -35,19 +49,25 @@ def update_all_users():
         2. recalculate the scores for that user.
         3. save the user record.
     """
-    logger.debug("Running update all users task")
-    TestCategory = apps.get_model("minerva", "testcategory")
-    SummaryScore = apps.get_model("minerva", "summaryscore")
     accounts = (
         Account.objects.prefetch_related("module_enrollments", "summary_scores", "VITALS")
         .annotate(cnt=Count("modules"))
         .filter(cnt__gt=0)
     )
+    logger.debug("Running update all users task")
+    _update_engine(accounts)
+
+
+def _update_engine(accounts):
+    """Do the actual updating of user accounts"""
+    TestCategory = apps.get_model("minerva", "testcategory")
+    SummaryScore = apps.get_model("minerva", "summaryscore")
     VITAL = apps.get_model("vitals", "vital")
 
+    # RFemnove summary scores for categories that we no longer track
     summaries = SummaryScore.objects.filter(student__in=accounts)
     valid_categories = TestCategory.objects.filter(Q(in_dashboard=True) | Q(dashboard_plot=True))
-    drop_summaries = summaries.exclude(category__in=valid_categories).distinct().delete()
+    summaries.exclude(category__in=valid_categories).distinct().delete()
 
     for account in accounts.all():
         vital_list = VITAL.objects.filter(module__in=account.modules.all())

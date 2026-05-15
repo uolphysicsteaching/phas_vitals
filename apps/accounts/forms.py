@@ -7,6 +7,7 @@ from django.forms.widgets import Select
 # external imports
 from dal import autocomplete
 from minerva.models import Module
+from util.forms import MultipleFileField
 
 # app imports
 from .models import Account, Cohort, academic_Q, students_Q
@@ -192,3 +193,11 @@ class ToggleVITALForm(forms.Form):
         queryset=Account.VITALS.field.model.objects.all(), widget=autocomplete.ModelSelect2(url="vitals:VITAL_lookup")
     )
     passed = forms.ChoiceField(choices=[(None, "-"), (False, "No Passed"), (True, "Passed")])
+
+
+class UpdateEnrollmentsForm(forms.Form):
+    """Form for importing Argos report of module registrations."""
+
+    module = forms.ModelChoiceField(Module.objects.all())
+    sub_mode = forms.BooleanField(help_text="Include sub-modules in enrollments.")
+    csv = MultipleFileField()

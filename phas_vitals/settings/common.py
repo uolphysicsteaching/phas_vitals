@@ -7,6 +7,9 @@ import sys
 from importlib import import_module
 from pathlib import Path
 
+# external imports
+from kombu import Queue
+
 # Import some utility functions
 
 # #########################################################
@@ -545,12 +548,20 @@ REST_FRAMEWORK = {
 
 # #### Celery Config settings ##############################
 
-CELERY_TASK_TRACK_STARTED = True
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_RESULT_EXTENDED = True
 CELERY_TASK_DEFAULT_QUEUE = "phas_vitals.default"
-CELERY_TASK_TIME_LIMIT = 3600  # hard limit
+CELERY_TASK_DEFAULT_DELIVERY_MODE = "persistent"
+CELERY_TASK_DEFAULT_EXCHANGE = "phas_vitals.default"
+CELERY_TASK_DEFAULT_ROUTING_KEY = "phas_vitals.default"
+CELERY_TASK_QUEUES = [
+    Queue("phas_vitals.default", durable=True),
+]
 CELERY_TASK_SOFT_TIME_LIMIT = 2400  # soft limit
+CELERY_TASK_TIME_LIMIT = 3600  # hard limit
+CELERY_TASK_TRACK_STARTED = True
+
+
 # ### SITETREE Customisation ##############################
 
 SITETREE_CLS = "util.tree.CustomSiteTree"
