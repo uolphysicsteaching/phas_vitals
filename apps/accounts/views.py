@@ -16,6 +16,7 @@ from django.db.models import FloatField, Min, OuterRef, Q, Subquery
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template import loader
 from django.urls import reverse_lazy
+from django.utils import timezone as tz
 from django.views.generic import FormView, TemplateView
 from django.views.generic.base import TemplateResponseMixin
 
@@ -663,6 +664,9 @@ class AwardVITALView(IsSuperuserViewMixin, MultiFormMixin, TemplateResponseMixin
         self.vital = form.cleaned_data["VITAL"]
         vr, _ = Account.vital_results.field.model.objects.get_or_create(user=self.user, vital=self.vital)
         vr.locked = True
+        vr.locked_by = self.request.user
+        if not vr.date_passed:
+            vr.date_passed = tz.now()
         vr.passed = form.cleaned_data["passed"]
         vr.save()
 

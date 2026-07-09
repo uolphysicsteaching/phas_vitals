@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% load render_table from django_tables2 %}
+{% block title %}{{ block.super }} Complete Marksheet{% endblock title %}
+{% block javascript %}
+    {{ block.super }}
+    {{ form.media }}
+{% endblock %}
+
+{% block content %}
+    <h2>Add VITALs data to a Marksheet.</h2>
+    <p>Upload a partially completeed module marksheets from the marks collation site and this
+        page will add in the VITALs information.</p>
+    <p>If there is only one sheet in the workbook then VITALs will be added to the component
+        columns, and then the students will be found and filled in. Otherwise a sheet called VITALs
+        will be found and used instead.</p>
+
+    <form id="selectform" action="{{ request.url }}" method="post" enctype="multipart/form-data" >
+        {% csrf_token %}
+        {% bootstrap_form form %}
+        <br/>
+        {% bootstrap_button "Upload" button_type="submit" button_class="btn-primary" %}
+    </form>
+
+{% endblock content %}

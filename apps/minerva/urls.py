@@ -19,6 +19,7 @@ urlpatterns = [
     path("test_view/", views.ShowTestResults.as_view()),
     path("test_barchart/", views.TestResultsBarChartView.as_view(), name="test-barchart"),
     path("generate_marksheet/", views.GenerateModuleMarksheetView.as_view()),
+    path("complete_marksheet/", views.CompleteModuleMarksheetView.as_view()),
     path(
         "generate_performance_spreadsheet/",
         views.StudentPerformanceSpreadsheetView.as_view(),

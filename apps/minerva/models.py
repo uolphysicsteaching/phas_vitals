@@ -143,6 +143,16 @@ def match_column_to_test(column, module):
     return test
 
 
+def _max_score(attempts):
+    """Return a maximum value from a queryset of test attempts."""
+    scores = np.array(attempts.values_list("score", flat=True))
+
+    mask = ~np.isreal(scores)  # True for non-numeric entries
+    scores = scores.astype(float)  # convert numeric ones; others become errors later
+    scores[mask] = np.nan
+    return np.nanmax(scores)
+
+
 class ModuleManager(models.Manager):
     """Add extra calculated attributes to the queryset."""
 
@@ -1393,6 +1403,7 @@ class Test_Score(models.Model):
 
     def check_passed(self, orig=None):
         """Check whether the user has passed the test."""
+        self.score = _max_score(self.attempts)
         if (
             self.score is None or np.isnan(self.score) or self.attempts.exclude(status="NeedsGrading").count() == 0
         ):  # Nothing to mark yet
@@ -1460,6 +1471,14 @@ class Test_Attempt(models.Model):
     def __str__(self):
         """Make simple string representation."""
         return f"{self.attempt_id} - for {self.test_entry}"
+
+    def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
+        """Force a save of the parent test_score."""
+        super().save(
+            force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields
+        )  # Save to ensure pk is set
+        if self.test_entry:
+            self.test_entry.save()
 
 
 @patch_model(Account, prep=property)

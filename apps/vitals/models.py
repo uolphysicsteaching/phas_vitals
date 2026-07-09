@@ -121,6 +121,9 @@ class VITAL_Result(models.Model):
     passed = models.BooleanField(default=False)
     date_passed = models.DateTimeField(blank=True, null=True, verbose_name="Date Achieved")
     locked = models.BooleanField(default=False, help_text="VITAL has been manaually awarded so should not be deleted")
+    locked_by = models.ForeignKey(
+        "accounts.Account", on_delete=models.SET_NULL, related_name="overrode_vital_results", null=True, blank=True
+    )
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["vital", "user"], name="Singleton mapping student and vital")]
@@ -244,7 +247,9 @@ class VITAL(models.Model):
     tests = models.ManyToManyField(
         "minerva.Test", related_name="VITALS", through=VITAL_Test_Map, through_fields=("vital", "test")
     )
-    students = models.ManyToManyField("accounts.Account", through=VITAL_Result, related_name="VITALS")
+    students = models.ManyToManyField(
+        "accounts.Account", through=VITAL_Result, through_fields=("vital", "user"), related_name="VITALS"
+    )
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["name", "module"], name="Singleton VITAL name per module")]

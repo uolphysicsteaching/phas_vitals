@@ -66,10 +66,10 @@ class StudentListFilter(SimpleListFilter):
         """
         students = (
             Account.students.filter(groups__name="Student")
-            .order_by("last_name", "first_name")
+            .order_by("year", "last_name", "first_name")
             .values_list("username", "first_name", "last_name")
         )
-        return tuple([(username, f"{first} {last}") for username, first, last in students])
+        return tuple([(username, f"{last} {first}") for username, first, last in students])
 
     def queryset(self, request, queryset):
         """Return the object with a student of the right username."""

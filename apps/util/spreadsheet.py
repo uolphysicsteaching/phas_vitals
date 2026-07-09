@@ -9,6 +9,7 @@ from textwrap import shorten
 
 # Django imports
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import QuerySet
 from django.http import HttpResponse
 
 # external imports
@@ -289,7 +290,10 @@ class Spreadsheet(BaseSpreadsheet):
     def student_numbers(self):
         """Return the student numbers."""
         if self.sids is None:
-            self.sids = self.find_sid_cells()
+            try:
+                self.sids = self.find_sid_cells()
+            except RuntimeError:
+                self.sids = {}
         return self.sids
 
     @property
@@ -610,36 +614,52 @@ class Spreadsheet(BaseSpreadsheet):
         """Get student entries and fill in components."""
         VITALS = module.VITALS.count() > 0
         ASSESSMENT = module.sub_modules.count() > 0
-        if entries is None:
-            if VITALS:
-                entries = (
-                    module.student_enrollments.filter(student__is_active=True)
-                    .prefetch_related("student", "student__vital_results")
-                    .order_by("student")
-                )
-            elif ASSESSMENT:
-                entries = module.student_enrollments.filter(student__is_active=True).order_by("student")
-        elif isinstance(entries, dict):
+
+        if self.student_numbers:
             entries = (
-                module.student_enrollments.filter(**entries)
-                .filter(student__is_active=True)
-                .prefetch_related("student", "student__vital_results")
-                .order_by("student")
-            )
-        else:
-            entries = (
-                module.student_enrollments.filter(entries)
-                .filter(student__is_active=True)
+                module.student_enrollments.filter(student__number__in=self.sids)
                 .prefetch_related("student", "student__vital_results")
                 .order_by("student")
             )
 
+        match entries:
+            case None:
+                if VITALS:
+                    entries = (
+                        module.student_enrollments.filter(student__is_active=True)
+                        .prefetch_related("student", "student__vital_results")
+                        .order_by("student")
+                    )
+                elif ASSESSMENT:
+                    entries = module.student_enrollments.filter(student__is_active=True).order_by("student")
+            case dict():
+                entries = (
+                    module.student_enrollments.filter(**entries)
+                    .filter(student__is_active=True)
+                    .prefetch_related("student", "student__vital_results")
+                    .order_by("student")
+                )
+            case QuerySet():
+                pass
+            case list():
+                entries = (
+                    module.student_enrollments.filter(pk__in=entries)
+                    .filter(student__is_active=True)
+                    .prefetch_related("student", "student__vital_results")
+                    .order_by("student")
+                )
+            case _:
+                raise TypeError(f"Cannot workout what do ith {entries=}")
+
         for ix, ent in enumerate(entries):
             row = ix + 16
-            self.sheet.cell(row=row, column=1).value = ent.student.display_name
-            self.sheet.cell(row=row, column=2).value = ent.student.programme.name
-            self.sheet.cell(row=row, column=3).value = ent.student.number
-            self.sheet.cell(row=row, column=4).value = ent.status.code
+            if ent.student.number in self.sids:
+                row = self.sids[ent.student.number].row
+            else:
+                self.sheet.cell(row=row, column=1).value = ent.student.display_name
+                self.sheet.cell(row=row, column=2).value = ent.student.programme.name
+                self.sheet.cell(row=row, column=3).value = ent.student.number
+                self.sheet.cell(row=row, column=4).value = ent.status.code
             for _, (comp_col, mtype) in component_columns.items():
                 if VITALS:
                     mks = ent.student.vital_results.filter(vital__name=mtype)
@@ -660,6 +680,7 @@ class Spreadsheet(BaseSpreadsheet):
     def fill_in(self, *args, **kwargs):
         """Fill in details from a module."""
         module = args[0]
+        has_students = len(self.student_numbers) > 0
 
         # Iterate over all worksheets in the template
         for sheet in self.workbook.sheetnames:
@@ -667,26 +688,28 @@ class Spreadsheet(BaseSpreadsheet):
             # Substitute markshete details
             self._sub_cells_from_attrs(module)
             # Now fill in components
-            component_columns = self._fill_in_components(module)
+            if len(self.workbook.sheetnames) == 1 or sheet.title().upper().strip() == "VITALS":
+                component_columns = self._fill_in_components(module)
 
-            # Now fill in students
-            ix = self._enter_student_entries(module, component_columns, kwargs.get("entries", None))
+                # Now fill in students
+                ix = self._enter_student_entries(module, component_columns, kwargs.get("entries", None))
 
-            # Now remove excess rows
-            if ix + 17 < 275:
-                self.sheet.delete_rows(ix + 17, 258 - ix)
-                last_row = 23 + ix
-                # rewrite formulae
-                for r in range(last_row + 1, last_row + 6):
-                    for c in range(5, 20):
-                        cell = self.sheet.cell(column=c, row=r)
-                        if isinstance(cell.value, str):
-                            cell.value = cell.value.replace("281", str(last_row))
-                            cell.value = cell.value.replace("285", str(last_row + 4))
-                cell = self.sheet.cell(column=3, row=7)
-                cell.value = cell.value.replace("285", str(last_row + 4))
+                # Now remove excess rows
+                if not has_students and ix + 17 < 275:
+                    self.sheet.delete_rows(ix + 17, 258 - ix)
+                    last_row = 23 + ix
+                    # rewrite formulae
+                    for r in range(last_row + 1, last_row + 6):
+                        for c in range(5, 50):
+                            cell = self.sheet.cell(column=c, row=r)
+                            if isinstance(cell.value, str):
+                                for last_ix, row_num in enumerate(["281", "282", "283", "284", "285", "286"]):
+                                    cell.value = cell.value.replace(row_num, str(last_row + last_ix))
+                    cell = self.sheet.cell(column=3, row=7)
+                    cell.value = cell.value.replace("285", str(last_row + 4))
 
-            self.sheet.title = module.code
+            if len(self.workbook.sheetnames) == 1:
+                self.sheet.title = module.code
             self.mod = module.code
         self.sheet = self.workbook[self.workbook.sheetnames[0]]
 

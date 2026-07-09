@@ -34,6 +34,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.style import context as plot_context
 from pytz import timezone
 from util.http import svg_data
+from util.spreadsheet import Spreadsheet
 from util.tables import BaseTable
 from util.views import (
     IsStaffViewMixin,
@@ -637,8 +638,8 @@ class ShowTestResults(RedirectView):
         return StudentSummaryView
 
 
-class GenerateModuleMarksheetView(IsSuperuserViewMixin, FormView):
-    """Handles uploading the full Gtradebook."""
+class GenerateModuleMarksheetView(IsStaffViewMixin, FormView):
+    """Handles creating a module marksheet from the database."""
 
     template_name = "minerva/generate_marksheet.html"
     form_class = ModuleSelectForm
@@ -648,6 +649,31 @@ class GenerateModuleMarksheetView(IsSuperuserViewMixin, FormView):
         """Respond with a marksheet for the selected module."""
         module = form.cleaned_data["module"]
         return module.generate_marksheet()
+
+
+class CompleteModuleMarksheetView(IsStaffViewMixin, FormView):
+    """Handles adding VITQALs marks to a module markshgeet."""
+
+    template_name = "minerva/complete_marksheet.html"
+    form_class = TestImportForm
+    success_url = "/minerva/complete_marksheet/"
+
+    def form_valid(self, form):
+        """Respond with a marksheet for the selected module.
+
+        Notes:
+            4. Locate a sheet with a ttle VITALs or the first sheet.
+            5. Fill in the VITALs as the components, set weighting to 100%
+            6. Locate SIDs column
+            7. For SID in SIDs, for VITAL in VITALs, fill in pass/fails (same logic as generate_spreadsheet)
+            8. Reexpoort spreadsheet.
+        """
+
+        module = form.cleaned_data["module"]
+        filename = self.request.FILES.getlist("upload_file")[0].file.name
+        spreadsheet = Spreadsheet(filename, blank=True)
+        spreadsheet.fill_in(module)
+        return spreadsheet.respond()
 
 
 class StudentPerformanceSpreadsheetView(IsSuperuserViewMixin, FormView):

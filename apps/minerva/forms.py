@@ -33,7 +33,7 @@ class TestImportForm(forms.Form):
 
     upload_file = forms.FileField()
 
-    def clean_spreadsheet(self):
+    def clean_upload_file(self):
         """Make sure the file mimetype and extension look ok."""
         content = self.cleaned_data.get("upload_file", False)
         filetype = self.get_mime(content)
@@ -71,7 +71,7 @@ class TestHistoryImportForm(forms.Form):
 
     upload_file = forms.FileField()
 
-    def clean_spreadsheet(self):
+    def clean_upload_file(self):
         """Check the mime-type and extension to make sure we like this file."""
         content = self.cleaned_data.get("upload_file", False)
         filetype = self.get_mime(content)

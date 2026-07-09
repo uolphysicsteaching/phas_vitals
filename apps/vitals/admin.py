@@ -86,6 +86,12 @@ class VITAL_ResultInline(admin.StackedInline):
         return super().get_queryset(request).select_related("user", "vital", "vital__module")
 
 
+class VITAL_ResultUserInline(VITAL_ResultInline):
+    """Same as the parent class, but specifues the fk_name"""
+
+    fk_name = "user"
+
+
 class VITALInline(admin.StackedInline):
     """Inline admin for VITALS."""
 
@@ -94,7 +100,7 @@ class VITALInline(admin.StackedInline):
     extra = 0
 
 
-add_inlines("accounts.Account", VITAL_ResultInline, "vital_results")
+add_inlines("accounts.Account", VITAL_ResultUserInline, "vital_results")
 add_inlines("minerva.Test", VITAL_Test_MapInline, "vitals_mappings")
 add_inlines("minerva.Module", VITALInline, "VITALS")
 
@@ -201,11 +207,11 @@ class VITAL_Test_MapAdmin(ImportExportModelAdmin):
 class VITAL_ResultAdmin(ImportExportModelAdmin):
     """Admin interface for VITAL Results."""
 
-    list_display = ("vital", "user", "passed", "date_passed", "locked")
+    list_display = ("vital", "user", "passed", "date_passed", "locked", "locked_by")
     list_editable = ("passed", "locked")
-    list_filter = (VITALListFilter, StudentListFilter, "passed", "date_passed", "locked")
+    list_filter = (VITALListFilter, StudentListFilter, "passed", "date_passed", "locked", "locked_by")
     search_fields = ["vital__name", "user__first_name", "user__last_name", "user__username", "vital__module__code"]
-    list_select_related = ("vital", "vital__module", "user")
+    list_select_related = ("vital", "vital__module", "user", "locked_by")
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""
