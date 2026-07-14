@@ -15,7 +15,7 @@ from accounts.models import Account
 from django_filters import rest_framework as filters
 from rest_framework import serializers, viewsets
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, IsAdminUser
 from rest_framework.schemas import get_schema_view
 from util.backend import HMACAuthentication
 
@@ -118,32 +118,79 @@ class TestScoreSerializer(serializers.ModelSerializer):
 ###### Viewsets #########################################
 
 
-class ModuleViewSet(viewsets.ReadOnlyModelViewSet):
-    """Default Viewset for Account objects."""
+def module_scope_for_user(user):
+    """Return a Q object restricting modules to those a staff user is responsible for."""
+    return Q(module_leader=user) | Q(team_members=user) | Q(school__managers=user)
 
-    queryset = Module.objects.all()
+
+def scoped_modules_for_user(user):
+    """Return modules visible to a staff API caller."""
+    qs = Module.objects.all()
+    if user.is_superuser:
+        return qs
+    return qs.filter(module_scope_for_user(user)).distinct()
+
+
+class ScopedStaffReadOnlyModelViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only API viewset with explicit staff-only permissions and scoped querysets."""
+
+    permission_classes = [IsAdminUser]
+
+
+class ModuleViewSet(ScopedStaffReadOnlyModelViewSet):
+    """Default viewset for Module objects."""
+
+    queryset = Module.objects.none()
     serializer_class = ModuleSerializer
 
+    def get_queryset(self):
+        """Scope module records to modules the staff caller is responsible for."""
+        return scoped_modules_for_user(self.request.user)
 
-class TestViewSet(viewsets.ReadOnlyModelViewSet):
+
+class TestViewSet(ScopedStaffReadOnlyModelViewSet):
     """Default Viewset for Account objects."""
 
-    queryset = Test.objects.all()
+    queryset = Test.objects.none()
     serializer_class = TestSerializer
 
+    def get_queryset(self):
+        """Scope test records to tests on visible modules."""
+        user = self.request.user
+        qs = Test.objects.all()
+        if user.is_superuser:
+            return qs
+        return qs.filter(module__in=scoped_modules_for_user(user)).distinct()
 
-class TestAttemptViewSet(viewsets.ReadOnlyModelViewSet):
+
+class TestAttemptViewSet(ScopedStaffReadOnlyModelViewSet):
     """Default Viewset for Account objects."""
 
-    queryset = Test_Attempt.objects.all()
+    queryset = Test_Attempt.objects.none()
     serializer_class = TestAttemptSerializer
 
+    def get_queryset(self):
+        """Scope attempt records to attempts on visible modules."""
+        user = self.request.user
+        qs = Test_Attempt.objects.select_related("test_entry__test__module", "test_entry__user")
+        if user.is_superuser:
+            return qs
+        return qs.filter(test_entry__test__module__in=scoped_modules_for_user(user)).distinct()
 
-class TestScoreViewSet(viewsets.ReadOnlyModelViewSet):
+
+class TestScoreViewSet(ScopedStaffReadOnlyModelViewSet):
     """Default Viewset for Account objects."""
 
-    queryset = Test_Score.objects.all()
+    queryset = Test_Score.objects.none()
     serializer_class = TestScoreSerializer
+
+    def get_queryset(self):
+        """Scope score records to scores on visible modules."""
+        user = self.request.user
+        qs = Test_Score.objects.select_related("test__module", "user")
+        if user.is_superuser:
+            return qs
+        return qs.filter(test__module__in=scoped_modules_for_user(user)).distinct()
 
 
 class FeedbackPermission(BasePermission):
@@ -193,6 +240,16 @@ class FeedbackSerializer(serializers.ModelSerializer):
     def get_unique_together_constraints(self, model):
         """Hack to stop the Serialiser thinking we've got unique constraints."""
         yield from []
+
+    def validate(self, attrs):
+        """Keep HMAC-authenticated writes scoped to the authenticated student."""
+        request = self.context.get("request")
+        if request is not None and getattr(request.user, "hmac_authenticated", False):
+            if attrs.get("user") != request.user:
+                raise serializers.ValidationError(
+                    "HMAC feedback can only be submitted for the authenticated student."
+                )
+        return attrs
 
     def get_existing_instance(self, validated_data):
         """Get an instance if it already exists."""
@@ -305,13 +362,23 @@ class FeednackViewSet(viewsets.ModelViewSet):
     """Viewset for the Feedback Objects."""
 
     serializer_class = FeedbackSerializer
-    queryset = Test_Score.objects.all()
+    queryset = Test_Score.objects.none()
     filterset_class = FeedbackFilters
     search_fields = ["assignment_name", "comment", "student__last_name", "student__username"]
     lookup_field = "id"
     permission_classes = [FeedbackPermission, IsSuperuserOrHMACAuthenticated]
     authentication_classes = [HMACAuthentication]
     pagination_class = TenPerPagePagination
+
+    def get_queryset(self):
+        """Scope feedback records by caller role and HMAC identity."""
+        user = self.request.user
+        qs = Test_Score.objects.select_related("test__module", "user")
+        if getattr(user, "hmac_authenticated", False):
+            return qs.filter(user=user)
+        if user.is_superuser:
+            return qs
+        return qs.filter(test__module__in=scoped_modules_for_user(user)).distinct()
 
     def paginate_queryset(self, queryset):
         """Override pagination to disable for JSON format.

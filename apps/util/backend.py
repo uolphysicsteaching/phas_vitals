@@ -1,4 +1,4 @@
-"""Subclass the standard django_auth_adfs backend for ourt purposes."""
+"""Subclass the standard django_auth_adfs backend for our purposes."""
 
 # Python imports
 import hashlib
@@ -225,7 +225,7 @@ class HMACAuthentication(BaseAuthentication):
         if not username:
             raise AuthenticationFailed("HMAC payload does not identify a student")
 
-        for key_obj in APIKey.objects.all():
+        for key_obj in APIKey.objects.filter(is_active=True):
             try:
                 key_bytes = self._key_bytes(key_obj)
             except (TypeError, ValueError) as exc:
