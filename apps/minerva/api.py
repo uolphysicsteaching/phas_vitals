@@ -138,7 +138,7 @@ class ScopedStaffReadOnlyModelViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class ModuleViewSet(ScopedStaffReadOnlyModelViewSet):
-    """Default Viewset for Account objects."""
+    """Default viewset for Module objects."""
 
     queryset = Module.objects.none()
     serializer_class = ModuleSerializer
