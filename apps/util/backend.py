@@ -8,8 +8,8 @@ import os
 from json import JSONDecodeError
 
 # Django imports
+from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import PermissionDenied
 
 # external imports
@@ -178,54 +178,81 @@ class HMACAuthentication(BaseAuthentication):
 
     keyword = "HMAC"
 
+    def _debug_sensitive(self, message):
+        """Log sensitive authentication details only when Django DEBUG is enabled."""
+        if django_settings.DEBUG:
+            logger_drf.debug(message)
+
+    @staticmethod
+    def _key_bytes(key_obj):
+        """Return a bytes representation of a stored API key."""
+        key = key_obj.key
+        if isinstance(key, str) and len(key) == 128:
+            return bytes.fromhex(key)
+        if isinstance(key, str):
+            return key.encode("utf-8")
+        return key
+
     def authenticate(self, request):
         """Check whether the request Authorization header matches the payload."""
-        try:
-            auth_header = request.headers["Authorization"]
-            logger_drf.debug("Got {auth_header=}")
-        except KeyError:
-            logger_drf.debug(f"No Authorization header {request.headers=}")
-        if not auth_header or not auth_header.startswith(self.keyword + " "):
-            logger_drf.debug(f"No Authorization header on request to DRF endpoint {request.path}")
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header:
+            logger_drf.debug("No Authorization header on request to DRF endpoint %s", request.path)
+            return None  # No attempt to authenticate
+        if not auth_header.startswith(self.keyword + " "):
+            logger_drf.debug("Authorization header does not use HMAC authentication for %s", request.path)
             return None  # No attempt to authenticate
 
         provided_signature = auth_header[len(self.keyword) + 1 :].strip()
-        logger_drf.debug(f"{provided_signature=}")
+        if not provided_signature:
+            raise AuthenticationFailed("Missing HMAC signature")
+
         payload = request.body
-        logger_drf.debug(f"{payload=}")
+        self._debug_sensitive(f"HMAC signature supplied: {provided_signature}")
+        self._debug_sensitive(f"HMAC payload supplied: {payload!r}")
 
         try:
             payload_data = json.loads(payload)
-            logger_drf.debug(f"{payload_data=}")
-        except JSONDecodeError:
-            logger_drf.warning("Badly encoded json payload for authentication.")
-            raise AuthenticationFailed(f"Failed to decode JSON payload for {request}")
-        except Exception as e:
-            logger_drf.debug(f"Error={e}")
+        except JSONDecodeError as exc:
+            logger_drf.warning("Badly encoded JSON payload for HMAC authentication.")
+            raise AuthenticationFailed("Failed to decode JSON payload") from exc
+        except (TypeError, ValueError) as exc:
+            logger_drf.warning("Invalid payload for HMAC authentication.")
+            raise AuthenticationFailed("Invalid JSON payload") from exc
+        self._debug_sensitive(f"HMAC payload data supplied: {payload_data!r}")
 
         username = payload_data.get("student")
+        if not username:
+            raise AuthenticationFailed("HMAC payload does not identify a student")
 
-        # Try all keys
         for key_obj in APIKey.objects.all():
-            key_bytes = (
-                bytes.fromhex(key_obj.key) if isinstance(key_obj.key, str) and len(key_obj.key) == 128 else key_obj.key
-            )
+            try:
+                key_bytes = self._key_bytes(key_obj)
+            except (TypeError, ValueError) as exc:
+                logger_drf.warning("Stored HMAC key %s is not valid and was skipped.", key_obj.pk)
+                self._debug_sensitive(f"Invalid stored HMAC key error: {exc!r}")
+                continue
+
             computed = hmac.new(key_bytes, payload, hashlib.sha256).hexdigest()
-            logger_drf.debug(f"{key_obj.key=}")
-            logger_drf.debug(f"{provided_signature=}")
-            logger_drf.debug(f"{computed=}")
+            self._debug_sensitive(f"Computed HMAC signature for key {key_obj.pk}: {computed}")
             if hmac.compare_digest(computed, provided_signature):
                 if not key_obj.is_active:
-                    logger_drf.warning(f"Call made to drf endpoint with in active HMAC key {request}")
+                    logger_drf.warning("Call made to DRF endpoint with inactive HMAC key %s", key_obj.pk)
                     raise AuthenticationFailed("Deactivated key used for HMAC signature")
-                # Authenticated — return a dummy user or associate with key owner
+
                 user = get_user_model().objects.filter(username=username).first()
-                logger_drf.debug(f"Authenticated drf endpoint with token for {user}")
+                if user is None:
+                    logger_drf.warning("Valid HMAC signature supplied for unknown user %s", username)
+                    raise AuthenticationFailed("HMAC payload identifies an unknown user")
+                if not user.is_active:
+                    logger_drf.warning("Valid HMAC signature supplied for inactive user %s", username)
+                    raise AuthenticationFailed("HMAC payload identifies an inactive user")
+
+                logger_drf.debug("Authenticated DRF endpoint with HMAC token for user %s", user)
                 setattr(user, "hmac_authenticated", True)
-                return (user or AnonymousUser(), None)
+                return (user, None)
 
-        logger_drf.warning(f"Out of date or unkrnown HMAC key ysed for {request}")
-
+        logger_drf.warning("Invalid or outdated HMAC signature supplied for %s", request.path)
         raise AuthenticationFailed("Invalid HMAC signature")
 
 
@@ -242,12 +269,17 @@ def send_hmac_signed_request(payload, url=None, secret_key=None, headers=None):
         requests.Response: The response object.
     """
     if secret_key is None:
-        secret_key = os.envuiron.get("PHAS_API_KEY").decode()
+        secret_key = os.environ.get("PHAS_API_KEY")
+    if not secret_key:
+        raise ValueError("No HMAC secret key provided")
+
     # Serialize payload deterministically
     body = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
 
     # Ensure key is bytes
     key_bytes = bytes.fromhex(secret_key) if isinstance(secret_key, str) and len(secret_key) == 128 else secret_key
+    if isinstance(key_bytes, str):
+        key_bytes = key_bytes.encode("utf-8")
 
     # Compute HMAC signature
     signature = hmac.new(key_bytes, body, hashlib.sha256).hexdigest()
@@ -255,9 +287,9 @@ def send_hmac_signed_request(payload, url=None, secret_key=None, headers=None):
     # Prepare headers
     auth_headers = {
         "Content-Type": "application/json",
-        "Authorization": signature,
-        "User-Agent": "curl/7.88.1",
-        "Accept": "*/*",
+        "Authorization": f"HMAC {signature}",
+        "User-Agent": "phas-vitals",
+        "Accept": "application/json",
     }
     if headers:
         auth_headers.update(headers)
