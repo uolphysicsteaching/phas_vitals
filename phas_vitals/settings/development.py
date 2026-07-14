@@ -1,8 +1,6 @@
-# Python imports
-
 # app imports
-# project imports
-from .secrets import *  # NOQA  pylint: disable=unused-import
+from .common import *  # NOQA  pylint: disable=unused-import,wildcard-import
+from .secrets import *  # NOQA  pylint: disable=unused-import,wildcard-import
 
 # uncomment the following line to include i18n
 # from .i18n import *
