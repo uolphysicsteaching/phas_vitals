@@ -1,4 +1,4 @@
-"""Subclass the standard django_auth_adfs backend for ourt purposes."""
+"""Subclass the standard django_auth_adfs backend for our purposes."""
 
 # Python imports
 import hashlib
