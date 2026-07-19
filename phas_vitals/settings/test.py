@@ -25,6 +25,7 @@ ALLOWED_HOSTS = ["*", "testserver"]
 
 # ##### SECRET KEY #########################################
 SECRET_KEY = "test-secret-key-for-testing-only"
+API_KEY_ENCRYPTION_KEY = "R5g3kcH3-YfdE0sW4uyb21P7Qc8QlujI6E4S50cP4xI="
 
 # ##### AUTHENTICATION CONFIGURATION #######################
 # Keep test boot independent from real ADFS configuration.

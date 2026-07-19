@@ -179,14 +179,19 @@ class HMACAuthentication(BaseAuthentication):
     keyword = "HMAC"
 
     @staticmethod
+    def _parse_credentials(auth_value):
+        """Split optional key identifier from the provided HMAC credentials."""
+        key_identifier = None
+        signature = auth_value
+        if ":" in auth_value:
+            key_identifier, signature = auth_value.split(":", 1)
+            key_identifier = key_identifier.strip() or None
+        return key_identifier, signature.strip()
+
+    @staticmethod
     def _key_bytes(key_obj):
         """Return a bytes representation of a stored API key."""
-        key = key_obj.key
-        if isinstance(key, str) and len(key) == 128:
-            return bytes.fromhex(key)
-        if isinstance(key, str):
-            return key.encode("utf-8")
-        return key
+        return key_obj.key_bytes()
 
     def authenticate(self, request):
         """Check whether the request Authorization header matches the payload."""
@@ -199,6 +204,9 @@ class HMACAuthentication(BaseAuthentication):
             return None  # No attempt to authenticate
 
         provided_signature = auth_header[len(self.keyword) + 1 :].strip()
+        if not provided_signature:
+            raise AuthenticationFailed("Missing HMAC signature")
+        key_identifier, provided_signature = self._parse_credentials(provided_signature)
         if not provided_signature:
             raise AuthenticationFailed("Missing HMAC signature")
 
@@ -224,7 +232,12 @@ class HMACAuthentication(BaseAuthentication):
         if not username:
             raise AuthenticationFailed("HMAC payload does not identify a student")
 
-        for key_obj in APIKey.objects.filter(is_active=True):
+        if key_identifier:
+            candidate_keys = APIKey.objects.filter(is_active=True, identifier=key_identifier)
+        else:
+            candidate_keys = APIKey.objects.filter(is_active=True)
+
+        for key_obj in candidate_keys:
             try:
                 key_bytes = self._key_bytes(key_obj)
             except (TypeError, ValueError) as exc:
@@ -251,11 +264,18 @@ class HMACAuthentication(BaseAuthentication):
                 setattr(user, "hmac_authenticated", True)
                 return (user, None)
 
-        logger_drf.warning("Invalid or outdated HMAC signature supplied for %s", request.path)
+        if key_identifier:
+            logger_drf.warning(
+                "Invalid or outdated HMAC signature supplied for %s using key identifier %s",
+                request.path,
+                key_identifier,
+            )
+        else:
+            logger_drf.warning("Invalid or outdated HMAC signature supplied for %s", request.path)
         raise AuthenticationFailed("Invalid HMAC signature")
 
 
-def send_hmac_signed_request(payload, url=None, secret_key=None, headers=None):
+def send_hmac_signed_request(payload, url=None, secret_key=None, headers=None, key_identifier=None):
     """Sends a POST request with HMAC authentication.
 
     Args:
@@ -263,6 +283,7 @@ def send_hmac_signed_request(payload, url=None, secret_key=None, headers=None):
         payload (dict): The JSON payload to send.
         secret_key (str): Hex-encoded or raw bytes secret key.
         headers (dict): Optional additional headers.
+        key_identifier (str): Optional public key identifier to send with the signature.
 
     Returns:
         requests.Response: The response object.
@@ -282,11 +303,14 @@ def send_hmac_signed_request(payload, url=None, secret_key=None, headers=None):
 
     # Compute HMAC signature
     signature = hmac.new(key_bytes, body, hashlib.sha256).hexdigest()
+    authorization = f"HMAC {signature}"
+    if key_identifier:
+        authorization = f"HMAC {key_identifier}:{signature}"
 
     # Prepare headers
     auth_headers = {
         "Content-Type": "application/json",
-        "Authorization": f"HMAC {signature}",
+        "Authorization": authorization,
         "User-Agent": "phas-vitals",
         "Accept": "application/json",
     }

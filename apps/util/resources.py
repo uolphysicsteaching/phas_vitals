@@ -12,3 +12,5 @@ class APIKeyResource(resources.ModelResource):
 
     class Meta:
         model = APIKey
+        fields = ("identifier", "is_active", "created", "comment")
+        export_order = fields

@@ -185,10 +185,10 @@ class CustomTreeAdmin(TreeAdmin):
 class APIKeyAdmin(ImportExportModelAdmin):
     """Admin class to manage the API Keys."""
 
-    list_display = ["short_key", "is_active", "created", "comment"]
+    list_display = ["identifier", "short_key", "is_active", "created", "comment"]
     list_filter = ["is_active", "created"]
     suit_list_filter_horizontal = list_filter
-    search_fields = ["comment"]
+    search_fields = ["identifier", "comment"]
     actions = ["create_new"]
 
     @describe("Shortented version of the key value")
@@ -217,7 +217,11 @@ class APIKeyAdmin(ImportExportModelAdmin):
         """
         for _ in queryset.all():
             obj = APIKey.new()
-        self.message_user(request, f"Created: {obj}", messages.SUCCESS)
+        self.message_user(
+            request,
+            f"Created API key {obj.identifier}: {getattr(obj, '_plaintext_key', '[hidden]')}",
+            messages.SUCCESS,
+        )
         return HttpResponseRedirect(request.META.get("HTTP_REFERER", "/admin/"))
 
 

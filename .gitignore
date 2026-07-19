@@ -1,6 +1,7 @@
 # do NOT track Python compilation files
 *.py[cod]
 __python__/*
+__pycache__/*
 
 # do NOT track tox's testing folder
 .tox
@@ -26,3 +27,6 @@ coverage_html
 
 # Spyder project files
 .spyproject
+
+# Conda cache files
+.cache/*

@@ -1,6 +1,7 @@
 """Models for util app."""
 
 # Python imports
+import hashlib
 import secrets
 
 # Django imports
@@ -13,6 +14,9 @@ from django.db import models
 import numpy as np
 from matplotlib.cm import RdYlGn as color
 from sitetree.models import TreeBase, TreeItemBase
+
+# app imports
+from .fields import EncryptedTextField
 
 
 def patch_model(model, name=None, prep=None):
@@ -99,21 +103,67 @@ def contrast(colour: str) -> str:
 class APIKey(models.Model):
     """Class to store API Keys for DRF access."""
 
-    key = models.CharField(max_length=255)
+    identifier = models.CharField(max_length=32, unique=True, blank=True, null=True, db_index=True)
+    key = EncryptedTextField(max_length=512)
+    key_digest = models.CharField(max_length=64, unique=True, blank=True, null=True, db_index=True)
     is_active = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
     comment = models.TextField(blank=True, null=True)
 
     class Meta:
         ordering = ["created"]
-        constraints = [models.UniqueConstraint(fields=["key"], name="apkikey_unique_keys")]
+
+    @classmethod
+    def secret_to_bytes(cls, secret):
+        """Normalize plaintext secret material to bytes for HMAC use."""
+        if isinstance(secret, str) and len(secret) == 128:
+            return bytes.fromhex(secret)
+        if isinstance(secret, str):
+            return secret.encode("utf-8")
+        return secret
+
+    @classmethod
+    def compute_digest(cls, secret):
+        """Compute a stable digest for uniqueness and lookup metadata."""
+        return hashlib.sha256(cls.secret_to_bytes(secret)).hexdigest()
+
+    @classmethod
+    def generate_identifier(cls):
+        """Generate a compact public identifier for an API key."""
+        while True:
+            identifier = secrets.token_hex(8)
+            if not cls.objects.filter(identifier=identifier).exists():
+                return identifier
+
+    @property
+    def plaintext_key(self):
+        """Return the decrypted API key material for HMAC verification."""
+        return self.key
+
+    def key_bytes(self):
+        """Return the API key bytes used for HMAC verification."""
+        return self.secret_to_bytes(self.plaintext_key)
+
+    def save(self, *args, **kwargs):
+        """Keep identifier and digest metadata in sync with plaintext key values."""
+        if self.key:
+            self.key_digest = self.compute_digest(self.key)
+        if not self.identifier:
+            self.identifier = self.generate_identifier()
+        super().save(*args, **kwargs)
 
     @classmethod
     def new(cls):
         """Create and save a new API key."""
-        key = cls(key=secrets.token_hex(64), is_active=True, comment="Auto-generated")
+        plaintext = secrets.token_hex(64)
+        key = cls(key=plaintext, is_active=True, comment="Auto-generated")
         key.save()
+        key._plaintext_key = plaintext
         return key
+
+    def __str__(self):
+        """Return a stable admin-facing label for the API key."""
+        return self.identifier or f"API key {self.pk}"
 
 
 class GroupedTree(TreeBase):
