@@ -5,6 +5,23 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
+def drop_legacy_test_id_constraint(apps, schema_editor):
+    """Drop the old unique constraint only on backends that support this SQL."""
+    if schema_editor.connection.vendor != "postgresql":
+        return
+    schema_editor.execute(
+        """
+        ALTER TABLE minerva_test
+        DROP CONSTRAINT minerva_test_id_5083a75b_uniq CASCADE;
+        """
+    )
+
+
+def noop_reverse(apps, schema_editor):
+    """No-op reverse migration for backend-specific constraint cleanup."""
+    return
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -12,15 +29,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(
-            sql="""
-                ALTER TABLE minerva_test
-                DROP CONSTRAINT minerva_test_id_5083a75b_uniq CASCADE;
-            """,
-            reverse_sql="""
-                -- Optional: recreate the constraint if needed
-            """,
-        ),
+        migrations.RunPython(drop_legacy_test_id_constraint, noop_reverse),
         migrations.AlterField(
             model_name="gradebookcolumn",
             name="test",

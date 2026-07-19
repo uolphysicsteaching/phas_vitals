@@ -3,6 +3,7 @@
 Imports base settings from common.py and overrides with test-specific configuration.
 """
 
+# Python imports
 # app imports
 from .common import *  # NOQA
 
@@ -25,6 +26,21 @@ ALLOWED_HOSTS = ["*", "testserver"]
 # ##### SECRET KEY #########################################
 SECRET_KEY = "test-secret-key-for-testing-only"
 
+# ##### AUTHENTICATION CONFIGURATION #######################
+# Keep test boot independent from real ADFS configuration.
+AUTH_ADFS = {
+    "AUDIENCE": "test-audience",
+    "CLIENT_ID": "test-client-id",
+    "RELYING_PARTY_ID": "test-relying-party",
+    "SERVER": "test-adfs.invalid",
+    "USERNAME_CLAIM": "upn",
+    "CLAIM_MAPPING": {"first_name": "given_name", "last_name": "family_name", "email": "email"},
+}
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+]
+LOGIN_URL = "/login/"
+
 # ##### SITETREE CONFIGURATION ############################
 # Disable the custom SiteTree class to avoid the circular-import that arises
 # when util.tree is loaded while sitetree.sitetreeapp is still being imported.
@@ -36,13 +52,35 @@ SITETREE_CLS = None
 INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
+    "django.contrib.flatpages",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sites",
     # Third-party apps needed by models
     "sitetree",
+    "dal",
+    "dal_select2",
+    "ajax_select",
 ] + CUSTOM_APPS
+
+# ##### MIGRATIONS CONFIGURATION ##########################
+# Build the test schema directly from the current models rather than replaying
+# the full migration history, which contains backend-specific DDL that is not
+# portable to the lightweight SQLite test database.
+
+
+class DisableMigrations:
+    """Tell Django to treat every app as if it had no migrations in tests."""
+
+    def __contains__(self, item):
+        return True
+
+    def __getitem__(self, item):
+        return None
+
+
+MIGRATION_MODULES = DisableMigrations()
 
 # ##### LOGGING CONFIGURATION #############################
 # Disable logging for tests

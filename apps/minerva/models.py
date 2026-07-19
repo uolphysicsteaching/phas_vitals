@@ -146,6 +146,8 @@ def match_column_to_test(column, module):
 def _max_score(attempts):
     """Return a maximum value from a queryset of test attempts."""
     scores = np.array(attempts.values_list("score", flat=True))
+    if scores.size == 0:
+        return np.nan
 
     mask = ~np.isreal(scores)  # True for non-numeric entries
     scores = scores.astype(float)  # convert numeric ones; others become errors later

@@ -9,11 +9,12 @@ from operator import attrgetter
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from django.utils.encoding import smart_str
+from django.utils import timezone as tz
 
 # external imports
 from accounts.models import Account
 from django_filters import rest_framework as filters
-from rest_framework import serializers, viewsets
+from rest_framework import mixins, serializers, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import BasePermission, IsAdminUser
 from rest_framework.schemas import get_schema_view
@@ -194,15 +195,15 @@ class TestScoreViewSet(ScopedStaffReadOnlyModelViewSet):
 
 
 class FeedbackPermission(BasePermission):
-    """Ensure nobody has permissions to delete stuff via the API."""
+    """Allow only the feedback methods the API intentionally supports."""
 
     def has_permission(self, request, view):
-        """Allow read and write, but block delete."""
-        logger.debug(f"Checking for allowed method - {request.method=}")
-        if request.method == "DELETE":
-            logger.debug("Tried calling a DELETE method - not allowed!")
-            return False
-        return True
+        """Restrict the endpoint to safe reads plus create and update operations."""
+        allowed_methods = {"GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH"}
+        allowed = request.method in allowed_methods
+        if not allowed:
+            logger.debug("Rejected unsupported feedback API method %s", request.method)
+        return allowed
 
 
 class IsSuperuserOrHMACAuthenticated(BasePermission):
@@ -245,7 +246,10 @@ class FeedbackSerializer(serializers.ModelSerializer):
         """Keep HMAC-authenticated writes scoped to the authenticated student."""
         request = self.context.get("request")
         if request is not None and getattr(request.user, "hmac_authenticated", False):
-            if attrs.get("user") != request.user:
+            target_user = attrs.get("user")
+            if target_user is None and self.instance is not None:
+                target_user = self.instance.user
+            if target_user != request.user:
                 raise serializers.ValidationError(
                     "HMAC feedback can only be submitted for the authenticated student."
                 )
@@ -261,8 +265,8 @@ class FeedbackSerializer(serializers.ModelSerializer):
         instance, attempt = test.add_attempt(
             validated_data["user"],
             validated_data["score"],
-            date=validated_data["date"],
-            text=validated_data["comment"],
+            date=validated_data.get("date"),
+            text=validated_data.get("comment"),
         )
         instance.status = "Graded"
         instance.save()
@@ -281,10 +285,30 @@ class FeedbackSerializer(serializers.ModelSerializer):
         Returns:
             The updated Test_Score instance.
         """
-        instance.comment = validated_data["comment"]
-        instance.score = validated_data["score"]
-        instance.date = validated_data["date"]
+        comment = validated_data.get("comment")
+        attempted = validated_data.get("date")
+        score = validated_data.get("score", instance.score)
+        instance.score = score
         instance.save()
+        attempt = instance.attempts.order_by("-attempted", "-pk").first()
+        if attempt is None:
+            instance, _ = instance.test.add_attempt(
+                instance.user,
+                score,
+                date=attempted or tz.now(),
+                text=comment,
+            )
+            return instance
+
+        attempt.score = score
+        if comment is not None:
+            attempt.text = comment
+        if attempted is not None:
+            attempt.attempted = attempted
+        if attempt.created is None:
+            attempt.created = tz.now()
+        attempt.modified = tz.now()
+        attempt.save()
         return instance
 
     def to_representation(self, instance):
@@ -353,12 +377,18 @@ class FeedbackFilters(filters.FilterSet):
         except (ValueError, TypeError):
             return queryset.filter(
                 Q(test__test_id__icontains=value)
-                | Q(test_name__icontains=value)
+                | Q(test__name__icontains=value)
                 | Q(test__category__text__icontains=value)
             )
 
 
-class FeednackViewSet(viewsets.ModelViewSet):
+class FeednackViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
     """Viewset for the Feedback Objects."""
 
     serializer_class = FeedbackSerializer
@@ -369,6 +399,7 @@ class FeednackViewSet(viewsets.ModelViewSet):
     permission_classes = [FeedbackPermission, IsSuperuserOrHMACAuthenticated]
     authentication_classes = [HMACAuthentication]
     pagination_class = TenPerPagePagination
+    http_method_names = ["get", "head", "options", "post", "put", "patch"]
 
     def get_queryset(self):
         """Scope feedback records by caller role and HMAC identity."""

@@ -344,3 +344,58 @@ class TestGradebookColumnChangeListForm:
 
         form = GradebookColumnChangeListForm()
         assert form.fields["test"].queryset.count() == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.unit
+class TestFeedbackApiHardening:
+    """Regression tests for feedback API hardening."""
+
+    def test_feedback_filter_matches_test_name(self, sample_user, sample_test):
+        """Filtering by test name should use the related test field without raising."""
+        # app imports
+        from .api import FeedbackFilters
+        from .models import Test_Score
+
+        score = Test_Score.objects.create(user=sample_user, test=sample_test, score=70.0)
+        filtered = FeedbackFilters(
+            data={"test": "Sample Test"},
+            queryset=Test_Score.objects.all(),
+        ).qs
+        assert list(filtered) == [score]
+
+    def test_feedback_update_persists_attempt_comment_and_date(self, sample_user, sample_test):
+        """Updating feedback should write back to the related attempt record."""
+        # app imports
+        from .api import FeedbackSerializer
+
+        score, attempt = sample_test.add_attempt(sample_user, 55.0, date=tz.now(), text="Before")
+        updated_at = tz.now() + tz.timedelta(hours=1)
+        serializer = FeedbackSerializer(
+            instance=score,
+            data={
+                "student": sample_user.username,
+                "assignment_name": f"{sample_test.module.code}~{sample_test.name}",
+                "score": 82.0,
+                "comment": "After",
+                "date": updated_at.isoformat(),
+            },
+            partial=True,
+        )
+
+        assert serializer.is_valid(), serializer.errors
+        updated_score = serializer.save()
+        attempt.refresh_from_db()
+        updated_score.refresh_from_db()
+
+        assert updated_score.score == 82.0
+        assert attempt.score == 82.0
+        assert attempt.text == "After"
+        assert attempt.attempted == updated_at
+
+    def test_feedback_api_rejects_delete(self):
+        """The feedback API should not expose DELETE."""
+        # app imports
+        from .api import FeednackViewSet
+
+        assert "delete" not in FeednackViewSet.http_method_names

@@ -178,11 +178,6 @@ class HMACAuthentication(BaseAuthentication):
 
     keyword = "HMAC"
 
-    def _debug_sensitive(self, message):
-        """Log sensitive authentication details only when Django DEBUG is enabled."""
-        if django_settings.DEBUG:
-            logger_drf.debug(message)
-
     @staticmethod
     def _key_bytes(key_obj):
         """Return a bytes representation of a stored API key."""
@@ -208,8 +203,13 @@ class HMACAuthentication(BaseAuthentication):
             raise AuthenticationFailed("Missing HMAC signature")
 
         payload = request.body
-        self._debug_sensitive(f"HMAC signature supplied: {provided_signature}")
-        self._debug_sensitive(f"HMAC payload supplied: {payload!r}")
+        if django_settings.DEBUG:
+            logger_drf.debug(
+                "Processing HMAC authentication for %s (signature prefix %s..., %s payload bytes)",
+                request.path,
+                provided_signature[:8],
+                len(payload),
+            )
 
         try:
             payload_data = json.loads(payload)
@@ -219,7 +219,6 @@ class HMACAuthentication(BaseAuthentication):
         except (TypeError, ValueError) as exc:
             logger_drf.warning("Invalid payload for HMAC authentication.")
             raise AuthenticationFailed("Invalid JSON payload") from exc
-        self._debug_sensitive(f"HMAC payload data supplied: {payload_data!r}")
 
         username = payload_data.get("student")
         if not username:
@@ -230,11 +229,11 @@ class HMACAuthentication(BaseAuthentication):
                 key_bytes = self._key_bytes(key_obj)
             except (TypeError, ValueError) as exc:
                 logger_drf.warning("Stored HMAC key %s is not valid and was skipped.", key_obj.pk)
-                self._debug_sensitive(f"Invalid stored HMAC key error: {exc!r}")
+                if django_settings.DEBUG:
+                    logger_drf.debug("Invalid stored HMAC key error for key %s: %r", key_obj.pk, exc)
                 continue
 
             computed = hmac.new(key_bytes, payload, hashlib.sha256).hexdigest()
-            self._debug_sensitive(f"Computed HMAC signature for key {key_obj.pk}: {computed}")
             if hmac.compare_digest(computed, provided_signature):
                 if not key_obj.is_active:
                     logger_drf.warning("Call made to DRF endpoint with inactive HMAC key %s", key_obj.pk)
@@ -248,7 +247,7 @@ class HMACAuthentication(BaseAuthentication):
                     logger_drf.warning("Valid HMAC signature supplied for inactive user %s", username)
                     raise AuthenticationFailed("HMAC payload identifies an inactive user")
 
-                logger_drf.debug("Authenticated DRF endpoint with HMAC token for user %s", user)
+                logger_drf.info("Authenticated DRF endpoint with HMAC token for user %s", user.username)
                 setattr(user, "hmac_authenticated", True)
                 return (user, None)
 

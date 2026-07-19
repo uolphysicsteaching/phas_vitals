@@ -1,10 +1,11 @@
 name: phas_vitals_test
 channels:
   - conda-forge
+  - phygbu
   - defaults
 dependencies:
   # Python version
-  - python>=3.10
+  - python>=3.13
 
   # Testing framework
   - pytest>=7.0.0
@@ -12,7 +13,8 @@ dependencies:
   - coverage
 
   # Django and pytest-django
-  - django>=4.2,<5.0
+  - django>=5.2,<6.0
+  - pytest-django>=4.5.0
   - pip
 
   # Core scientific packages
@@ -27,22 +29,38 @@ dependencies:
   # Other core dependencies
   - six>=1.16.0
   - openpyxl>=3.0.0
+  - requests>=2.31.0
+  - python-magic
 
   # Celery for async tasks
   - celery>=5.2.0
-
-  # Install remaining packages via pip
-  - pip:
-    - pytest-django>=4.5.0
-    - django-constance>=2.9.0
-    - django-sitetree>=1.15.0
-    - celery-batches>=0.8.0
-    - whitenoise>=6.0.0
-    - jsondatetime>=1.0.0
-    - django-tinymce>=3.5.0
-    - django-import-export>=3.0.0
-    - django-autocomplete-light>=3.9.0
-    - azure-storage-blob>=12.0.0
-    - djangorestframework
-    - django-filter
-    - django-tables2
+  - djangorestframework
+  - django-filter
+  - django-tables2
+  - whitenoise>=6.0.0
+  - azure-storage-blob>=12.0.0
+  - django-formtools
+  - django-import-export>=3.0.0
+  - django-smart-selects
+  - django-admin-sortable2
+  - django-htmx
+  - django-bootstrap5
+  - django-extensions
+  - django-colorful
+  - django-cors-headers
+  - django-mathfilters
+  - django-oauth-toolkit
+  - django-celery-results
+  - django-celery-beat
+  - django-constance>=2.9.0
+  - django-sitetree>=1.15.0
+  - django-auth-adfs
+  - celery-batches>=0.8.0
+  - json-datetime
+  - django-tinymce>=3.5.0
+  - django-autocomplete-light>=3.9.0
+  - django-ajax-selects
+  - django-cookie-law
+  - dal-admin-filters
+  - django-email-obfuscator
+  - django-baton

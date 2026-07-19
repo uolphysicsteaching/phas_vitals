@@ -3,6 +3,7 @@
 # Python imports
 import csv
 import io
+import logging
 import re
 from collections import namedtuple
 from textwrap import shorten
@@ -54,6 +55,7 @@ from .forms import (
 from .models import Module, ModuleEnrollment, Test, Test_Attempt, Test_Score
 
 TZ = timezone(settings.TIME_ZONE)
+logger = logging.getLogger(__name__)
 
 ImageData = namedtuple("ImageData", ["data", "alt"], defaults=["", ""])
 
@@ -96,12 +98,11 @@ class ImportTestsView(IsSuperuserViewMixin, FormView):
 class StreamingImportTestsView(ImportTestsView):
     """A streaming response version of the full grade centre processor."""
 
-    data = []
-
     test_name = re.compile(r"(?P<name>.*)\s\[Total\ Pts\:\s(?P<total>[0-9\.]+)\sScore\]\s\|(?P<test_id>.*)")
 
     def post(self, request, *args, **kwargs):
         """Handle form posting with cutsom work around exceptions."""
+        self.data = []
         form_class = self.get_form_class()
         form = self.get_form(form_class)
         files = request.FILES.getlist("upload_file")
@@ -120,9 +121,10 @@ class StreamingImportTestsView(ImportTestsView):
             except AssertionError:
                 raise
             except Exception as e:
+                logger.exception("Failed to read uploaded full gradebook file")
                 form.add_error(
                     None,
-                    f"Could not read Full Gradebook file due to: {e} with {f.temporary_file_path()} {format_exc()}",
+                    f"Could not read Full Gradebook file due to: {e}",
                 )
                 return self.form_invalid(form)
             return self.form_valid(form)
@@ -217,7 +219,12 @@ class StreamingImportTestsView(ImportTestsView):
                             yield f"<tr class='tb-{cls}'><td>Skipping Score {score}</td></tr>"
                             continue  # bypass if no score for this student for this test
                         ts, new = Test_Score.objects.get_or_create(user=user, test=test)
-                        ta, _ = Test_Attempt.objects.get_or_create(test_entry=ts, score=score)
+                        attempt_id = f"{test.test_id}:{username}:gradebook"
+                        ta, _ = Test_Attempt.objects.get_or_create(
+                            attempt_id=attempt_id,
+                            test_entry=ts,
+                        )
+                        ta.score = score
                         ta.save()
                         ts.save()
                         yield (
@@ -225,6 +232,7 @@ class StreamingImportTestsView(ImportTestsView):
                             + " of  {score} {'created' if new else 'updted'}</td></tr>"
                         )
                 except Exception as e:
+                    logger.exception("Failed processing gradebook row")
                     yield f"<tr class='tb-warning'><td>Row {e}</td></tr>"
 
 
@@ -261,12 +269,10 @@ class StreamingImportTestsHistoryView(ImportTestHistoryView):
             except AssertionError:
                 raise
             except Exception as e:
+                logger.exception("Failed to read uploaded gradebook history file")
                 form.add_error(
                     None,
-                    (
-                        f"Could not read Gradebook History  file due to: {e} with"
-                        + " {f.temporary_file_path()} {format_exc()}"
-                    ),
+                    f"Could not read Gradebook History file due to: {e}",
                 )
                 return self.form_invalid(form)
             return self.form_valid(form)
@@ -294,6 +300,7 @@ class StreamingImportTestsHistoryView(ImportTestHistoryView):
                         row.AttemptDate = pd.to_datetime(row["Attempt Activity"])
 
                     except Exception as err:
+                        logger.warning("Failed converting gradebook history row timestamps: %s", err)
                         yield f"<tr><td>Time Conversion Error 1{err}</td></tr>"
                         continue
                     try:
@@ -353,7 +360,8 @@ class StreamingImportTestsHistoryView(ImportTestHistoryView):
                         + f" saved with score {row.Value}</td></tr>"
                     )
                 except Exception as e:
-                    yield (f"<r class='bg tb-danger'><td>{ e }<br/><pre>{ format_exc() }</pre></td></tr>\n")
+                    logger.exception("Failed processing gradebook history row")
+                    yield f"<r class='bg tb-danger'><td>{e}</td></tr>\n"
 
 
 class TestResultColumn(Column):
