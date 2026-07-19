@@ -8,8 +8,8 @@ from operator import attrgetter
 # Django imports
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
-from django.utils.encoding import smart_str
 from django.utils import timezone as tz
+from django.utils.encoding import smart_str
 
 # external imports
 from accounts.models import Account
@@ -250,9 +250,7 @@ class FeedbackSerializer(serializers.ModelSerializer):
             if target_user is None and self.instance is not None:
                 target_user = self.instance.user
             if target_user != request.user:
-                raise serializers.ValidationError(
-                    "HMAC feedback can only be submitted for the authenticated student."
-                )
+                raise serializers.ValidationError("HMAC feedback can only be submitted for the authenticated student.")
         return attrs
 
     def get_existing_instance(self, validated_data):

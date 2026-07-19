@@ -187,6 +187,19 @@ MANAGERS = ADMINS
 
 # ###### User model and Authentication #####################
 
+DNS_NAME = f"{SITE_NAME.replace("_","-")}.leeds.ac.uk"
+try:
+    IP_ADDR = socket.gethostbyname(DNS_NAME)
+except socket.gaierror:
+    IP_ADDR = "127.0.0.1"
+
+VMRANGE = [f"10.7.17.{x}" for x in range(240, 248)]
+LOCALHOSTS = ["localhost", "127.0.0.1", "localhost:8443", "testserver"]
+
+ALLOWED_HOSTS = [DNS_NAME, IP_ADDR] + VMRANGE + LOCALHOSTS
+CSRF_TRUSTED_ORIGINS = [f"https://{x}" for x in ALLOWED_HOSTS]
+
+
 ##########################################################################
 AUTH_USER_MODEL = "accounts.Account"
 
@@ -249,18 +262,6 @@ STATIC_URL = "/static/"
 
 # the URL for media files
 MEDIA_URL = "/media/"
-
-# ##### Settings for CSRF protection
-try:
-    DNS_NAME = f"{SITE_NAME}.leeds.ac.uk"
-    IP_ADDR = socket.gethostbyname(DNS_NAME)
-except socket.gaierror:
-    DNS_NAME = "localhost"
-    IP_ADDR = "127.0.0.1"
-
-TEST_SERVERS = ["localhost:8443", "127.0.0.1:8443", "test-server"]
-ALLOWED_HOSTS = [DNS_NAME, IP_ADDR, "localhost", "127.0.0.1"] + TEST_SERVERS
-CSRF_TRUSTED_ORIGINS = [f"https://{x}" for x in ALLOWED_HOSTS]
 
 # #### Session Settings
 
