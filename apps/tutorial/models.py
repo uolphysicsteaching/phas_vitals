@@ -333,7 +333,12 @@ class Attendance(models.Model):
         self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None
     ):  # pylint: disable=arguments-differ
         """Save the model and then signal to update the student's attendance reocrd."""
-        super().save(force_insert, force_update, using, update_fields)
+        super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=update_fields,
+        )
         for ss in self.student.summary_scores.filter(category__text="Tutorial"):
             ss.calculate()
             ss.save()

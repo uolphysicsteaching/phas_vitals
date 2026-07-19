@@ -87,8 +87,8 @@ def import_gradebook():
             config.LAST_MINERVA_UPDATE = module.json_updated
             logger.debug("Updated constance.config")
             break
-        except:
-            pass
+        except Exception:
+            logger.debug("Failed to update constance.config from %s", module.key, exc_info=True)
     else:
         logger.debug("Failed to updated constance.config")
     return imported_modules

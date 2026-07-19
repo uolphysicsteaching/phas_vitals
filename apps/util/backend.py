@@ -275,7 +275,7 @@ class HMACAuthentication(BaseAuthentication):
         raise AuthenticationFailed("Invalid HMAC signature")
 
 
-def send_hmac_signed_request(payload, url=None, secret_key=None, headers=None, key_identifier=None):
+def send_hmac_signed_request(payload, url=None, secret_key=None, headers=None, key_identifier=None, timeout=30):
     """Sends a POST request with HMAC authentication.
 
     Args:
@@ -284,6 +284,7 @@ def send_hmac_signed_request(payload, url=None, secret_key=None, headers=None, k
         secret_key (str): Hex-encoded or raw bytes secret key.
         headers (dict): Optional additional headers.
         key_identifier (str): Optional public key identifier to send with the signature.
+        timeout (float): Timeout in seconds for the outgoing HTTP request.
 
     Returns:
         requests.Response: The response object.
@@ -318,5 +319,5 @@ def send_hmac_signed_request(payload, url=None, secret_key=None, headers=None, k
         auth_headers.update(headers)
 
     # Send request
-    response = requests.post(url, data=body, headers=auth_headers)
+    response = requests.post(url, data=body, headers=auth_headers, timeout=timeout)
     return response

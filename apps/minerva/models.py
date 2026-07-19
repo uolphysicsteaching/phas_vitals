@@ -1431,13 +1431,23 @@ class Test_Score(models.Model):
             orig = Test_Score.objects.get(pk=self.pk)
         else:  # New entry, no original to compare
             orig = None
-            super().save(force_insert, force_update, using, update_fields)
+            super().save(
+                force_insert=force_insert,
+                force_update=force_update,
+                using=using,
+                update_fields=update_fields,
+            )
             force_insert = False
         score, passed, send_signal = self.check_passed(orig)  # Have we passed now?
         task_logger.debug(f"Saving Test_Score {self.test.name} {score=} {passed=} {send_signal=}")
 
         self.passed = passed
-        super().save(force_insert, force_update, using, update_fields)  # Save to ensure pk is set
+        super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=update_fields,
+        )  # Save to ensure pk is set
 
         if self.test.category:  # Update the summary score if we have a category
             try:

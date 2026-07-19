@@ -117,7 +117,7 @@ class GradebookImport(IsStaffViewMixin, SessionWizardView):
                 case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
                     df = pd.read_excel(os.path.join(settings.MEDIA_ROOT, "tmp", fname))
                 case _:
-                    assert False
+                    raise ValueError(f"Unsupported gradecentre MIME type: {mime_type}")
             return self.construct_form(module, df, data, files)
         else:
             return super().get_form(step, data, files)

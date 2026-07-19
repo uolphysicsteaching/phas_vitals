@@ -128,11 +128,7 @@ class HTMXProcessMixin:
 
         # Look for a request specific to the element involved.
         for elem in self.htmx_elements():
-            if (
-                handler := getattr(self, f"get_context_object_name{elem}", False)
-                and callable(handler)
-                and callable(handler)
-            ):
+            if callable(handler := getattr(self, f"get_context_object_name{elem}", False)):
                 with temp_attr(self, "_htmx_get_context_object_name", True):
                     return handler(object_list)
             if sub_name := getattr(self, f"context_object_{elem}", False):
@@ -291,7 +287,7 @@ class HTMXFormMixin(HTMXProcessMixin):
             if handler and callable(handler):
                 with temp_attr(self, "_htmx_form_valid", True):
                     return handler(form)
-        if handler := getattr(self, "htmx_form_valid", False) and callable(handler):
+        if callable(handler := getattr(self, "htmx_form_valid", False)):
             with temp_attr(self, "_htmx_form_valid", True):
                 return handler(form)
         return super().form_valid(form)
@@ -316,7 +312,7 @@ class HTMXFormMixin(HTMXProcessMixin):
             if handler and callable(handler):
                 with temp_attr(self, "_htmx_form_invalid", True):
                     return handler(form)
-        if handler := getattr(self, "htmx_form_invalid", False) and callable(handler):
+        if callable(handler := getattr(self, "htmx_form_invalid", False)):
             with temp_attr(self, "_htmx_form_invalid", True):
                 return handler(form)
         return super().form_invalid(form)

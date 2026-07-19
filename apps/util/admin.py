@@ -9,6 +9,8 @@ from django.apps import apps
 from django.contrib import admin, messages
 from django.db.models import Model
 from django.http import HttpResponseRedirect
+from django.shortcuts import resolve_url
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext_lazy as _
 
 # external imports
@@ -123,6 +125,18 @@ def patch_admin(model, **kargs):
                 setattr(model_admin, attr, value)
 
 
+def safe_referer(request, default="/admin/"):
+    """Return a validated local referer URL or a safe fallback."""
+    referer = request.META.get("HTTP_REFERER")
+    if referer and url_has_allowed_host_and_scheme(
+        referer,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return referer
+    return resolve_url(default)
+
+
 # Register your models here.
 
 
@@ -222,7 +236,7 @@ class APIKeyAdmin(ImportExportModelAdmin):
             f"Created API key {obj.identifier}: {getattr(obj, '_plaintext_key', '[hidden]')}",
             messages.SUCCESS,
         )
-        return HttpResponseRedirect(request.META.get("HTTP_REFERER", "/admin/"))
+        return HttpResponseRedirect(safe_referer(request))
 
 
 override_tree_admin(CustomTreeAdmin)
