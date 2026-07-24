@@ -1,3 +1,4 @@
-{% for option,pk in options.items %}
-    <option value="{{ pk }}">{{ option }}</option>
+<option value="">---------</option>
+{% for value, label in options %}
+    <option value="{{ value }}">{{ label }}</option>
 {% endfor %}

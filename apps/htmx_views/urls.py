@@ -7,7 +7,7 @@ from os.path import basename, dirname
 from django.urls import path
 
 # app imports
-from . import views
+from .linked_selects import LinkedSelectEndpointView
 
 app_name = basename(dirname(__file__))
-urlpatterns = [path("select/<str:lookup_channel>/", views.LinkedSelectEndpointView.as_view(), name="select")]
+urlpatterns = [path("select/<str:lookup_channel>/", LinkedSelectEndpointView.as_view(), name="select")]

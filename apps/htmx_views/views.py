@@ -8,12 +8,7 @@ from contextlib import contextmanager
 
 # Django imports
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.views import View
-from django.views.generic import TemplateView
-
-# external imports
-from ajax_select import registry
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +59,7 @@ def dispatch(self, request, *args, **kwargs):
     else:
         handler = self.http_method_not_allowed
     if not callable(handler):
-        return self._non_htmx_dispatch(request, *args, **kwargs)
+        handler = self.http_method_not_allowed
     return handler(request, *args, **kwargs)
 
 
@@ -98,12 +93,13 @@ class HTMXProcessMixin:
                 yield elem
 
     def get_context_data_function(self, **kwargs):
-        """Return a handler for get_context_data."""
+        """Return the first callable element-specific context handler."""
+        del kwargs
         for elem in self.htmx_elements():
-            handler = getattr(self, f"get_context_data_{elem}", False)
-            if handler:
-                break
-        return handler
+            handler = getattr(self, f"get_context_data_{elem}", None)
+            if callable(handler):
+                return handler
+        return None
 
     def get_context_data(self, **kwargs):
         """Get context data being aware of htmx views."""
@@ -112,7 +108,7 @@ class HTMXProcessMixin:
 
         # Look for a request specific to the element involved.
         handler = self.get_context_data_function(**kwargs)
-        if handler and callable(handler):
+        if handler is not None:
             with temp_attr(self, "_htmx_get_context_data", True):
                 return handler(**kwargs)
         return super().get_context_data(**kwargs)
@@ -128,9 +124,10 @@ class HTMXProcessMixin:
 
         # Look for a request specific to the element involved.
         for elem in self.htmx_elements():
-            if callable(handler := getattr(self, f"get_context_object_name{elem}", False)):
-                with temp_attr(self, "_htmx_get_context_object_name", True):
-                    return handler(object_list)
+            for handler_name in (f"get_context_object_name_{elem}", f"get_context_object_name{elem}"):
+                if callable(handler := getattr(self, handler_name, None)):
+                    with temp_attr(self, "_htmx_get_context_object_name", True):
+                        return handler(object_list)
             if sub_name := getattr(self, f"context_object_{elem}", False):
                 return sub_name
 
@@ -145,8 +142,8 @@ class HTMXProcessMixin:
 
         # Look for a request specific to the element involved.
         for elem in self.htmx_elements():
-            handler = getattr(self, f"get_template_names_{elem}", False)
-            if handler and callable(handler):
+            handler = getattr(self, f"get_template_names_{elem}", None)
+            if callable(handler):
                 if settings.DEBUG:
                     logger.debug(f"Template_handler: {handler.__name__}")
                 with temp_attr(self, "_htmx_get_template_names", True):
@@ -166,15 +163,15 @@ class HTMXProcessMixin:
         `method_not_allowed` result instrad.
         """
         for elem in self.htmx_elements():
-            handler = getattr(self, f"htmx_delete_{elem}", False)
-            if handler:
+            handler = getattr(self, f"htmx_delete_{elem}", None)
+            if callable(handler):
                 break
         else:
             handler = getattr(self, "delete", self.http_method_not_allowed)
+        if not callable(handler):
+            handler = self.http_method_not_allowed
         if settings.DEBUG:
             logger.debug(f"HTMX Method handler: {handler.__name__}")
-        if not callable(handler):
-            return self.http_method_not_allowed(request, *args, **kwargs)
         return handler(request, *args, **kwargs)
 
     def htmx_get(self, request, *args, **kwargs):
@@ -185,15 +182,15 @@ class HTMXProcessMixin:
         `method_not_allowed` result instrad.
         """
         for elem in self.htmx_elements():
-            handler = getattr(self, f"htmx_get_{elem}", False)
-            if handler:
+            handler = getattr(self, f"htmx_get_{elem}", None)
+            if callable(handler):
                 break
         else:
             handler = getattr(self, "get", self.http_method_not_allowed)
+        if not callable(handler):
+            handler = self.http_method_not_allowed
         if settings.DEBUG:
             logger.debug(f"HTMX Method handler: {handler.__name__}")
-        if not callable(handler):
-            return self.http_method_not_allowed(request, *args, **kwargs)
         return handler(request, *args, **kwargs)
 
     def htmx_patch(self, request, *args, **kwargs):
@@ -204,15 +201,15 @@ class HTMXProcessMixin:
         `method_not_allowed` result instrad.
         """
         for elem in self.htmx_elements():
-            handler = getattr(self, f"htmx_patch_{elem}", False)
-            if handler:
+            handler = getattr(self, f"htmx_patch_{elem}", None)
+            if callable(handler):
                 break
         else:
             handler = getattr(self, "patch", self.http_method_not_allowed)
+        if not callable(handler):
+            handler = self.http_method_not_allowed
         if settings.DEBUG:
             logger.debug(f"HTMX Method handler: {handler.__name__}")
-        if not callable(handler):
-            return self.http_method_not_allowed(request, *args, **kwargs)
         return handler(request, *args, **kwargs)
 
     def htmx_post(self, request, *args, **kwargs):
@@ -223,15 +220,15 @@ class HTMXProcessMixin:
         `method_not_allowed` result instrad.
         """
         for elem in self.htmx_elements():
-            handler = getattr(self, f"htmx_post_{elem}", False)
-            if handler:
+            handler = getattr(self, f"htmx_post_{elem}", None)
+            if callable(handler):
                 break
         else:
             handler = getattr(self, "post", self.http_method_not_allowed)
+        if not callable(handler):
+            handler = self.http_method_not_allowed
         if settings.DEBUG:
             logger.debug(f"HTMX Method handler: {handler.__name__}")
-        if not callable(handler):
-            return self.http_method_not_allowed(request, *args, **kwargs)
         return handler(request, *args, **kwargs)
 
     def htmx_put(self, request, *args, **kwargs):
@@ -242,15 +239,15 @@ class HTMXProcessMixin:
         `method_not_allowed` result instrad.
         """
         for elem in self.htmx_elements():
-            handler = getattr(self, f"htmx_put_{elem}", False)
-            if handler:
+            handler = getattr(self, f"htmx_put_{elem}", None)
+            if callable(handler):
                 break
         else:
             handler = getattr(self, "put", self.http_method_not_allowed)
+        if not callable(handler):
+            handler = self.http_method_not_allowed
         if settings.DEBUG:
             logger.debug(f"HTMX Method handler: {handler.__name__}")
-        if not callable(handler):
-            return self.http_method_not_allowed(request, *args, **kwargs)
         return handler(request, *args, **kwargs)
 
 
@@ -318,73 +315,21 @@ class HTMXFormMixin(HTMXProcessMixin):
         return super().form_invalid(form)
 
 
-class _LocalUserPassesTest:
-    """Implement the bits of UserPassesTestMixin without triggering early import."""
+def __getattr__(name):
+    """Lazily preserve the former linked-select view import path."""
+    if name == "LinkedSelectEndpointView":
+        # app imports
+        from .linked_selects import LinkedSelectEndpointView
 
-    def dispatch(self, request, *args, **kwargs):
-        """Dispatch request after testing user permissions.
-
-        Args:
-            request: The HTTP request object.
-            *args: Variable length argument list.
-            **kwargs: Arbitrary keyword arguments.
-
-        Returns:
-            HTTP response or redirect to login if test fails.
-        """
-        user_test_result = self.test_func()
-        if not user_test_result:
-            # Django imports
-            from django.contrib.auth.views import redirect_to_login
-
-            return redirect_to_login(self.request.get_full_path(), self.login_url, self.redirect_field_name())
-        return super().dispatch(request, *args, **kwargs)
+        return LinkedSelectEndpointView
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-class LinkedSelectEndpointView(_LocalUserPassesTest, TemplateView):
-    """Endpoint for htmx_views:select urls for linked select widget."""
-
-    template_name = "htmx_views/widgets/options.html"
-    login_url = settings.LOGIN_URL
-    redirect_field_name = "next"
-
-    def test_func(self):
-        """Get our lookup and use authentication if required."""
-        try:
-            self.lookup_channel = self.kwargs.get("lookup_channel")
-            self.parent = self.kwargs.get("parent", None)
-            self.lookup = registry.get(self.kwargs.get("lookup_channel"))
-        except ImproperlyConfigured:
-            return False
-        if hasattr(self.lookup, "check_auth"):
-            try:
-                self.lookup.check_auth(self.request)
-            except PermissionDenied:
-                return False
-        return True
-
-    def get_context_data(self, **kwargs):
-        """Add the option_list to the context."""
-        if self.parent is None:
-            self.parent = getattr(self.lookup, "parameter_name", None)
-        if self.parent is None:
-            raise ImproperlyConfigured(
-                f"Creating an htmx_views widget for {self.lookup_channel} without knowing the trigger."
-            )
-        query = self.request.GET.get(self.parent)
-        try:
-            query = int(query)
-        except (TypeError, ValueError):
-            pass
-
-        context = super().get_context_data(**kwargs)
-        opts = {"---------": None}
-        if query:
-            opts.update({str(x): x.pk for x in self.lookup.get_query(query, self.request).distinct()})
-        context["options"] = opts
-        return context
+def _install_htmx_dispatch(view_class=View):
+    """Install the HTMX-aware dispatch function idempotently."""
+    if not hasattr(view_class, "_non_htmx_dispatch"):
+        setattr(view_class, "_non_htmx_dispatch", view_class.dispatch)
+    setattr(view_class, "dispatch", dispatch)
 
 
-if not hasattr(View, "_bon_htmx_dispatch"):  # View needs monkey patching
-    setattr(View, "_non_htmx_dispatch", View.dispatch)
-    setattr(View, "dispatch", dispatch)
+_install_htmx_dispatch()
