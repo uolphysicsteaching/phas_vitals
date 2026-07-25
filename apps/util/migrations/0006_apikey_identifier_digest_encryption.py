@@ -2,14 +2,12 @@
 
 # Python imports
 import hashlib
+import secrets
 
 # Django imports
 from django.db import migrations, models
 
 # external imports
-import secrets
-
-# app imports
 import util.fields
 
 

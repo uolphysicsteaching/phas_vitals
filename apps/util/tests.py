@@ -8,6 +8,7 @@ import json
 # Django imports
 from django.db import connection
 
+# external imports
 import pytest
 from rest_framework.test import APIRequestFactory
 
@@ -19,7 +20,7 @@ class TestAPIKeyStorage:
 
     def test_apikey_is_encrypted_at_rest(self):
         """Saving an API key should encrypt the stored database value."""
-        # app imports
+        # external imports
         from util.models import APIKey
 
         key = APIKey(key="a" * 128, comment="test key")
@@ -38,7 +39,7 @@ class TestAPIKeyStorage:
 
     def test_hmac_auth_accepts_legacy_signature_format(self, sample_user):
         """Legacy HMAC headers without a key identifier should still authenticate."""
-        # app imports
+        # external imports
         from util.backend import HMACAuthentication
         from util.models import APIKey
 
@@ -61,7 +62,7 @@ class TestAPIKeyStorage:
 
     def test_hmac_auth_accepts_identifier_prefixed_signature_format(self, sample_user):
         """Identifier-prefixed HMAC headers should look up a single API key."""
-        # app imports
+        # external imports
         from util.backend import HMACAuthentication
         from util.models import APIKey
 

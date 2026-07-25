@@ -122,6 +122,7 @@ DEFAULT_APPS = (
         "tinymce",  # django-tinymce package
         "django_celery_results",
         "django_celery_beat",
+        "htmx_views",
     ]
     + CUSTOM_APPS
     + [
