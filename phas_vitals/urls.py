@@ -41,6 +41,7 @@ urlpatterns = [
     path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
     path("oauth2/", include("django_auth_adfs.urls")),
     path("tinymce/", include("tinymce.urls")),
+    path(f"htmx_views/", include(f"htmx_views.urls")),
 ]
 
 # Add urls path for all the apps
