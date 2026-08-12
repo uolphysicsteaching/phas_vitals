@@ -13,8 +13,8 @@ from traceback import format_exc
 from django.apps import apps
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
 from django.db.models import OuterRef, Q, Subquery
-from django.db.utils import IntegrityError
 from django.forms import ValidationError
 from django.http import HttpResponse, StreamingHttpResponse
 from django.utils.html import format_html
@@ -52,7 +52,14 @@ from .forms import (
     TestHistoryImportForm,
     TestImportForm,
 )
-from .models import Module, ModuleEnrollment, Test, Test_Attempt, Test_Score
+from .models import (
+    GradebookColumn,
+    Module,
+    ModuleEnrollment,
+    Test,
+    Test_Attempt,
+    Test_Score,
+)
 
 TZ = timezone(settings.TIME_ZONE)
 logger = logging.getLogger(__name__)
@@ -289,79 +296,142 @@ class StreamingImportTestsHistoryView(ImportTestHistoryView):
     def response_generator(self):
         """Yield rows for a table."""
         module = self.form.cleaned_data["module"]
-        alt = False
         for df in self.data:
-            for _, row in df.iterrows():
-                try:
-                    try:
-                        row.Date = pd.to_datetime(row.Date)
-                        if row.Date.tzinfo is None:
-                            row.Date = TZ.localize(row.Date)
-                        row.AttemptDate = pd.to_datetime(row["Attempt Activity"])
-
-                    except Exception as err:
-                        logger.warning("Failed converting gradebook history row timestamps: %s", err)
-                        yield f"<tr><td>Time Conversion Error 1{err}</td></tr>"
-                        continue
-                    try:
-                        row.AttemptDate = TZ.localize(row.AttemptDate)
-                    except Exception as err:
-                        row.AttemptDate = row.Date
-
-                    try:
-                        student = Account.objects.get(username=row.Username)
-                    except ObjectDoesNotExist:
-                        print("Yield")
-                        yield f"<tr class='tb-warning'><td>Unknown User {row.Username}</td></tr>"
-                        continue
-                    try:
-                        test = Test.get_by_column_name(row.Column, module=module)
-                    except ObjectDoesNotExist:
-                        print("Yield")
-                        yield f"<tr class='tb-warning'><td>Unknown test {row.Column}</td></tr>"
-                        continue
-
-                    test_score, new = Test_Score.objects.get_or_create(user=student, test=test)
-
-                    if (
-                        not new
-                        and test_score.score is not None
-                        and (np.isnan(row.Value) or test_score.score >= row.Value)
-                    ):
-                        yield (
-                            f"<tr class='tb-info'><td>Skipping {student.display_name} for {row.Value} as not "
-                            + "substantive change</td></tr>"
-                        )
-                    new_id = f"{row.Column}:{row.Username}:{row.AttemptDate}"
-                    test_attempt, new = Test_Attempt.objects.get_or_create(attempt_id=new_id, test_entry=test_score)
-                    if (
-                        not new
-                        and test_attempt.score is not None
-                        and not np.isnan(test_attempt.score)
-                        and np.isnan(row.Value)
-                    ):
-                        yield (
-                            f"<tr cl;ass='tb tb-info'><td>Skipping {student.display_name} for existing"
-                            + f" score {test_attempt.score} and new score {row.Value}</td></tr>"
-                        )
-                        continue  # Skip over duplicate attempts where the score is NaN
-                    test_attempt.score = row.Value
-                    test_attempt.modified = row.Date
-                    test_attempt.attempted = row.AttemptDate
-                    try:
-                        test_attempt.save()
-                    except IntegrityError:
-                        yield f"<r class='bg tb-danger'><td>Database error for {test_attempt}</td></tr>"
-                        continue
-                    cls = "light" if not alt else "secondary"
-                    alt = not alt
+            try:
+                result = self._process_dataframe(df, module)
+                yield (
+                    "<tr class='tb-success'><td>"
+                    f"Processed {result['rows']} rows: {result['created']} attempts created, "
+                    f"{result['updated']} updated, {result['unchanged']} unchanged."
+                    "</td></tr>"
+                )
+                if result["unknown_users"]:
                     yield (
-                        f"<tr class='tb-{cls}'><td>Attempt {row.Column} for {student.display_name} at {row.AttemptDate}"
-                        + f" saved with score {row.Value}</td></tr>"
+                        "<tr class='tb-warning'><td>Skipped rows for unknown users: "
+                        f"{', '.join(sorted(result['unknown_users']))}</td></tr>"
                     )
-                except Exception as e:
-                    logger.exception("Failed processing gradebook history row")
-                    yield f"<r class='bg tb-danger'><td>{e}</td></tr>\n"
+                if result["unknown_tests"]:
+                    yield (
+                        "<tr class='tb-warning'><td>Skipped rows for unknown tests: "
+                        f"{', '.join(sorted(result['unknown_tests']))}</td></tr>"
+                    )
+                if result["invalid_dates"]:
+                    yield (
+                        "<tr class='tb-warning'><td>"
+                        f"Skipped {result['invalid_dates']} rows with invalid dates.</td></tr>"
+                    )
+            except Exception as err:
+                logger.exception("Failed processing gradebook history file")
+                yield f"<tr class='tb-danger'><td>{err}</td></tr>"
+
+    @staticmethod
+    @transaction.atomic
+    def _process_dataframe(df, module):
+        """Import one history dataframe using bulk lookups and database writes."""
+        required = {"Date", "Attempt Activity", "Username", "Column", "Value"}
+        missing = required.difference(df.columns)
+        if missing:
+            raise ValidationError(f"Missing required columns: {', '.join(sorted(missing))}")
+
+        data = df.loc[:, list(required)].copy()
+        data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
+        data["AttemptDate"] = pd.to_datetime(data["Attempt Activity"], errors="coerce")
+        invalid_dates = int(data["Date"].isna().sum())
+        data = data[data["Date"].notna()]
+
+        def localize(value, fallback):
+            if pd.isna(value):
+                return fallback
+            if value.tzinfo is None:
+                return TZ.localize(value)
+            return value.tz_convert(TZ)
+
+        data["Date"] = data["Date"].map(lambda value: localize(value, value))
+        data["AttemptDate"] = [
+            localize(attempted, modified) for attempted, modified in zip(data["AttemptDate"], data["Date"])
+        ]
+
+        usernames = set(data["Username"].dropna().astype(str))
+        users = Account.objects.filter(username__in=usernames).in_bulk(field_name="username")
+
+        # History exports identify tests by gradebook column name. Fetch all
+        # mappings once; priority ordering gives deterministic handling of aliases.
+        columns = (
+            GradebookColumn.objects.filter(module=module, test__isnull=False, name__in=data["Column"].unique())
+            .select_related("test")
+            .order_by("-priority")
+        )
+        tests = {column.name: column.test for column in columns}
+        # Older imports did not always create GradebookColumn records.
+        for test in Test.objects.filter(module=module):
+            tests.setdefault(test.name, test)
+            tests.setdefault(test.test_id, test)
+
+        unknown_users = usernames.difference(users)
+        column_names = set(data["Column"].dropna().astype(str))
+        unknown_tests = column_names.difference(tests)
+        data = data[data["Username"].astype(str).isin(users) & data["Column"].astype(str).isin(tests)]
+
+        pairs = {(users[str(row.Username)].pk, tests[str(row.Column)].pk) for row in data.itertuples()}
+        existing_scores = Test_Score.objects.filter(
+            user_id__in={pair[0] for pair in pairs}, test_id__in={pair[1] for pair in pairs}
+        )
+        score_map = {(score.user_id, score.test_id): score for score in existing_scores}
+        missing_scores = [
+            Test_Score(user_id=user_id, test_id=test_id)
+            for user_id, test_id in pairs
+            if (user_id, test_id) not in score_map
+        ]
+        Test_Score.objects.bulk_create(missing_scores, ignore_conflicts=True)
+        score_map = {
+            (score.user_id, score.test_id): score
+            for score in Test_Score.objects.filter(
+                user_id__in={pair[0] for pair in pairs}, test_id__in={pair[1] for pair in pairs}
+            )
+        }
+
+        rows = []
+        attempt_ids = set()
+        for row in data.itertuples():
+            attempt_id = f"{row.Column}:{row.Username}:{row.AttemptDate}"
+            attempt_ids.add(attempt_id)
+            rows.append((row, attempt_id))
+        existing_attempts = Test_Attempt.objects.in_bulk(attempt_ids, field_name="attempt_id")
+        pending = {}
+        unchanged = 0
+        for row, attempt_id in rows:
+            score = score_map[(users[str(row.Username)].pk, tests[str(row.Column)].pk)]
+            attempt = pending.get(attempt_id) or existing_attempts.get(attempt_id)
+            if attempt is None:
+                attempt = Test_Attempt(attempt_id=attempt_id, test_entry=score)
+            elif attempt.score is not None and not np.isnan(attempt.score) and pd.isna(row.Value):
+                unchanged += 1
+                continue
+            attempt.score = row.Value
+            attempt.modified = row.Date
+            attempt.attempted = row.AttemptDate
+            pending[attempt_id] = attempt
+
+        created = [attempt for attempt in pending.values() if attempt.pk is None]
+        updated = [attempt for attempt in pending.values() if attempt.pk is not None]
+        Test_Attempt.objects.bulk_create(created)
+        Test_Attempt.objects.bulk_update(updated, ["score", "modified", "attempted"])
+
+        # Test_Attempt.save() normally performs this for every row. Recalculate
+        # once per affected student/test after all of its attempts are present.
+        affected_score_ids = {attempt.test_entry_id for attempt in pending.values()}
+        for score in Test_Score.objects.filter(pk__in=affected_score_ids).select_related("test", "user"):
+            score.save()
+
+        return {
+            "rows": len(df),
+            "created": len(created),
+            "updated": len(updated),
+            "unchanged": unchanged,
+            "unknown_users": unknown_users,
+            "unknown_tests": unknown_tests,
+            "invalid_dates": invalid_dates,
+        }
 
 
 class TestResultColumn(Column):

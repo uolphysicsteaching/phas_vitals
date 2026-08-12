@@ -14,6 +14,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files import File
 from django.core.files.storage import FileSystemStorage
+from django.db import transaction
 from django.http import HttpResponseRedirect
 
 # external imports
@@ -22,6 +23,7 @@ import numpy as np
 import pandas as pd
 from dateutil import parser
 from formtools.wizard.views import SessionWizardView
+from minerva.models import Test_Attempt, Test_Score
 from util.views import IsStaffViewMixin, get_encoding
 
 # app imports
@@ -176,19 +178,116 @@ class GradebookImport(IsStaffViewMixin, SessionWizardView):
         return studentID_col, date_col, mapping
 
     def _process_rows(self, df, module, mapping, date_col):
-        """Process a single row of the spreadsheet."""
-        for sid, row in df.iterrows():
-            if np.isnan(sid):
-                continue
-            try:
-                student = module.student_enrollments.get(student__number=sid).student
-            except ObjectDoesNotExist:
-                continue
-            if date_col is None:
-                date = tz.today()
+        """Process spreadsheet results with bulk lookups and writes."""
+        return self._bulk_process_attempts(df, module, mapping, date_col)
+
+    @staticmethod
+    @transaction.atomic
+    def _bulk_process_attempts(df, module, mapping, date_col):
+        """Filter relevant cells, then write attempts in database-sized batches."""
+        if not mapping or df.empty:
+            return {"rows": len(df), "attempts": 0, "students": 0, "scores": 0}
+
+        # Reduce the dataframe to mapped result columns before expanding it.
+        # This avoids spending time on the many unrelated Gradebook columns.
+        result_columns = list(mapping)
+        data = df.loc[:, result_columns].copy()
+        data["student_number"] = pd.to_numeric(df.index, errors="coerce")
+        if date_col:
+            dates = pd.to_datetime(df[date_col], errors="coerce")
+            if getattr(dates.dt, "tz", None) is None:
+                dates = dates.dt.tz_localize(settings.TIME_ZONE, ambiguous="NaT", nonexistent="shift_forward")
             else:
-                date = self._parse_date(row, date_col)
-            self._process_attempts(row, student, mapping, date)
+                dates = dates.dt.tz_convert(settings.TIME_ZONE)
+            data["attempted"] = dates
+        else:
+            data["attempted"] = tz.now()
+
+        # Convert the selected mark columns in one operation and discard blanks,
+        # invalid student IDs and invalid marks before touching the database.
+        long_data = data.melt(
+            id_vars=["student_number", "attempted"],
+            value_vars=result_columns,
+            var_name="result_column",
+            value_name="mark",
+        )
+        long_data["mark"] = pd.to_numeric(long_data["mark"], errors="coerce")
+        long_data = long_data.dropna(subset=["student_number", "mark"])
+        if long_data.empty:
+            return {"rows": len(df), "attempts": 0, "students": 0, "scores": 0}
+
+        student_numbers = set(long_data["student_number"].astype(int))
+        enrollments = module.student_enrollments.filter(student__number__in=student_numbers).select_related("student")
+        students = {enrollment.student.number: enrollment.student for enrollment in enrollments}
+        long_data["student_number"] = long_data["student_number"].astype(int)
+        long_data = long_data[long_data["student_number"].isin(students)]
+        if long_data.empty:
+            return {"rows": len(df), "attempts": 0, "students": 0, "scores": 0}
+
+        pairs = {(students[row.student_number].pk, mapping[row.result_column].pk) for row in long_data.itertuples()}
+        user_ids = {user_id for user_id, _ in pairs}
+        test_ids = {test_id for _, test_id in pairs}
+        score_map = {
+            (score.user_id, score.test_id): score
+            for score in Test_Score.objects.filter(user_id__in=user_ids, test_id__in=test_ids)
+        }
+        Test_Score.objects.bulk_create(
+            [
+                Test_Score(user_id=user_id, test_id=test_id)
+                for user_id, test_id in pairs
+                if (user_id, test_id) not in score_map
+            ],
+            ignore_conflicts=True,
+        )
+        score_map = {
+            (score.user_id, score.test_id): score
+            for score in Test_Score.objects.filter(user_id__in=user_ids, test_id__in=test_ids)
+        }
+
+        now = tz.now()
+        pending = {}
+        for row in long_data.itertuples():
+            student = students[row.student_number]
+            test = mapping[row.result_column]
+            attempted = row.attempted
+            if pd.isna(attempted):
+                attempted = now
+            attempt_id = f"{test.test_id}_{student.number}_{attempted.strftime('%Y%m%d')}_{row.mark}"
+            pending[attempt_id] = (score_map[(student.pk, test.pk)], float(row.mark), attempted)
+
+        existing = Test_Attempt.objects.in_bulk(pending, field_name="attempt_id")
+        created = []
+        updated = []
+        for attempt_id, (score, mark, attempted) in pending.items():
+            attempt = existing.get(attempt_id)
+            if attempt is None:
+                attempt = Test_Attempt(
+                    attempt_id=attempt_id,
+                    test_entry=score,
+                    created=now,
+                )
+                created.append(attempt)
+            else:
+                updated.append(attempt)
+            attempt.score = mark
+            attempt.attempted = attempted
+            attempt.modified = now
+
+        Test_Attempt.objects.bulk_create(created)
+        Test_Attempt.objects.bulk_update(updated, ["score", "attempted", "modified"])
+
+        # Test_Attempt.save() normally recalculates its parent on every cell.
+        # Once all attempts exist, one save per affected score is sufficient.
+        affected_score_ids = {score.pk for score, _, _ in pending.values()}
+        for score in Test_Score.objects.filter(pk__in=affected_score_ids).select_related("test", "user"):
+            score.save()
+
+        return {
+            "rows": len(df),
+            "attempts": len(pending),
+            "students": len({score.user_id for score, _, _ in pending.values()}),
+            "scores": len(affected_score_ids),
+        }
 
     def _parse_date(self, row, date_col):
         """Parse the date for importing test results."""

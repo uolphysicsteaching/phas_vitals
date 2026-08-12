@@ -9,8 +9,46 @@ import json
 from django.db import connection
 
 # external imports
+import pandas as pd
 import pytest
 from rest_framework.test import APIRequestFactory
+
+
+@pytest.mark.django_db
+class TestGradebookImport:
+    """Tests for the bulk Gradebook result importer."""
+
+    def test_bulk_import_filters_students_and_recalculates_scores(self, sample_status_code, sample_user, sample_test):
+        """Only enrolled students are imported and their best score is retained."""
+        # external imports
+        from minerva.models import ModuleEnrollment, Test_Attempt, Test_Score
+        from util.wizard import GradebookImport
+
+        ModuleEnrollment.objects.create(
+            module=sample_test.module,
+            student=sample_user,
+            status=sample_status_code,
+        )
+        frame = pd.DataFrame(
+            {
+                "Result": [40.0, 75.0, 99.0],
+                "Attempt date": ["2026-01-01", "2026-01-02", "2026-01-03"],
+            },
+            index=[sample_user.number, sample_user.number, 999999],
+        )
+
+        result = GradebookImport._bulk_process_attempts(
+            frame,
+            sample_test.module,
+            {"Result": sample_test},
+            "Attempt date",
+        )
+
+        score = Test_Score.objects.get(user=sample_user, test=sample_test)
+        assert result == {"rows": 3, "attempts": 2, "students": 1, "scores": 1}
+        assert Test_Attempt.objects.filter(test_entry=score).count() == 2
+        assert score.score == 75.0
+        assert score.passed is True
 
 
 @pytest.mark.django_db

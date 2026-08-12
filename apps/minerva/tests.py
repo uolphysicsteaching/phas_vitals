@@ -5,10 +5,18 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone as tz
 
 # external imports
+import pandas as pd
 import pytest
 
 # app imports
-from .models import Module, locate_named_group, module_validator
+from .models import (
+    Module,
+    Test_Attempt,
+    Test_Score,
+    locate_named_group,
+    module_validator,
+)
+from .views import StreamingImportTestsHistoryView
 
 
 @pytest.mark.unit
@@ -108,6 +116,68 @@ class TestLocateNamedGroup:
         pattern = r"(?P<name>\w+)"
         result = locate_named_group(pattern, "name", sub="replaced")
         assert "replaced" in result
+
+
+@pytest.mark.django_db
+class TestHistoryImport:
+    """Tests for the bulk gradebook-history importer."""
+
+    def test_bulk_import_recalculates_each_score(self, sample_user, sample_test):
+        """All attempts are written before the parent score is recalculated."""
+        frame = pd.DataFrame(
+            [
+                {
+                    "Date": "2026-01-01 10:00",
+                    "Attempt Activity": "2026-01-01 09:00",
+                    "Username": sample_user.username,
+                    "Column": sample_test.name,
+                    "Value": 40.0,
+                },
+                {
+                    "Date": "2026-01-02 10:00",
+                    "Attempt Activity": "2026-01-02 09:00",
+                    "Username": sample_user.username,
+                    "Column": sample_test.name,
+                    "Value": 70.0,
+                },
+            ]
+        )
+
+        result = StreamingImportTestsHistoryView._process_dataframe(frame, sample_test.module)
+
+        score = Test_Score.objects.get(user=sample_user, test=sample_test)
+        assert result["created"] == 2
+        assert score.attempts.count() == 2
+        assert score.score == 70.0
+        assert score.passed is True
+
+    def test_bulk_import_does_not_replace_mark_with_nan(self, sample_user, sample_test):
+        """An ungraded duplicate must not erase an existing numerical mark."""
+        attempted = pd.Timestamp("2026-01-01 09:00", tz="Europe/London")
+        score = Test_Score.objects.create(user=sample_user, test=sample_test)
+        attempt = Test_Attempt.objects.create(
+            attempt_id=f"{sample_test.name}:{sample_user.username}:{attempted}",
+            test_entry=score,
+            score=65.0,
+            attempted=attempted,
+        )
+        frame = pd.DataFrame(
+            [
+                {
+                    "Date": "2026-01-01 10:00",
+                    "Attempt Activity": "2026-01-01 09:00",
+                    "Username": sample_user.username,
+                    "Column": sample_test.name,
+                    "Value": float("nan"),
+                }
+            ]
+        )
+
+        result = StreamingImportTestsHistoryView._process_dataframe(frame, sample_test.module)
+
+        attempt.refresh_from_db()
+        assert result["unchanged"] == 1
+        assert attempt.score == 65.0
 
 
 @pytest.mark.django_db
