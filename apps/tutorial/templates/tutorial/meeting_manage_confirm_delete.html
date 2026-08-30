@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}{{ block.super }}Delete meeting{% endblock title %}
+
+{% block content %}
+    <h1>Delete {{ meeting.name }}</h1>
+    <p class="alert alert-danger">
+        This permanently deletes the meeting template and all attendance records and answers associated with it.
+    </p>
+    <form method="post">
+        {% csrf_token %}
+        <button class="btn btn-danger" type="submit">Delete meeting</button>
+        <a class="btn btn-outline-secondary" href="{% url 'tutorial:meeting-manage-update' meeting.pk %}">Cancel</a>
+    </form>
+{% endblock content %}

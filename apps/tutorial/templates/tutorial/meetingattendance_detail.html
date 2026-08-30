@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}{{ block.super }}{{ attendance.meeting.name }}{% endblock title %}
+
+{% block content %}
+    <h1>{{ attendance.meeting.name }}</h1>
+    <dl>
+        <dt>Student</dt><dd>{{ attendance.student }}</dd>
+        <dt>Level</dt><dd>{{ attendance.meeting.level }}</dd>
+        <dt>Attendance</dt><dd>{{ attendance.get_status_display }}</dd>
+        <dt>Recorded by</dt><dd>{{ attendance.staff }}</dd>
+        <dt>Last updated</dt><dd>{{ attendance.updated_at }}</dd>
+    </dl>
+
+    {% if attendance.meeting.notes %}<div>{{ attendance.meeting.notes|safe }}</div>{% endif %}
+
+    <h2>Responses</h2>
+    <dl>
+        {% for question, answer in responses %}
+            <dt>{{ question.text|safe }}</dt>
+            <dd>{% if answer %}{{ answer.display_value }}{% else %}Not answered{% endif %}</dd>
+        {% empty %}
+            <p>This meeting has no configured questions.</p>
+        {% endfor %}
+    </dl>
+
+    {% if can_edit %}<a class="btn btn-primary" href="{% url 'tutorial:meeting-attendance-update' attendance.pk %}">Edit</a>{% endif %}
+    {% if can_delete %}<a class="btn btn-danger" href="{% url 'tutorial:meeting-attendance-delete' attendance.pk %}">Delete</a>{% endif %}
+{% endblock content %}

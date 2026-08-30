@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}{{ block.super }}Delete question{% endblock title %}
+
+{% block content %}
+    <h1>Delete question</h1>
+    <div class="mb-3">{{ question.text|safe }}</div>
+    {% if protected_error %}<p class="alert alert-danger">{{ protected_error }}</p>{% endif %}
+    <p class="alert alert-warning">Questions currently used by a meeting or attendance record cannot be deleted.</p>
+    <form method="post">
+        {% csrf_token %}
+        <button class="btn btn-danger" type="submit">Delete question</button>
+        <a class="btn btn-outline-secondary" href="{% url 'tutorial:question-manage-list' %}">Cancel</a>
+    </form>
+{% endblock content %}

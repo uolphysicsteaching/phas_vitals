@@ -115,6 +115,8 @@ class StudentSummaryPageView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
                 return "accounts/parts/summary_vitals.html"
             case "required_work":
                 return "accounts/parts/summary_required.html"
+            case "meetings":
+                return "accounts/parts/summary_meetings.html"
             case _:
                 return "accounts/parts/summary_category.html"
 
@@ -252,6 +254,32 @@ class StudentSummaryPageView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
             "tests": Tests,
             "scores": test_scores,
             "tab": self.kwargs.get("selected_tab", f"{self.category.hashtag}"),
+        }
+        return context
+
+    def get_context_data_meetings(self, **kwargs):
+        """List the meeting templates and records for the student's level."""
+        context = super().get_context_data(**kwargs)
+        Meeting = apps.get_model("tutorial", "Meeting")
+        MeetingAttendance = apps.get_model("tutorial", "MeetingAttendance")
+        meetings = [
+            meeting
+            for meeting in Meeting.objects.filter(level=self.user.year).order_by("due_semester", "due_week", "name")
+            if meeting.is_available_for(self.user)
+        ]
+        attendance_by_meeting = {
+            attendance.meeting_id: attendance
+            for attendance in MeetingAttendance.objects.filter(student=self.user, meeting__in=meetings)
+        }
+        context |= {
+            "meetings": [
+                {
+                    "meeting": meeting,
+                    "attendance": attendance_by_meeting.get(meeting.pk),
+                }
+                for meeting in meetings
+            ],
+            "tab": self.kwargs.get("selected_tab", "#meetings"),
         }
         return context
 

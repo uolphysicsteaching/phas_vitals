@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}{{ block.super }}{{ meeting.name }}{% endblock title %}
+
+{% block content %}
+    <h1>{{ meeting.name }}</h1>
+    <dl>
+        <dt>Level</dt>
+        <dd>{{ meeting.level }}</dd>
+        <dt>Due</dt>
+        <dd>Semester {{ meeting.due_semester }}, week {{ meeting.due_week }}</dd>
+    </dl>
+
+    {% if meeting.notes %}
+        <h2>Notes</h2>
+        <div>{{ meeting.notes|safe }}</div>
+    {% endif %}
+
+    <h2>Questions</h2>
+    <ol>
+        {% for question in questions %}
+            <li>
+                {{ question.text|safe }}
+                <small class="text-muted">({{ question.get_type_display }})</small>
+            </li>
+        {% empty %}
+            <li>This meeting has no configured questions.</li>
+        {% endfor %}
+    </ol>
+{% endblock content %}

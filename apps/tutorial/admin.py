@@ -16,9 +16,12 @@ from util.admin import (
 from . import resources
 from .forms import TutorialAssignmentForm
 from .models import (
+    Answer,
     Attendance,
     Meeting,
     MeetingAttendance,
+    MeetingQuestion,
+    Question,
     Session,
     SessionType,
     Tutorial,
@@ -240,7 +243,14 @@ class AttendanceAdmin(ImportExportModelAdmin):
     """Tutorial Attendance Admin Class."""
 
     list_display = ("student", "session", "type", "score")
-    list_filter = (StudentListFilter, CohortListFilter, TutorialListFilter, "session", "type", "score")
+    list_filter = (
+        StudentListFilter,
+        CohortListFilter,
+        TutorialListFilter,
+        "session",
+        "type",
+        "score",
+    )
     search_fields = (
         "student__first_name",
         "student__last_name",
@@ -260,12 +270,37 @@ class AttendanceAdmin(ImportExportModelAdmin):
         return resources.AttendanceResource
 
 
+class MeetingQuestionInline(StackedInline):
+    """Edit the ordered prompts belonging to a meeting template."""
+
+    model = MeetingQuestion
+    extra = 1
+    autocomplete_fields = ("question",)
+
+
+class AnswerInline(StackedInline):
+    """Display answers associated with a meeting record."""
+
+    model = Answer
+    extra = 0
+    autocomplete_fields = ("question",)
+
+
+@register(Question)
+class QuestionAdmin(ImportExportModelAdmin):
+    """Manage reusable meeting prompts."""
+
+    list_display = ("text", "type")
+    list_filter = ("type",)
+    search_fields = ("text",)
+
+
 @register(MeetingAttendance)
 class MeetingAttendanceAdmin(ImportExportModelAdmin):
     """Admin class for Meeting Attendance."""
 
-    list_display = ("student", "meeting", "tutor", "submitted")
-    list_filter = (StudentListFilter, "meeting", StaffListFilter, "submitted")
+    list_display = ("student", "meeting", "status", "staff", "updated_at")
+    list_filter = ("meeting", "status", "staff", "updated_at")
     search_fields = (
         "student__first_name",
         "student__last_name",
@@ -273,7 +308,13 @@ class MeetingAttendanceAdmin(ImportExportModelAdmin):
         "student__number",
         "meeting__name",
     )
-    list_select_related = ("student", "meeting", "meeting__cohort", "tutor")
+    list_select_related = (
+        "student",
+        "meeting",
+        "meeting__level",
+        "staff",
+    )
+    inlines = (AnswerInline,)
 
     def get_export_resource_class(self):
         """Set the export resource class."""
@@ -288,10 +329,11 @@ class MeetingAttendanceAdmin(ImportExportModelAdmin):
 class MeetingAdmin(ImportExportModelAdmin):
     """Admin class for tutorial meetings."""
 
-    list_display = ("name", "cohort", "due_date")
-    list_filter = ("name", CohortListFilter, "due_date")
-    search_fields = ("name", "cohort__name")
-    list_select_related = ("cohort",)
+    list_display = ("name", "level", "due_semester", "due_week")
+    list_filter = ("name", "level", "due_semester", "due_week")
+    search_fields = ("name", "level__name", "level__status")
+    list_select_related = ("level",)
+    inlines = (MeetingQuestionInline,)
 
     def get_export_resource_class(self):
         """Set the export resource class."""

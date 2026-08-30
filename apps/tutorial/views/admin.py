@@ -25,7 +25,7 @@ from util.forms import FileSelectForm
 from util.views import IsStaffViewMixin, IsSuperuserViewMixin
 
 # app imports
-from ..models import Meeting, Tutorial, TutorialAssignment, students_Q
+from ..models import Meeting, Session, Tutorial, TutorialAssignment, students_Q
 from ..tables import BaseTable, MarkColumn
 
 
@@ -75,7 +75,11 @@ class MeetingsSummary(IsSuperuserViewMixin, FormMixin, SingleTableView):
         meetings = Meeting.objects.all()
         cohort = self.kwargs.get("cohort", "")
         try:
-            meetings = meetings.filter(cohort=Cohort.objects.get(name=cohort))
+            cohort = Cohort.objects.get(name=cohort)
+            levels = TutorialAssignment.objects.filter(
+                tutorial__cohort=cohort, student__year__isnull=False
+            ).values_list("student__year_id", flat=True)
+            meetings = meetings.filter(level_id__in=levels).distinct()
         except ObjectDoesNotExist:
             pass
         attrs = OrderedDict()
@@ -107,12 +111,29 @@ class MeetingsSummary(IsSuperuserViewMixin, FormMixin, SingleTableView):
         except (ObjectDoesNotExist, MultipleObjectsReturned):
             cohort = None
         students = Account.objects.filter(students_Q).prefetch_related(
-            "tutorial_group_assignment__tutorial", "tutorial_group_assignment__tutorial__tutor", "meetings"
+            "tutorial_group_assignment__tutorial",
+            "tutorial_group_assignment__tutorial__tutor",
+            "meeting_records__meeting",
         )
         meetings = Meeting.objects.all()
         if cohort:
-            meetings = meetings.filter(cohort=cohort)
-            students = students.filter(cohort=cohort).prefetch_related("marksheets")
+            students = students.filter(tutorial_group__cohort=cohort).distinct().prefetch_related("marksheets")
+            meetings = meetings.filter(
+                level_id__in=students.exclude(year__isnull=True).values_list("year_id", flat=True)
+            ).distinct()
+        meetings = list(meetings)
+        meeting_status = {}
+        for meeting in meetings:
+            due_session = (
+                Session.objects.filter(
+                    cohort=cohort,
+                    semester=meeting.due_semester,
+                    week=meeting.due_week,
+                )
+                .order_by("end")
+                .last()
+            )
+            meeting_status[meeting.pk] = None if due_session and due_session.end > tz.now().date() else False
         table = []
         for student in students:
             record = dict(
@@ -122,15 +143,14 @@ class MeetingsSummary(IsSuperuserViewMixin, FormMixin, SingleTableView):
                 ]
             )
             for meeting in meetings:
-                record[meeting.slug] = None if meeting.due_date > tz.now().date() else False
+                record[meeting.slug] = meeting_status[meeting.pk] if meeting.level_id == student.year_id else None
             record["student"] = format_html('<a href="/accounts/staff_view/{}">{}</a>', student.username, student)
             if hasattr(student, "tutorial_group") and student.tutorial_group.first():
                 record["tutor"] = student.tutorial_group.first().tutor.initials
-            # Convert student.meetings to a set for efficient lookup
-            student_meetings = set(student.meetings.all())
+            student_meetings = {attendance.meeting_id: attendance for attendance in student.meeting_records.all()}
             for meeting in meetings:
-                if meeting in student_meetings:
-                    record[meeting.slug] = "<img src='/static/admin/img/icon-yes.svg' alt='Yes'/>"
+                if meeting.pk in student_meetings:
+                    record[meeting.slug] = student_meetings[meeting.pk].get_status_display()
             table.append(record)
         return table
 

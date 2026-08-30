@@ -19,7 +19,7 @@ from util.forms import FileSelectForm
 from util.views import IsStaffViewMixin, IsSuperuserViewMixin
 
 # app imports
-from ..models import Meeting, MeetingAttendance, Tutorial, TutorialAssignment
+from ..models import Tutorial, TutorialAssignment
 
 
 class AssignTutorGroupsView(IsSuperuserViewMixin, FormView):
@@ -77,16 +77,23 @@ class AssignTutorGroupsView(IsSuperuserViewMixin, FormView):
                 if not isinstance(row.get("Tutor ID", None), str):
                     continue  # No tutor set in spreadsheet so ignore
                 tutor = Account.objects.get(
-                    Q(last_name__iexact=row["Tutor ID"].strip()) | Q(username=row["Tutor ID"].strip()), is_staff=True
+                    Q(last_name__iexact=row["Tutor ID"].strip()) | Q(username=row["Tutor ID"].strip()),
+                    is_staff=True,
                 )
             except ObjectDoesNotExist:
                 self.failed.append(
-                    {"Student": row["Student ID"], "reason": "Tutor {Tutor ID} not found!".format(**row)}
+                    {
+                        "Student": row["Student ID"],
+                        "reason": "Tutor {Tutor ID} not found!".format(**row),
+                    }
                 )
                 continue
             except MultipleObjectsReturned:
                 self.failed.append(
-                    {"Student": row["Student ID"], "reason": "Tutor {Tutor ID} ambiguous!".format(**row)}
+                    {
+                        "Student": row["Student ID"],
+                        "reason": "Tutor {Tutor ID} ambiguous!".format(**row),
+                    }
                 )
                 continue
             if row.get("Group ID", None) in [None, ""]:
@@ -109,12 +116,13 @@ class AssignTutorGroupsView(IsSuperuserViewMixin, FormView):
                 student.cohort = tutorial.cohort
                 student.save()
                 old_assign = TutorialAssignment.objects.filter(student=student)
+                old_code = old_assign.first().tutorial.code
                 old_assign.delete()
                 assignment, new = TutorialAssignment.objects.get_or_create(student=student, tutorial=tutorial)
                 self.failed.append(
                     {
                         "Student": row["Student ID"],
-                        "reason": f"Moved from {old_assign.first().tutorial.code} to {tutorial.code}",
+                        "reason": f"Moved from {old_code} to {tutorial.code}",
                     }
                 )
             assignment.save()
@@ -154,28 +162,3 @@ class ToggleTutorialAssignmentField(IsStaffViewMixin, DetailView):
         # msheet.submitter = self.request.user
         # msheet.save()
         return HttpResponseRedirect(f"/accounts/staff_view/{obj.student.username}")
-
-
-class ToggleMeeting(IsStaffViewMixin, DetailView):
-    """Toggle the Academic Integrity Test or PebblePadForm fields."""
-
-    model = Meeting
-    context_object_name = "meeting"
-    slug_field = "pk"
-
-    def render_to_response(self, context, **response_kwargs):
-        """Redirect back to the staff-student summary page after toggling the filed."""
-        meeting = context["meeting"]
-        try:
-            student = Account.objects.get(username=self.kwargs.get("username", None))
-        except ObjectDoesNotExist:
-            return HttpResponseNotFound()
-        if student.cohort != meeting.cohort:
-            return HttpResponseNotFound()
-        if meeting.students.filter(username=student.username).count() == 1:
-            meeting.students.remove(meeting.students.get(username=student.username))
-        else:
-            new = MeetingAttendance(student=student, tutor=self.request.user, meeting=meeting)
-            new.save()
-        meeting.save()
-        return HttpResponseRedirect(f"/accounts/staff_view/{student.username}")

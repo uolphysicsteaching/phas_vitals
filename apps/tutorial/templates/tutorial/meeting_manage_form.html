@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+
+{% block title %}{{ block.super }}{% if object %}Edit{% else %}Add{% endif %} meeting{% endblock title %}
+
+{% block content %}
+    <h1>{% if object %}Edit {{ object.name }}{% else %}Add meeting{% endif %}</h1>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.media }}
+        {% bootstrap_form form %}
+
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <h2>Questions</h2>
+            <button class="btn btn-sm btn-outline-primary" id="add-question" type="button">Add question</button>
+        </div>
+        <p class="text-muted">
+            Drag questions to reorder them. Editing a reused question changes it in every meeting;
+            deleting a row only removes it from this meeting.
+        </p>
+        {{ question_formset.management_form }}
+        {% bootstrap_formset_errors question_formset %}
+        <div id="question-formset">
+            {% for question_form in question_formset %}
+                <div class="question-form card mb-3">
+                    <div class="card-header question-handle" style="cursor: move;">Drag to reorder</div>
+                    <div class="card-body">
+                        {{ question_form.id }}
+                        {{ question_form.ORDER }}
+                        {% bootstrap_form_errors question_form %}
+                        {% bootstrap_field question_form.text %}
+                        {% bootstrap_field question_form.type %}
+                        {% bootstrap_field question_form.data %}
+                        {% bootstrap_field question_form.DELETE %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <template id="empty-question-form">
+            <div class="question-form card mb-3">
+                <div class="card-header question-handle" style="cursor: move;">Drag to reorder</div>
+                <div class="card-body">
+                    {{ question_formset.empty_form.id }}
+                    {{ question_formset.empty_form.ORDER }}
+                    {% bootstrap_field question_formset.empty_form.text %}
+                    {% bootstrap_field question_formset.empty_form.type %}
+                    {% bootstrap_field question_formset.empty_form.data %}
+                    {% bootstrap_field question_formset.empty_form.DELETE %}
+                </div>
+            </div>
+        </template>
+
+        <button class="btn btn-primary" type="submit">Save meeting</button>
+        <a class="btn btn-outline-secondary" href="{% url 'tutorial:meeting-manage-list' %}">Cancel</a>
+    </form>
+{% endblock content %}
+
+{% block javascript %}
+    {{ block.super }}
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const container = document.getElementById("question-formset");
+            const total = document.getElementById("id_questions-TOTAL_FORMS");
+
+            function renumber() {
+                let position = 1;
+                container.querySelectorAll(".question-form").forEach(function (row, index) {
+                    const order = row.querySelector('input[name$="-ORDER"]');
+                    const id = row.querySelector('input[name$="-id"]');
+                    const text = row.querySelector('[name$="-text"]');
+                    const populated = (id && id.value) || (text && text.value.trim());
+                    if (order) order.value = populated ? position++ : "";
+                });
+            }
+
+            $(container).sortable({handle: ".question-handle", update: renumber});
+            document.getElementById("add-question").addEventListener("click", function () {
+                const index = Number(total.value);
+                const template = document.getElementById("empty-question-form").innerHTML;
+                container.insertAdjacentHTML("beforeend", template.replaceAll("__prefix__", index));
+                total.value = index + 1;
+                renumber();
+            });
+            container.addEventListener("input", renumber);
+            renumber();
+        });
+    </script>
+{% endblock javascript %}

@@ -18,8 +18,22 @@ __all__ = [
     "SubmitStudentEngagementView",
     # Groups
     "AssignTutorGroupsView",
-    "ToggleMeeting",
     "ToggleTutorialAssignmentField",
+    # Meeting records
+    "MeetingDetailView",
+    "MeetingManageCreateView",
+    "MeetingManageDeleteView",
+    "MeetingManageListView",
+    "MeetingManageUpdateView",
+    "MeetingAttendanceCreateView",
+    "MeetingAttendanceActionView",
+    "MeetingAttendanceDeleteView",
+    "MeetingAttendanceDetailView",
+    "MeetingAttendanceUpdateView",
+    "QuestionManageCreateView",
+    "QuestionManageDeleteView",
+    "QuestionManageListView",
+    "QuestionManageUpdateView",
 ]
 
 # app imports
@@ -38,10 +52,22 @@ from .engagement import (
     SubmitStudentEngagementView,
     TutorStudentEngagementSummary,
 )
-from .groups import (
-    AssignTutorGroupsView,
-    ToggleMeeting,
-    ToggleTutorialAssignmentField,
+from .groups import AssignTutorGroupsView, ToggleTutorialAssignmentField
+from .meetings import (
+    MeetingAttendanceActionView,
+    MeetingAttendanceCreateView,
+    MeetingAttendanceDeleteView,
+    MeetingAttendanceDetailView,
+    MeetingAttendanceUpdateView,
+    MeetingDetailView,
+    MeetingManageCreateView,
+    MeetingManageDeleteView,
+    MeetingManageListView,
+    MeetingManageUpdateView,
+    QuestionManageCreateView,
+    QuestionManageDeleteView,
+    QuestionManageListView,
+    QuestionManageUpdateView,
 )
 
 # Create your views here.

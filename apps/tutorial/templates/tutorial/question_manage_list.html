@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}{{ block.super }}Manage questions{% endblock title %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Question library</h1>
+        <div>
+            <a class="btn btn-outline-secondary" href="{% url 'tutorial:meeting-manage-list' %}">Meetings</a>
+            <a class="btn btn-primary" href="{% url 'tutorial:question-manage-create' %}">Add question</a>
+        </div>
+    </div>
+
+    <div class="list-group">
+        {% for question in questions %}
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div>{{ question.text|safe }} <small class="text-muted">({{ question.get_type_display }})</small></div>
+                <div>
+                    <a class="btn btn-sm btn-primary" href="{% url 'tutorial:question-manage-update' question.pk %}">Edit</a>
+                    <a class="btn btn-sm btn-danger" href="{% url 'tutorial:question-manage-delete' question.pk %}">Delete</a>
+                </div>
+            </div>
+        {% empty %}
+            <p>No questions have been defined.</p>
+        {% endfor %}
+    </div>
+{% endblock content %}

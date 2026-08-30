@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+
+{% block title %}{{ block.super }}Meeting record{% endblock title %}
+
+{% block content %}
+    <h1>{{ meeting.name }}</h1>
+    <p><strong>Student:</strong> {{ student }}</p>
+    <p><strong>Level:</strong> {{ meeting.level }}</p>
+    {% if meeting.notes %}<div>{{ meeting.notes|safe }}</div>{% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        {% bootstrap_form_errors form %}
+        {% bootstrap_form form %}
+        {% bootstrap_form_errors answers_form %}
+        {% for field in answers_form %}
+            {% bootstrap_field field %}
+        {% endfor %}
+        <button class="btn btn-primary" type="submit">Save meeting record</button>
+    </form>
+{% endblock content %}

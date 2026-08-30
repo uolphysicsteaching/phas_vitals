@@ -3,7 +3,7 @@
 """Import Export resources for tutorial app."""
 
 # external imports
-from accounts.models import Account, Cohort
+from accounts.models import Account, Cohort, Year
 from accounts.resource import UsernameFKWidget
 from import_export import fields, resources, widgets
 from six import string_types
@@ -71,9 +71,17 @@ class SessionFKWidget(widgets.ForeignKeyWidget):
 class TutorialsResource(resources.ModelResource):
     """Resource class for Tutorial Groups."""
 
-    tutor = fields.Field(column_name="tutor", attribute="tutor", widget=UsernameFKWidget(Account, "username"))
+    tutor = fields.Field(
+        column_name="tutor",
+        attribute="tutor",
+        widget=UsernameFKWidget(Account, "username"),
+    )
 
-    cohort = fields.Field(column_name="cohort", attribute="cohort", widget=widgets.ForeignKeyWidget(Cohort, "name"))
+    cohort = fields.Field(
+        column_name="cohort",
+        attribute="cohort",
+        widget=widgets.ForeignKeyWidget(Cohort, "name"),
+    )
 
     class Meta:
         model = Tutorial
@@ -90,10 +98,16 @@ class TutorialAssignmentResource(resources.ModelResource):
         import_id_fields = ["id"]
 
     tutorial = fields.Field(
-        column_name="tutorial", attribute="tutorial", widget=widgets.ForeignKeyWidget(Tutorial, "code")
+        column_name="tutorial",
+        attribute="tutorial",
+        widget=widgets.ForeignKeyWidget(Tutorial, "code"),
     )
 
-    student = fields.Field(column_name="student", attribute="student", widget=UsernameFKWidget(Account, "username"))
+    student = fields.Field(
+        column_name="student",
+        attribute="student",
+        widget=UsernameFKWidget(Account, "username"),
+    )
 
 
 class SessionTypeResource(resources.ModelResource):
@@ -113,7 +127,11 @@ class SessionResource(resources.ModelResource):
         fields = ("id", "cohort", "semester", "name", "start", "end")
         import_id_fiekds = ("id",)
 
-    cohort = fields.Field(column_name="cohort", attribute="cohort", widget=widgets.ForeignKeyWidget(Cohort, "name"))
+    cohort = fields.Field(
+        column_name="cohort",
+        attribute="cohort",
+        widget=widgets.ForeignKeyWidget(Cohort, "name"),
+    )
 
 
 class AttendanceResource(resources.ModelResource):
@@ -123,8 +141,16 @@ class AttendanceResource(resources.ModelResource):
         model = Attendance
         fields = ("id", "student", "session", "score")
 
-    student = fields.Field(column_name="student", attribute="student", widget=UsernameFKWidget(Account, "username"))
-    session = fields.Field(column_name="session", attribute="session", widget=SessionFKWidget(Session, "name"))
+    student = fields.Field(
+        column_name="student",
+        attribute="student",
+        widget=UsernameFKWidget(Account, "username"),
+    )
+    session = fields.Field(
+        column_name="session",
+        attribute="session",
+        widget=SessionFKWidget(Session, "name"),
+    )
 
 
 class MeetingAttendanceResource(resources.ModelResource):
@@ -132,11 +158,31 @@ class MeetingAttendanceResource(resources.ModelResource):
 
     class Meta:
         model = MeetingAttendance
-        fields = ("id", "student", "meeting", "tutor", "submitted")
+        fields = (
+            "id",
+            "student",
+            "meeting",
+            "staff",
+            "status",
+            "created_at",
+            "updated_at",
+        )
 
-    student = fields.Field(column_name="student", attribute="student", widget=UsernameFKWidget(Account, "username"))
-    meeting = fields.Field(column_name="meeting", attribute="meeting", widget=SessionFKWidget(Session, "name"))
-    tutor = fields.Field(column_name="tutor", attribute="tutor", widget=UsernameFKWidget(Account, "username"))
+    student = fields.Field(
+        column_name="student",
+        attribute="student",
+        widget=UsernameFKWidget(Account, "username"),
+    )
+    meeting = fields.Field(
+        column_name="meeting",
+        attribute="meeting",
+        widget=widgets.ForeignKeyWidget(Meeting, "id"),
+    )
+    staff = fields.Field(
+        column_name="staff",
+        attribute="staff",
+        widget=UsernameFKWidget(Account, "username"),
+    )
 
 
 class MeetingResource(resources.ModelResource):
@@ -144,7 +190,11 @@ class MeetingResource(resources.ModelResource):
 
     class Meta:
         model = Meeting
-        fields = ("id", "name", "cohort", "notes", "due_date")
-        import_id_fiekds = ("id",)
+        fields = ("id", "name", "level", "notes", "due_semester", "due_week")
+        import_id_fields = ("id",)
 
-    cohort = fields.Field(column_name="cohort", attribute="cohort", widget=widgets.ForeignKeyWidget(Cohort, "name"))
+    level = fields.Field(
+        column_name="level",
+        attribute="level",
+        widget=widgets.ForeignKeyWidget(Year, "id"),
+    )

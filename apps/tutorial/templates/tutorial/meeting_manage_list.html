@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}{{ block.super }}Manage meetings{% endblock title %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Manage meetings</h1>
+        <div>
+            <a class="btn btn-outline-secondary" href="{% url 'tutorial:question-manage-list' %}">Question library</a>
+            <a class="btn btn-primary" href="{% url 'tutorial:meeting-manage-create' %}">Add meeting</a>
+        </div>
+    </div>
+
+    <div class="list-group">
+        {% for meeting in meetings %}
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>{{ meeting.name }}</strong><br>
+                    {{ meeting.level }} — semester {{ meeting.due_semester }}, week {{ meeting.due_week }}
+                </div>
+                <div>
+                    <a class="btn btn-sm btn-outline-secondary" href="{% url 'tutorial:meeting-detail' meeting.pk %}">View</a>
+                    <a class="btn btn-sm btn-primary" href="{% url 'tutorial:meeting-manage-update' meeting.pk %}">Edit</a>
+                    <a class="btn btn-sm btn-danger" href="{% url 'tutorial:meeting-manage-delete' meeting.pk %}">Delete</a>
+                </div>
+            </div>
+        {% empty %}
+            <p>No meetings have been defined.</p>
+        {% endfor %}
+    </div>
+{% endblock content %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}{{ block.super }}Delete meeting record{% endblock title %}
+
+{% block content %}
+    <h1>Delete meeting record</h1>
+    <p>Delete “{{ attendance.meeting.name }}” for {{ attendance.student }}?</p>
+    <form method="post">
+        {% csrf_token %}
+        <button class="btn btn-danger" type="submit">Delete</button>
+        <a class="btn btn-secondary" href="{% url 'tutorial:meeting-attendance-detail' attendance.pk %}">Cancel</a>
+    </form>
+{% endblock content %}

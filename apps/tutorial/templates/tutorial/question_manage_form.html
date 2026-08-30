@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+
+{% block title %}{{ block.super }}{% if object %}Edit{% else %}Add{% endif %} question{% endblock title %}
+
+{% block content %}
+    <h1>{% if object %}Edit question{% else %}Add question{% endif %}</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.media }}
+        {% bootstrap_form form %}
+        <button class="btn btn-primary" type="submit">Save question</button>
+        <a class="btn btn-outline-secondary" href="{% url 'tutorial:question-manage-list' %}">Cancel</a>
+    </form>
+{% endblock content %}

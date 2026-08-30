@@ -2,21 +2,29 @@
 """Models for tutorial app."""
 # Python imports
 import logging
+from datetime import timedelta
 from typing import Dict, List, Optional, Tuple, Union
 
 # Django imports
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import DEFAULT_DB_ALIAS, models
 from django.db.models import QuerySet
 from django.utils import timezone as tz
 from django.utils.functional import cached_property, classproperty
-from django.utils.html import format_html
+from django.utils.html import format_html, strip_tags
 from django.utils.text import slugify
 
 # external imports
 import numpy as np
-from accounts.models import Account, Cohort, academic_Q, students_Q
+from accounts.models import (
+    Account,
+    Cohort,
+    TermDate,
+    Year,
+    academic_Q,
+    students_Q,
+)
 from constance import config
 from minerva.models import SummaryScore
 from tinymce.models import HTMLField
@@ -142,7 +150,8 @@ class Tutorial(models.Model):
         if self.recorded_sessions == 1.0:  # No missing records
             return {}
         records = Attendance.objects.filter(
-            student__in=self.students.filter(is_active=True), session__in=self.past_sessions
+            student__in=self.students.filter(is_active=True),
+            session__in=self.past_sessions,
         ).exclude(score=None)
         students = self.members
         ret = {}
@@ -159,7 +168,10 @@ class Tutorial(models.Model):
         if self.numStudents == 0:
             return 1.0
         return (
-            Attendance.objects.filter(student__in=self.students.filter(is_active=True), session__in=self.past_sessions)
+            Attendance.objects.filter(
+                student__in=self.students.filter(is_active=True),
+                session__in=self.past_sessions,
+            )
             .exclude(score=None)
             .count()
             / self.numStudents
@@ -197,7 +209,11 @@ class Session(models.Model):
         Cohort, on_delete=models.CASCADE, related_name="sessions"
     )
     module: "models.ForeignKey[minerva.Module]" = models.ForeignKey(
-        "minerva.Module", on_delete=models.SET_NULL, related_name="tutorial_sessions", null=True, blank=True
+        "minerva.Module",
+        on_delete=models.SET_NULL,
+        related_name="tutorial_sessions",
+        null=True,
+        blank=True,
     )
 
     week: "models.IntegerField" = models.IntegerField(default=0)
@@ -284,7 +300,10 @@ class Attendance(models.Model):
     """Records Student attendance at a teaching session."""
 
     student: "models.ForeignKey[Attendance,Account]" = models.ForeignKey(
-        Account, on_delete=models.CASCADE, limit_choices_to=students_Q, related_name="attendance"
+        Account,
+        on_delete=models.CASCADE,
+        limit_choices_to=students_Q,
+        related_name="attendance",
     )
     session: "models.ForeignKey[Attendance,Session]" = models.ForeignKey(
         Session, on_delete=models.CASCADE, related_name="attended_by"
@@ -330,7 +349,11 @@ class Attendance(models.Model):
             return self.score
 
     def save(
-        self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None
+        self,
+        force_insert=False,
+        force_update=False,
+        using=DEFAULT_DB_ALIAS,
+        update_fields=None,
     ):  # pylint: disable=arguments-differ
         """Save the model and then signal to update the student's attendance reocrd."""
         super().save(
@@ -344,72 +367,268 @@ class Attendance(models.Model):
             ss.save()
 
 
+class Question(models.Model):
+    """A reusable prompt included in one or more meeting templates."""
+
+    class Type(models.TextChoices):
+        """Supported answer types."""
+
+        YES_NO = "yesno", "Yes/No"
+        TEXT = "text", "Text"
+        NUMBER = "number", "Number"
+        SELECT = "select", "Single choice"
+        MULTI_SELECT = "m-select", "Multiple choice"
+
+    type = models.CharField(max_length=8, choices=Type.choices)
+    text = HTMLField()
+    data = models.JSONField(default=list, blank=True)
+
+    def clean(self):
+        """Validate the choice metadata used by select questions."""
+        super().clean()
+        if self.type not in {self.Type.SELECT, self.Type.MULTI_SELECT}:
+            return
+        if not isinstance(self.data, list):
+            raise ValidationError({"data": "Choices must be a list of [value, label] pairs."})
+        values = []
+        for choice in self.data:
+            if not isinstance(choice, (list, tuple)) or len(choice) != 2:
+                raise ValidationError({"data": "Each choice must be a [value, label] pair."})
+            value, label = choice
+            if not isinstance(value, str) or not isinstance(label, str):
+                raise ValidationError({"data": "Choice values and labels must be strings."})
+            values.append(value)
+        if len(values) != len(set(values)):
+            raise ValidationError({"data": "Choice values must be unique."})
+
+    @property
+    def choices(self):
+        """Return choices in a form suitable for a Django form field."""
+        return (
+            [tuple(choice) for choice in self.data] if self.type in {self.Type.SELECT, self.Type.MULTI_SELECT} else []
+        )
+
+    def __str__(self):
+        """Return a plain-text representation of the prompt."""
+        return strip_tags(str(self.text))
+
+
 class MeetingAttendanceManager(models.Manager):
     """Manager for MeetingAttendanceManager."""
 
-    def get_by_natural_key(self, meeting: "Meeting", student: Account) -> "MeetingAttendance":
-        """Use a tuple of the meeting name and student username as the natural key."""
-        return self.get(meeting__name=meeting, student__username=student)
+    def get_by_natural_key(self, meeting, level, student) -> "MeetingAttendance":
+        """Find a record by its meeting, level and student identifiers."""
+        level_name, level_status = level.split(",", maxsplit=1)
+        return self.get(
+            meeting__name=meeting,
+            meeting__level__name=level_name.strip(),
+            meeting__level__status=level_status.strip(),
+            student__username=student,
+        )
 
 
 class MeetingAttendance(models.Model):
-    """Records that a student has attended a meeting."""
+    """Records a student's attendance state and responses for a meeting."""
+
+    class Status(models.TextChoices):
+        """Possible attendance outcomes."""
+
+        IN_PERSON = "in-person", "Attended in person"
+        ONLINE = "online", "Attended online"
+        NO_SHOW = "no-show", "Arranged but no show"
+        NO_CONTACT = "no-contact", "No contact"
 
     objects = MeetingAttendanceManager()
 
     meeting: "models.ForeignKey[MeetingAttendance,Meeting]" = models.ForeignKey(
         "Meeting", on_delete=models.CASCADE, related_name="attendance_records"
     )
-    student: "models.ForeignKey[MeetingAttendance,Account]" = models.ForeignKey(
-        Account, on_delete=models.CASCADE, related_name="meeting_records", limit_choices_to=students_Q
+    student = models.ForeignKey(
+        Account,
+        on_delete=models.PROTECT,
+        related_name="meeting_records",
+        limit_choices_to=students_Q,
     )
-    tutor: "models.ForeignKey[MeetingAttendance,Account]" = models.ForeignKey(
-        Account, on_delete=models.CASCADE, related_name="tutorial_meetings", limit_choices_to=academic_Q
+    staff = models.ForeignKey(
+        Account,
+        on_delete=models.PROTECT,
+        related_name="recorded_meetings",
+        limit_choices_to=academic_Q,
     )
-    submitted: "models.DateTimeField" = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=10, choices=Status.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together: Tuple = ("meeting", "student")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("meeting", "student"),
+                name="unique_meeting_student",
+            )
+        ]
+
+    def clean(self):
+        """Require new records to match the student's current level."""
+        super().clean()
+        if (
+            self._state.adding
+            and self.meeting_id
+            and self.student_id
+            and self.meeting.level_id != self.student.year_id
+        ):
+            raise ValidationError({"student": "The student's current level does not match the meeting level."})
 
     def natural_key(self) -> Tuple:
-        """Set the natural key as the meeting name and student username."""
-        return (self.meeting.name, self.student.username)
+        """Use meeting name, level and username as the natural key."""
+        return (
+            self.meeting.name,
+            self.meeting.level.natural_key(),
+            self.student.username,
+        )
 
     def __str__(self) -> str:
         """Create a string representation."""
-        return f"{self.meeting.name} - {self.student.display_name} ({self.tutor.initials})"
+        return (
+            f"{self.meeting.name} - {self.student.display_name}: "
+            f"{self.get_status_display()} ({self.staff.initials})"
+        )
 
 
 class Meeting(models.Model):
-    """Object for recording a meeting with a student."""
+    """A level-specific meeting template containing ordered prompts."""
 
     name: "models.CharField" = models.CharField(max_length=40, unique=False)
-    students: "models.ManyToManyField[Meeting,Account]" = models.ManyToManyField(
-        Account, related_name="meetings", through=MeetingAttendance, through_fields=("meeting", "student")
-    )
-    cohort: "models.ForeignKey[Meeting,Cohort]" = models.ForeignKey(
-        Cohort,
-        on_delete=models.SET_NULL,
+    level = models.ForeignKey(
+        Year,
+        on_delete=models.PROTECT,
         related_name="meetings",
-        blank=True,
-        null=True,
-        verbose_name="Student cohort",
+        verbose_name="Student level",
     )
     notes: HTMLField = HTMLField(blank=True, default="")
-    due_date: "models.DateField" = models.DateField(blank=True, null=True)
+    due_semester = models.PositiveSmallIntegerField(choices=settings.SEMESTERS)
+    due_week = models.PositiveSmallIntegerField()
+    questions = models.ManyToManyField(
+        Question,
+        through="MeetingQuestion",
+        through_fields=("meeting", "question"),
+        related_name="meetings",
+        blank=True,
+    )
 
     class Meta:
-        ordering: Tuple = ("due_date",)
-        unique_together: Tuple = ("name", "cohort")
+        ordering: Tuple = ("due_semester", "due_week", "name")
+        constraints = [models.UniqueConstraint(fields=("name", "level"), name="unique_meeting_name_level")]
 
     def __str__(self) -> str:
         """Create a string representation."""
-        return f"{self.name} - {self.cohort}"
+        return f"{self.name} - {self.level}"
+
+    def first_day(self, cohort):
+        """Return the first day of this meeting's due week for a cohort."""
+        semester_starts = {1: TermDate.start_s1, 2: TermDate.start_s2}
+        try:
+            semester_start = semester_starts[self.due_semester](cohort)
+        except (AttributeError, KeyError):
+            return None
+        return (semester_start + timedelta(weeks=self.due_week - 1)).date()
+
+    def is_available_for(self, student, on_date=None):
+        """Return whether this meeting's due week has started for the student."""
+        try:
+            cohort = student.tutorial_group_assignment.tutorial.cohort
+        except ObjectDoesNotExist:
+            return False
+        first_day = self.first_day(cohort) if cohort is not None else None
+        return first_day is not None and (on_date or tz.localdate()) >= first_day
 
     @property
     def slug(self) -> str:
         """Create a slug for meething."""
         return slugify(self.name)
+
+    @property
+    def ordered_questions(self):
+        """Return this template's prompts in their configured order."""
+        return Question.objects.filter(meeting_links__meeting=self).order_by("meeting_links__position")
+
+
+class MeetingQuestion(models.Model):
+    """Place a reusable question at a stable position in a meeting template."""
+
+    meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name="question_links")
+    question = models.ForeignKey(Question, on_delete=models.PROTECT, related_name="meeting_links")
+    position = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ("meeting", "position")
+        constraints = [
+            models.UniqueConstraint(fields=("meeting", "question"), name="unique_question_per_meeting"),
+            models.UniqueConstraint(
+                fields=("meeting", "position"),
+                name="unique_question_position_per_meeting",
+            ),
+        ]
+
+    def __str__(self):
+        """Identify the meeting, position and prompt."""
+        return f"{self.meeting} #{self.position}: {self.question}"
+
+
+class Answer(models.Model):
+    """A typed response to one question in a submitted meeting record."""
+
+    question = models.ForeignKey(Question, on_delete=models.PROTECT, related_name="answers")
+    attendance = models.ForeignKey(MeetingAttendance, on_delete=models.CASCADE, related_name="answers")
+    data = models.JSONField(default=dict)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=("question", "attendance"), name="unique_answer_per_question")]
+
+    def clean(self):
+        """Validate the stored JSON value against the question type and choices."""
+        super().clean()
+        if not self.question_id:
+            return
+        if self.attendance_id and not self.attendance.meeting.questions.filter(pk=self.question_id).exists():
+            raise ValidationError({"question": "This question does not belong to the meeting template."})
+        question_type = self.question.type
+        if not isinstance(self.data, dict) or set(self.data) != {question_type}:
+            raise ValidationError({"data": f"Answer data must contain only the '{question_type}' key."})
+        value = self.data[question_type]
+        if question_type == Question.Type.YES_NO and not isinstance(value, bool):
+            raise ValidationError({"data": "A yes/no answer must be true or false."})
+        if question_type == Question.Type.TEXT and not isinstance(value, str):
+            raise ValidationError({"data": "A text answer must be a string."})
+        if question_type == Question.Type.NUMBER and (isinstance(value, bool) or not isinstance(value, (int, float))):
+            raise ValidationError({"data": "A number answer must be numeric."})
+        allowed = {choice[0] for choice in self.question.choices}
+        if question_type == Question.Type.SELECT and (not isinstance(value, str) or value not in allowed):
+            raise ValidationError({"data": "The selected value is not configured for this question."})
+        if question_type == Question.Type.MULTI_SELECT:
+            if (
+                not isinstance(value, list)
+                or any(not isinstance(item, str) for item in value)
+                or len(value) != len(set(value))
+                or not set(value).issubset(allowed)
+            ):
+                raise ValidationError({"data": "All selected values must be unique configured choices."})
+
+    @property
+    def display_value(self):
+        """Return a human-readable answer without marking stored HTML as safe."""
+        value = self.data.get(self.question.type)
+        labels = dict(self.question.choices)
+        if self.question.type == Question.Type.YES_NO:
+            return "Yes" if value else "No"
+        if self.question.type == Question.Type.SELECT:
+            return labels.get(value, value)
+        if self.question.type == Question.Type.MULTI_SELECT:
+            return list_join([labels.get(item, item) for item in value or []])
+        return value
+
+    def __str__(self):
+        """Identify the response by student and prompt."""
+        return f"{self.attendance.student.display_name}: {self.question}"
 
 
 @patch_model(SummaryScore)
@@ -419,7 +638,8 @@ def calculate_tutorial(self):
     colours = {}
     scores = self.student.engagement_scores()
     for (score, label, _), col in zip(
-        settings.TUTORIAL_MARKS, ["silver", "tomato", "springgreen", "mediumseagreen", "forestgreen"]
+        settings.TUTORIAL_MARKS,
+        ["silver", "tomato", "springgreen", "mediumseagreen", "forestgreen"],
     ):
         if count := scores[np.isclose(scores, score)].size:
             data[label] = count
@@ -526,9 +746,21 @@ def engagement_session(self, cohort=None, semester=None) -> dict:
             score_imgs = [
                 {"src": "/static/admin/img/icon-yes.svg", "alt": "Authorised Absence"},
                 {"src": "/static/admin/img/icon-no.svg", "alt": "Unauthorised Absence"},
-                {"src": "/static/img/bronze_star.svg", "alt": "Limited Engagement", "width": 20},
-                {"src": "/static/img/silver_star.svg", "alt": "Good Engagement", "width": 20},
-                {"src": "/static/img/gold_star.svg", "alt": "Outstanding Engagement", "width": 20},
+                {
+                    "src": "/static/img/bronze_star.svg",
+                    "alt": "Limited Engagement",
+                    "width": 20,
+                },
+                {
+                    "src": "/static/img/silver_star.svg",
+                    "alt": "Good Engagement",
+                    "width": 20,
+                },
+                {
+                    "src": "/static/img/gold_star.svg",
+                    "alt": "Outstanding Engagement",
+                    "width": 20,
+                },
             ]
             score = int(attendance.score) + 1
             attrs = " ".join([f'{k}="{val}"' for k, val in score_imgs[score].items()])

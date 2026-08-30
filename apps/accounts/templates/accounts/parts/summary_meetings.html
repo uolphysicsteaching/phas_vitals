@@ -1,0 +1,28 @@
+<h3>Meetings</h3>
+{% if meetings %}
+    <div class="list-group">
+        {% for row in meetings %}
+            <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <strong>
+                        <a href="{% url 'tutorial:meeting-detail' row.meeting.pk %}">{{ row.meeting.name }}</a>
+                    </strong>
+                    <span>Semester {{ row.meeting.due_semester }}, week {{ row.meeting.due_week }}</span>
+                </div>
+                <div>
+                    {% if row.attendance %}
+                        {{ row.attendance.get_status_display }}
+                    {% else %}
+                        Not recorded
+                    {% endif %}
+                    <a class="btn btn-sm btn-outline-primary ms-2"
+                       href="{% url 'tutorial:meeting-attendance-action' meeting_pk=row.meeting.pk student_pk=user.pk %}">
+                        Attendance record
+                    </a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p>No meetings are configured for this student's current level.</p>
+{% endif %}
