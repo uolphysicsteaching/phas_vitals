@@ -223,20 +223,10 @@ class YearWidget(NaturalKeyForeignKeyWidget):
 
     def clean(self, value, row=None, *args, **kwargs):
         """Do a lookup attempting to match code or name."""
+        if value is None:
+            return None
         value = str(value).strip()
         qs = Year.objects.filter(Q(level=int(value)) | Q(name=value))
-        if qs.count() < 1:
-            return Year.objects.none()
-        return qs.last()
-
-
-class CohortWidget(NaturalKeyForeignKeyWidget):
-    """Import export ediget that looks up programmes by name or code."""
-
-    def clean(self, value, row=None, *args, **kwargs):
-        """Do a lookup attempting to match code or name."""
-        value = str(value).strip()
-        qs = Cohort.objects.filter(Q(pk=value) | Q(name=value))
         if qs.count() < 1:
             return Year.objects.none()
         return qs.last()
@@ -247,8 +237,12 @@ class ProgrammeWidget(widgets.ForeignKeyWidget):
 
     def clean(self, value, row=None, *args, **kwargs):
         """Do a lookup attempting to match code or name."""
+        value = str(value).strip()
         qs = Programme.objects.filter(Q(code=value) | Q(name=value))
         if qs.count() < 1:
+            description = str(row.get("Prog_Desc", "")).strip() if row is not None else ""
+            if value and description:
+                return Programme.objects.create(code=value, name=description)
             return None
         return qs.last()
 
@@ -289,10 +283,17 @@ class AccountWidget(widgets.ForeignKeyWidget):
     display_name_pattern = re.compile(r"(?P<last_name>[^\,]+)\,(?P<first_name>[^\(]+)$")
     given_name_pattern = re.compile(r"(?P<last_name>[^\,]+)\,(?P<givenName>[^\(]+)\((?P<first_name>[^)]+)\)")
 
+    def __init__(self, *args, staff_only=False, exclude_superusers=False, **kwargs):
+        """Initialise the widget with optional staff and superuser restrictions."""
+        self.staff_only = staff_only
+        self.exclude_superusers = exclude_superusers
+        super().__init__(*args, **kwargs)
+
     def clean(self, value, row=None, *args, **kwargs):
         """Attempt to match to a user account."""
         if not value:
             return None
+        value = str(value).strip()
 
         # Try matching by number or username
         account = self._match_by_number_or_username(value)
@@ -313,28 +314,46 @@ class AccountWidget(widgets.ForeignKeyWidget):
             return account
 
         # Try matching by first and last name
-        return self._match_by_first_last_name(value)
+        account = self._match_by_first_last_name(value)
+        if account:
+            return account
+
+        # Staff imports may use an unrecognised forename or title with a valid surname.
+        return self._match_staff_by_surname(value)
 
     def _match_by_number_or_username(self, value):
-        """See if value can be interpreted as a SID or usnername."""
+        """See if value can be interpreted as a SID or username."""
         try:
             value = int(value)
-            qs = Account.objects.filter(number=value)
+            qs = self._account_queryset().filter(number=value)
         except (TypeError, ValueError):
-            qs = Account.objects.filter(username=value)
+            qs = self._account_queryset().filter(username__iexact=value)
         return qs.first() if qs.exists() else None
+
+    def _account_queryset(self):
+        """Return the accounts eligible for matching."""
+        accounts = Account.objects.all()
+        if not self.staff_only:
+            return accounts
+        if self.exclude_superusers:
+            return accounts.filter(is_staff=True, is_superuser=False)
+        return accounts.filter(Q(is_staff=True) | Q(is_superuser=True))
 
     def _build_initials_and_formal_names(self):
         """Builtables of staff initials and formal names."""
         initials = {}
         formal_names = {}
-        for staff in Account.objects.filter(is_staff=True):
-            initials[staff.initials] = staff
-            formal_names[staff.formal_name] = staff
+        accounts = self._account_queryset()
+        if not self.staff_only:
+            accounts = accounts.filter(Q(is_staff=True) | Q(is_superuser=True))
+        for staff in accounts:
+            initials[staff.initials.casefold()] = staff
+            formal_names[staff.formal_name.casefold()] = staff
         return initials, formal_names
 
     def _match_by_initials_or_formal_names(self, value, initials, formal_names):
         """Lookup tables of initials or formal names for a match."""
+        value = value.casefold()
         return initials.get(value) or formal_names.get(value)
 
     def _match_by_name_pattern(self, value):
@@ -342,17 +361,28 @@ class AccountWidget(widgets.ForeignKeyWidget):
         pattern = self.given_name_pattern if "(" in value else self.display_name_pattern
         match = pattern.match(value)
         if match:
-            qs = Account.objects.filter(**match.groupdict())
+            lookup = {f"{field}__iexact": field_value.strip() for field, field_value in match.groupdict().items()}
+            qs = self._account_queryset().filter(**lookup)
             return qs.first() if qs.exists() else None
         return None
 
     def _match_by_first_last_name(self, value):
-        """Match by first and las names."""
-        if " " in value:
-            first_name, last_name = value.split(" ")[0], value.split(" ")[-1]
-            qs = Account.objects.filter(first_name=first_name, last_name=last_name)
-            return qs.first() if qs.exists() else None
-        return None
+        """Match by first and last names."""
+        normalised_value = " ".join(value.split()).casefold()
+        matches = [
+            account
+            for account in self._account_queryset()
+            if " ".join(f"{account.first_name} {account.last_name}".split()).casefold() == normalised_value
+        ]
+        return matches[0] if len(matches) == 1 else None
+
+    def _match_staff_by_surname(self, value):
+        """Match a unique staff or superuser account by the last word as surname."""
+        if not self.staff_only:
+            return None
+        surname = value.split()[-1]
+        matches = self._account_queryset().filter(last_name__iexact=surname)
+        return matches.first() if matches.count() == 1 else None
 
 
 class AccountsWidget(widgets.ManyToManyWidget):
@@ -455,16 +485,11 @@ class UserResource(resources.ModelResource):
         widget=YearWidget(Year, "id"),
     )
 
-    cohort = fields.Field(
-        column_name="cohort",
-        attribute="cohort",
-        widget=CohortWidget(Year, "id"),
-    )
-
     apt = fields.Field(
         column_name="apt",
         attribute="apt",
-        widget=AccountWidget(Account, "display_name"),
+        widget=AccountWidget(Account, "display_name", staff_only=True),
+        readonly=True,
     )
     username = fields.Field(column_name="username", attribute="username", widget=StrippedCharWidget())
     section = fields.Field(
@@ -508,7 +533,7 @@ class UserResource(resources.ModelResource):
             "Email Address": _none,
             "Email_Address": _none,
             "Email": _none,
-            ": _user_from_email,": _none,
+            "ISS_Email": _none,
         },
         "number": {"number": _none, "SID": _none, "Student_ID": _none, "Student ID": _none, "ID": _none},
         "first_name": {
@@ -528,17 +553,21 @@ class UserResource(resources.ModelResource):
             "Student Name": _lname_from_name,
         },
         "programme": {"programme": _none, "Programme": _none},
-        "school": {"school": _none, "School": _none},
-        "year": {"year": _none, "Class": _none, "Modulecode": _year_from_code},
+        "school": {"school": _none, "School": _none, "Dept": _none},
+        "year": {
+            "year": _none,
+            "Class": _none,
+            "Student_Year": _none,
+            "Modulecode": _year_from_code,
+        },
         "section": {"section": _none, "Section": _none},
-        "registtration_status": {
-            "registtration_status": _none,
+        "registration_status": {
+            "registration_status": _none,
             "Registration Status": _none,
             "ESTS_Code": _none,
-            "RSTS": _none,
+            "ESTS": _none,
         },
         #        "apt": {"apt": _none, "tutor": _none, "Tutor Name": _none},
-        "cohort": {"Cohort": _none, "term": _none},
     }
 
     def before_import(self, dataset, **kwargs):
@@ -555,6 +584,11 @@ class UserResource(resources.ModelResource):
         if "username" not in dataset.headers:
             dataset.headers.append("username")
         super().before_import(dataset, **kwargs)
+
+    def before_import_row(self, row, **kwargs):
+        """Reject non-empty APT values which do not identify a staff account."""
+        super().before_import_row(row, **kwargs)
+        self._resolve_apt(row.get("apt"))
 
     def import_row(self, row, instance_loader, using_transactions=True, dry_run=False, **kwargs):
         """Match up bad fields."""
@@ -576,6 +610,131 @@ class UserResource(resources.ModelResource):
         return super(UserResource, self).import_row(
             row, instance_loader, using_transactions=using_transactions, dry_run=dry_run, **kwargs
         )
+
+    def after_save_instance(self, instance, row, **kwargs):
+        """Create related tutorial assignments and module enrolments."""
+        super().after_save_instance(instance, row, **kwargs)
+        self._assign_tutorial_group(instance, row)
+
+        module_code = self._normalise_module_code(row.get("Modulecode"))
+        if not module_code:
+            return
+
+        # Local imports avoid a model import cycle: minerva.models imports Account.
+        # external imports
+        from minerva.models import Module, ModuleEnrollment, StatusCode
+
+        modules = Module.objects.filter(code=module_code)
+        term = self._spreadsheet_text(row.get("Term"))
+        crn = self._spreadsheet_text(row.get("CRN"))
+        if term:
+            modules = modules.filter(year__name=term)
+        if crn:
+            modules = modules.filter(courseId=crn)
+        module = modules.get()
+
+        if not instance.is_active:
+            instance.is_active = True
+            instance.save(update_fields=["is_active"])
+
+        defaults = {}
+        status_code = self._spreadsheet_text(row.get("RSTS"))
+        if status_code:
+            defaults["status"] = StatusCode.objects.get(code=status_code)
+
+        enrolment_modules = [module, *module.sub_modules.all()]
+        for enrolment_module in enrolment_modules:
+            ModuleEnrollment.objects.update_or_create(
+                module=enrolment_module,
+                student=instance,
+                defaults=defaults,
+            )
+
+    def _assign_tutorial_group(self, student, row):
+        """Assign a student to the tutorial group identified by the imported APT."""
+        apt_value = self._spreadsheet_text(row.get("apt"))
+        if not apt_value or student.year is None or student.year.level is None or student.year.level < 1:
+            return
+
+        tutor = self._resolve_apt(apt_value, row=row)
+
+        # Local imports avoid the tutorial models importing this resource through Account.
+        # external imports
+        from tutorial.models import Tutorial, TutorialAssignment
+
+        existing_assignment = (
+            TutorialAssignment.objects.filter(student=student).select_related("tutorial__cohort").first()
+        )
+        cohort = existing_assignment.tutorial.cohort if existing_assignment is not None else None
+        if cohort is None:
+            cohort_name = self._first_year_cohort(row.get("Term"), student.year.level)
+            if cohort_name is None:
+                return
+            cohort, _ = Cohort.objects.get_or_create(name=cohort_name)
+
+        tutorial_code = f"_{tutor.initials}_{cohort.name}"
+        tutorial, _ = Tutorial.objects.get_or_create(
+            code=tutorial_code,
+            defaults={"tutor": tutor, "cohort": cohort},
+        )
+        tutorial_updates = []
+        if tutorial.tutor_id != tutor.pk:
+            tutorial.tutor = tutor
+            tutorial_updates.append("tutor")
+        if tutorial.cohort_id != cohort.pk:
+            tutorial.cohort = cohort
+            tutorial_updates.append("cohort")
+        if tutorial_updates:
+            tutorial.save(update_fields=tutorial_updates)
+
+        TutorialAssignment.objects.update_or_create(student=student, defaults={"tutorial": tutorial})
+
+    def _resolve_apt(self, value, row=None):
+        """Resolve a non-empty APT value or reject it as an import error."""
+        value = self._spreadsheet_text(value)
+        if not value:
+            return None
+
+        tutor = self.fields["apt"].widget.clean(value, row=row)
+        if tutor is None:
+            raise ValueError(f"APT '{value}' could not be resolved to a staff account.")
+        return tutor
+
+    @classmethod
+    def _first_year_cohort(cls, term, level):
+        """Infer the academic cohort in which a student entered level 1."""
+        term = cls._spreadsheet_text(term)
+        if not re.fullmatch(r"\d{6}", term):
+            return None
+
+        years_since_level_one = {1: 0, 2: 1, 3: 2, 4: 3, 5: 3}.get(level)
+        if years_since_level_one is None:
+            return None
+        return str(int(term) - (101 * years_since_level_one))
+
+    @staticmethod
+    def _spreadsheet_text(value):
+        """Normalise identifiers read from spreadsheet number cells."""
+        if value is None:
+            return ""
+        if isinstance(value, float) and value.is_integer():
+            return str(int(value))
+        return str(value).strip()
+
+    @classmethod
+    def _normalise_module_code(cls, value):
+        """Remove an exam suffix and restore shortened master's module codes."""
+        module_code = cls._spreadsheet_text(value)
+        match = re.fullmatch(r"([A-Za-z]+5\d{3}M)(?:\d{2})?", module_code)
+        if match:
+            return match.group(1)
+
+        match = re.fullmatch(r"([A-Za-z]+5\d{2})M\d{2}", module_code)
+        if match:
+            return f"{match.group(1)}0M"
+
+        match = re.fullmatch(r"([A-Za-z]+\d{4})(?:\d{2})?", module_code)
+        return match.group(1) if match else module_code
 
 
 class GroupResource(resources.ModelResource):

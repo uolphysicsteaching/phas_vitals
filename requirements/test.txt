@@ -20,6 +20,7 @@ celery-batches>=0.8.0
 whitenoise>=6.0.0
 jsondatetime>=1.0.0
 django-tinymce>=3.5.0
+nh3>=0.2.14
 django-import-export>=3.0.0
 django-autocomplete-light>=3.9.0
 azure-storage-blob>=12.0.0
@@ -27,4 +28,3 @@ azure-storage-blob>=12.0.0
 # Note: Some packages may require specific versions or additional setup
 # The complete environment can be set up using the project's environment.yaml file
 # For minimal testing, this file provides the essential dependencies
-

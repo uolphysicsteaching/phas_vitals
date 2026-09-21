@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 """Common Form Classes."""
 # Python imports
+import base64
+import binascii
+import codecs
 import os
+from copy import deepcopy
 
 try:
     # external imports
@@ -17,7 +21,46 @@ from django import forms
 from django.db.models import Count
 
 # external imports
+import nh3
 from minerva.models import Module
+
+OBFUSCATED_HTML_PREFIX = "ROT13+B64:"
+
+
+def sanitize_rich_html(value):
+    """Sanitise rich text using the application's server-owned HTML policy."""
+    attributes = deepcopy(nh3.ALLOWED_ATTRIBUTES)
+    attributes["div"] = {"class"}
+    attributes["pre"] = {"class"}
+    attributes["span"] = {"style"}
+    return nh3.clean(value, tags=set(nh3.ALLOWED_TAGS) | {"footer"}, attributes=attributes)
+
+
+class ObfuscatedCharField(forms.CharField):
+    """Decode and sanitise rich text obfuscated for transport through the WAF."""
+
+    default_error_messages = {
+        "invalid_obfuscated_html": "Invalid encoded rich-text value.",
+    }
+
+    def to_python(self, value):
+        """Decode marked values and sanitise all submitted rich text."""
+        value = super().to_python(value)
+        if not value:
+            return value
+        if not value.startswith(OBFUSCATED_HTML_PREFIX):
+            return sanitize_rich_html(value)
+
+        payload = value[len(OBFUSCATED_HTML_PREFIX) :]
+        try:
+            encoded = codecs.decode(payload, "rot_13").encode("ascii")
+            decoded = base64.b64decode(encoded, validate=True).decode("utf-8")
+        except (ValueError, binascii.Error, TypeError, UnicodeError) as error:
+            raise forms.ValidationError(
+                self.error_messages["invalid_obfuscated_html"],
+                code="invalid_obfuscated_html",
+            ) from error
+        return sanitize_rich_html(decoded)
 
 
 def get_mime(content):

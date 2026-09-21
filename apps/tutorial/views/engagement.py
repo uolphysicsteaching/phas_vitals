@@ -83,7 +83,6 @@ class TutorStudentEngagementSummary(IsStaffViewMixin, HTMXProcessMixin, FormMixi
         context["cohorts"] = Cohort.objects.all()
         context["semester"] = semester
         context["cohort"] = cohort
-        context["sessions"] = Session.objects.filter(cohort=cohort, semester=semester)
         if codes := self.request.GET.get("codes", False):
             codes = codes.split(",")
         elif "codes" not in self.request.GET:
@@ -95,8 +94,18 @@ class TutorStudentEngagementSummary(IsStaffViewMixin, HTMXProcessMixin, FormMixi
             context["group"] = ret
             if not self.request.user.is_superuser and self.request.user != ret.tutor:
                 raise PermissionDenied("Must be either the tutopr or a superuser to see this group.")
+            context["sessions"] = (
+                Session.objects.filter(
+                    cohort=cohort,
+                    semester=semester,
+                    module__student_enrollments__student__in=ret.members,
+                )
+                .select_related("module")
+                .distinct()
+            )
         else:
             context["group"] = None
+            context["sessions"] = Session.objects.none()
         if codes:
             context["next_code"] = codes.pop(0)
             context["codes"] = ",".join(codes)
@@ -142,11 +151,14 @@ class SubmitStudentEngagementView(IsStaffViewMixin, ModelFormSetView):
         group, session = self.kwargs["session"].split(":")
         session = Session.objects.get(pk=int(session))
         group = Tutorial.objects.get(pk=int(group))
-        for student in group.members.distinct():
+        eligible_students = group.members.filter(module_enrollments__module=session.module).distinct()
+        for student in eligible_students:
             _, _ = Attendance.objects.get_or_create(student=student, session=session, type=SessionType.TUTORIAL)
 
         ret = Attendance.objects.filter(
-            session=session, student__tutorial_group=group, student__is_active=True, type=SessionType.TUTORIAL
+            session=session,
+            student__in=eligible_students,
+            type=SessionType.TUTORIAL,
         )
         return ret
 
@@ -162,10 +174,9 @@ class SubmitStudentEngagementView(IsStaffViewMixin, ModelFormSetView):
         group, session = self.kwargs["session"].split(":")
         session = Session.objects.get(pk=int(session))
         group = Tutorial.objects.get(pk=int(group))
-        qs = Attendance.objects.filter(
-            session=session, student__tutorial_group=group, student__is_active=True, type=SessionType.TUTORIAL
-        )
-        ret["extra"] = max(0, group.members.count() - qs.all().count())
+        eligible_students = group.members.filter(module_enrollments__module=session.module).distinct()
+        qs = Attendance.objects.filter(session=session, student__in=eligible_students, type=SessionType.TUTORIAL)
+        ret["extra"] = max(0, eligible_students.count() - qs.count())
         return ret
 
 

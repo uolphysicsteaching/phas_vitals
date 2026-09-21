@@ -7,6 +7,27 @@ from django.db import models
 
 # external imports
 from cryptography.fernet import Fernet, InvalidToken
+from tinymce.models import HTMLField
+
+# app imports
+from .widgets import ObfuscatedTinyMCE
+
+
+class ObfuscatedHTMLField(HTMLField):
+    """Store HTML normally while obfuscating it during browser transport."""
+
+    def formfield(self, **kwargs):
+        """Use the matching decoder and TinyMCE widget for generated forms."""
+        # Lazy import prevents model-loading cycles through util.forms.
+        # app imports
+        from .forms import ObfuscatedCharField
+
+        defaults = {
+            "form_class": ObfuscatedCharField,
+            "widget": ObfuscatedTinyMCE,
+        }
+        defaults.update(kwargs)
+        return super().formfield(**defaults)
 
 
 class EncryptedTextField(models.CharField):

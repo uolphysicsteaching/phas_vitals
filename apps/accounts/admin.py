@@ -177,6 +177,30 @@ class CohortAdmin(ImportExportModelAdmin):
     """Minimal Cohort Admin Interface."""
 
     search_fields = ["name"]
+    actions = ["create_tutorial_sessions"]
+
+    @action(description="Create tutorial sessions")
+    def create_tutorial_sessions(self, request, queryset):
+        """Create the standard semester-one and semester-two sessions for selected cohorts."""
+        # Local import avoids coupling the accounts app's model imports to tutorial models.
+        # external imports
+        from tutorial.models import Session
+
+        created_count = 0
+        updated_count = 0
+        for cohort in queryset:
+            try:
+                created, updated = Session.create_for_cohort(cohort)
+            except ValueError as error:
+                self.message_user(request, str(error), messages.ERROR)
+                continue
+            created_count += created
+            updated_count += updated
+        self.message_user(
+            request,
+            f"Created {created_count} and updated {updated_count} tutorial session(s).",
+            messages.SUCCESS,
+        )
 
     def get_export_resource_class(self):
         """Return the class for exporting objects."""

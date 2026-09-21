@@ -15,6 +15,8 @@ from django.utils.html import format_html
 # external imports
 from accounts.models import Account as Student
 from ajax_select.fields import AutoCompleteSelectField
+from util.forms import ObfuscatedCharField
+from util.widgets import ObfuscatedTinyMCE
 
 # app imports
 from .models import (
@@ -100,15 +102,15 @@ class MeetingAttendanceForm(forms.ModelForm):
 
     class Meta:
         model = MeetingAttendance
-        fields = ("status",)
+        fields = ("status", "flag")
 
 
 class MeetingForm(forms.ModelForm):
-    """Create or edit a level-specific meeting template."""
+    """Create or edit a module-specific meeting template."""
 
     class Meta:
         model = Meeting
-        fields = ("name", "level", "notes", "due_semester", "due_week")
+        fields = ("name", "module", "notes", "due_semester", "due_week")
 
 
 class QuestionForm(forms.ModelForm):
@@ -127,7 +129,7 @@ class QuestionForm(forms.ModelForm):
 class MeetingQuestionForm(forms.ModelForm):
     """Edit a linked Question's content from inside a Meeting formset."""
 
-    text = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}))
+    text = ObfuscatedCharField(widget=ObfuscatedTinyMCE(attrs={"rows": 3}))
     type = forms.ChoiceField(choices=Question.Type.choices)
     data = forms.JSONField(
         required=False,
@@ -212,7 +214,7 @@ MeetingQuestionFormSet = inlineformset_factory(
     form=MeetingQuestionForm,
     formset=BaseMeetingQuestionFormSet,
     fields=(),
-    extra=1,
+    extra=0,
     can_delete=True,
     can_order=True,
 )

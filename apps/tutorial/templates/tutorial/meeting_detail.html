@@ -5,8 +5,8 @@
 {% block content %}
     <h1>{{ meeting.name }}</h1>
     <dl>
-        <dt>Level</dt>
-        <dd>{{ meeting.level }}</dd>
+        <dt>Module</dt>
+        <dd>{{ meeting.module.code }}</dd>
         <dt>Due</dt>
         <dd>Semester {{ meeting.due_semester }}, week {{ meeting.due_week }}</dd>
     </dl>
@@ -16,15 +16,21 @@
         <div>{{ meeting.notes|safe }}</div>
     {% endif %}
 
-    <h2>Questions</h2>
-    <ol>
-        {% for question in questions %}
-            <li>
-                {{ question.text|safe }}
-                <small class="text-muted">({{ question.get_type_display }})</small>
-            </li>
-        {% empty %}
-            <li>This meeting has no configured questions.</li>
-        {% endfor %}
-    </ol>
+    {% if questions %}
+        <h2>Questions</h2>
+        <ol>
+            {% for question in questions %}
+                <li>
+                    {{ question.text|safe }}
+                    <small class="text-muted">({{ question.get_type_display }})</small>
+                </li>
+            {% endfor %}
+        </ol>
+    {% endif %}
+
+    <div class="mt-3">
+        <a class="btn btn-lg btn-secondary" href="#" onclick="window.history.back(); return false;">
+            <span class="bi bi-arrow-left-circle" aria-hidden="true"></span> Back
+        </a>
+    </div>
 {% endblock content %}

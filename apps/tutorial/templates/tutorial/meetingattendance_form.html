@@ -6,7 +6,7 @@
 {% block content %}
     <h1>{{ meeting.name }}</h1>
     <p><strong>Student:</strong> {{ student }}</p>
-    <p><strong>Level:</strong> {{ meeting.level }}</p>
+    <p><strong>Module:</strong> {{ meeting.module.code }}</p>
     {% if meeting.notes %}<div>{{ meeting.notes|safe }}</div>{% endif %}
 
     <form method="post">

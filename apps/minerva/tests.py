@@ -280,6 +280,173 @@ class TestModule:
                 year=sample_cohort,
             )
 
+    def test_update_enrollments_retains_locked_submodule_enrollment_and_scores(
+        self, monkeypatch, sample_module, sample_status_code, sample_user
+    ):
+        """Retain a locked stale enrolment and its related scores during a module update."""
+        # app imports
+        from .models import ModuleEnrollment, SummaryScore, TestCategory
+
+        submodule = Module.objects.create(
+            uuid="locked-submodule",
+            code="PHAS1235",
+            exam_code=1,
+            name="Locked sub-module",
+            credits=10,
+            level=1,
+            year=sample_module.year,
+            semester=1,
+            parent_module=sample_module,
+        )
+        parent_enrollment = ModuleEnrollment.objects.create(
+            module=sample_module,
+            student=sample_user,
+            status=sample_status_code,
+        )
+        locked_enrollment = ModuleEnrollment.objects.create(
+            module=submodule,
+            student=sample_user,
+            status=sample_status_code,
+            locked=True,
+        )
+        category = TestCategory.objects.create(module=submodule, text="Tests", category_id="tests")
+        summary = SummaryScore.objects.create(enrollment=locked_enrollment, category=category)
+        monkeypatch.setattr(Module, "get_member_id_map", lambda self: {})
+
+        sample_module.update_enrollments()
+
+        assert not ModuleEnrollment.objects.filter(pk=parent_enrollment.pk).exists()
+        assert ModuleEnrollment.objects.filter(pk=locked_enrollment.pk, locked=True).exists()
+        assert SummaryScore.objects.filter(pk=summary.pk).exists()
+
+    def test_module_enrollment_is_unlocked_by_default(self, sample_module, sample_status_code, sample_user):
+        """Create module enrolments unlocked unless explicitly protected."""
+        # app imports
+        from .models import ModuleEnrollment
+
+        enrollment = ModuleEnrollment.objects.create(
+            module=sample_module,
+            student=sample_user,
+            status=sample_status_code,
+        )
+
+        assert enrollment.locked is False
+
+    def test_update_enrollments_retains_locked_parent_enrollment(
+        self, monkeypatch, sample_module, sample_status_code, sample_user
+    ):
+        """Retain a locked stale enrolment on the module being updated."""
+        # app imports
+        from .models import ModuleEnrollment
+
+        enrollment = ModuleEnrollment.objects.create(
+            module=sample_module,
+            student=sample_user,
+            status=sample_status_code,
+            locked=True,
+        )
+        monkeypatch.setattr(Module, "get_member_id_map", lambda self: {})
+
+        sample_module.update_enrollments()
+
+        assert ModuleEnrollment.objects.filter(pk=enrollment.pk, locked=True).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.unit
+class TestImportModuleList:
+    """Test discovery and rollover of modules from Minerva course data."""
+
+    @staticmethod
+    def course_data(year="202526", uuid="new-uuid", crn="40949", code="PHAS1234", name="New name"):
+        """Build representative Minerva course metadata."""
+        return {"courseId": f"{year}_{crn}_{code}", "uuid": uuid, "name": f"AAAA1Z {name} ignored"}
+
+    def test_updates_by_database_identity_and_rolls_year_with_only_locked_enrollments(
+        self, monkeypatch, sample_module, sample_status_code, sample_user
+    ):
+        """Update a module in place when all its enrolments are locked."""
+        # app imports
+        from . import tasks
+        from .models import ModuleEnrollment
+
+        new_cohort = sample_module.year.__class__.objects.create(name="202526")
+        enrollment = ModuleEnrollment.objects.create(
+            module=sample_module,
+            student=sample_user,
+            status=sample_status_code,
+            locked=True,
+        )
+        data = self.course_data()
+        updates = []
+        monkeypatch.setattr(tasks.json, "get_blob_list", lambda: {"module_Course.json": object()})
+        monkeypatch.setattr(tasks.json, "get_blob_by_name", lambda name: [data])
+        monkeypatch.setattr(Module, "update_from_json", lambda self, **kwargs: updates.append((self.pk, kwargs)))
+
+        tasks.import_module_list.run()
+
+        sample_module.refresh_from_db()
+        assert sample_module.exam_code == 1
+        assert sample_module.uuid == "new-uuid"
+        assert sample_module.year == new_cohort
+        assert sample_module.courseId == "40949"
+        assert sample_module.name == "New name"
+        assert ModuleEnrollment.objects.filter(pk=enrollment.pk, locked=True).exists()
+        assert updates == [
+            (
+                sample_module.pk,
+                {"categories": True, "tests": True, "enrollments": True, "columns": True, "grades": True},
+            )
+        ]
+
+    def test_does_not_roll_uuid_or_year_with_unlocked_enrollments(
+        self, monkeypatch, sample_module, sample_status_code, sample_user
+    ):
+        """Keep identity fields stable while an unlocked enrolment remains."""
+        # app imports
+        from . import tasks
+        from .models import ModuleEnrollment
+
+        old_uuid = sample_module.uuid
+        old_year = sample_module.year
+        sample_module.courseId = "40949"
+        sample_module.save()
+        ModuleEnrollment.objects.create(module=sample_module, student=sample_user, status=sample_status_code)
+        sample_module.year.__class__.objects.create(name="202526")
+        data = self.course_data(name="Updated name")
+        updates = []
+        monkeypatch.setattr(tasks.json, "get_blob_list", lambda: {"module_Course.json": object()})
+        monkeypatch.setattr(tasks.json, "get_blob_by_name", lambda name: [data])
+        monkeypatch.setattr(Module, "update_from_json", lambda self, **kwargs: updates.append(self.pk))
+
+        tasks.import_module_list.run()
+
+        sample_module.refresh_from_db()
+        assert sample_module.uuid == old_uuid
+        assert sample_module.year == old_year
+        assert sample_module.name == "Updated name"
+        assert sample_module.courseId == "40949"
+        assert updates == []
+
+    def test_conflicting_crn_years_abort_before_updates(self, monkeypatch, sample_module):
+        """Reject source data that assigns one CRN to multiple academic years."""
+        # app imports
+        from . import tasks
+
+        original_name = sample_module.name
+        data = {
+            "old_Course.json": self.course_data(year="202425", uuid="old"),
+            "new_Course.json": self.course_data(year="202526", uuid="new"),
+        }
+        monkeypatch.setattr(tasks.json, "get_blob_list", lambda: {name: object() for name in data})
+        monkeypatch.setattr(tasks.json, "get_blob_by_name", lambda name: [data[name]])
+
+        with pytest.raises(ValueError, match="CRNs in multiple academic years"):
+            tasks.import_module_list.run()
+
+        sample_module.refresh_from_db()
+        assert sample_module.name == original_name
+
 
 @pytest.mark.django_db
 @pytest.mark.unit
@@ -314,6 +481,36 @@ class TestTest:
         assert test.module == sample_module
         assert test.passing_score == 50.0
         assert test.score_possible == 100.0
+
+    def test_column_matching_sets_default_pass_mark_from_possible_score(self, monkeypatch, sample_module):
+        """Calculate a matched test's default pass mark from its possible score."""
+        # app imports
+        from .models import GradebookColumn, Test, TestCategory
+
+        column_data = {
+            "column-25": {
+                "grading": {"attemptsAllowed": 1},
+                "score": {"possible": 25.0},
+            }
+        }
+        monkeypatch.setattr(Module, "column_data", property(lambda self: column_data))
+        category = TestCategory.objects.create(
+            module=sample_module,
+            text="Lab Experiment",
+            category_id="lab-experiment",
+        )
+        column = GradebookColumn.objects.create(
+            gradebook_id="column-25",
+            name="Experiment 1",
+            module=sample_module,
+            category=category,
+        )
+
+        Test.create_or_update_from_json(sample_module, column=column)
+
+        test = Test.objects.get(module=sample_module, name="Experiment 1")
+        assert test.score_possible == 25.0
+        assert test.passing_score == 20.0
 
 
 @pytest.mark.django_db

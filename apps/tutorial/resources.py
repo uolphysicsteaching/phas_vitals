@@ -3,9 +3,10 @@
 """Import Export resources for tutorial app."""
 
 # external imports
-from accounts.models import Account, Cohort, Year
-from accounts.resource import UsernameFKWidget
+from accounts.models import Account, Cohort
+from accounts.resource import AccountWidget, UsernameFKWidget
 from import_export import fields, resources, widgets
+from minerva.models import Module
 from six import string_types
 
 # app imports
@@ -92,6 +93,8 @@ class TutorialsResource(resources.ModelResource):
 class TutorialAssignmentResource(resources.ModelResource):
     """Tutorial Assignment resource class."""
 
+    tutor_widget = AccountWidget(Account, "display_name", staff_only=True, exclude_superusers=True)
+
     class Meta:
         model = TutorialAssignment
         fields = ("id", "tutorial", "student")
@@ -108,6 +111,126 @@ class TutorialAssignmentResource(resources.ModelResource):
         attribute="student",
         widget=UsernameFKWidget(Account, "username"),
     )
+
+    def before_import(self, dataset, **kwargs):
+        """Add the canonical direct-mapping fields required during row preparation."""
+        for field_name in (*self._meta.import_id_fields, "tutorial", "student"):
+            if field_name not in dataset.headers:
+                dataset.headers.append(field_name)
+        super().before_import(dataset, **kwargs)
+
+    def before_import_row(self, row, **kwargs):
+        """Resolve adaptive student and tutorial fields before importing a row."""
+        super().before_import_row(row, **kwargs)
+        student = self._resolve_student(row)
+        row["student"] = student.username
+
+        existing_assignment = (
+            TutorialAssignment.objects.filter(student=student).select_related("tutorial__cohort").first()
+        )
+        assignment_id = self._row_value(row, "id")
+        if assignment_id:
+            row["id"] = assignment_id
+        elif existing_assignment is not None:
+            row["id"] = existing_assignment.pk
+
+        tutorial_value = self._row_value(row, "tutorial")
+        if tutorial_value:
+            row["tutorial"] = tutorial_value
+            tutorial = self.fields["tutorial"].widget.clean(tutorial_value, row=row)
+        else:
+            cohort = self._resolve_cohort(student, existing_assignment)
+            tutor = self._resolve_tutor(self._row_value(row, "Tutor"), row)
+            tutorial_code = f"_{tutor.initials}_{cohort.pk}"
+            try:
+                tutorial = Tutorial.objects.get(code=tutorial_code)
+            except Tutorial.DoesNotExist as error:
+                raise ValueError(f"Tutorial group '{tutorial_code}' does not exist.") from error
+            except Tutorial.MultipleObjectsReturned as error:
+                raise ValueError(f"Multiple tutorial groups match code '{tutorial_code}'.") from error
+        row["tutorial"] = tutorial.code
+        row["_replace_assignment"] = existing_assignment is not None and existing_assignment.tutorial_id != tutorial.pk
+
+    def before_save_instance(self, instance, row, **kwargs):
+        """Remove a changed assignment immediately before saving its replacement."""
+        super().before_save_instance(instance, row, **kwargs)
+        should_write = not kwargs.get("dry_run", False) or kwargs.get("using_transactions", False)
+        if row.get("_replace_assignment") and should_write:
+            instance.delete()
+
+    def _resolve_student(self, row):
+        """Resolve the student using direct mapping, student number, or their name."""
+        direct_value = self._row_value(row, "student")
+        if direct_value:
+            return self.fields["student"].widget.clean(direct_value, row=row)
+
+        student_number = self._row_value(row, "Student ID")
+        if student_number:
+            student_number = self._spreadsheet_text(student_number)
+            try:
+                return Account.objects.get(number=student_number)
+            except Account.DoesNotExist as error:
+                raise ValueError(f"No student account has Student ID '{student_number}'.") from error
+            except Account.MultipleObjectsReturned as error:
+                raise ValueError(f"Multiple student accounts have Student ID '{student_number}'.") from error
+
+        last_name = self._row_value(row, "last_name", "Surname")
+        first_name = self._row_value(row, "first_name", "First Name")
+        if not last_name or not first_name:
+            raise ValueError("A student, Student ID, or last_name and first_name pair is required.")
+        try:
+            return Account.objects.get(
+                last_name__iexact=self._spreadsheet_text(last_name),
+                first_name__iexact=self._spreadsheet_text(first_name),
+            )
+        except Account.DoesNotExist as error:
+            raise ValueError(f"No student account matches '{last_name}, {first_name}'.") from error
+        except Account.MultipleObjectsReturned as error:
+            raise ValueError(f"Multiple student accounts match '{last_name}, {first_name}'.") from error
+
+    @staticmethod
+    def _resolve_cohort(student, existing_assignment):
+        """Resolve the cohort from an existing assignment or the student's first enrolment."""
+        if existing_assignment is not None:
+            cohort = existing_assignment.tutorial.cohort
+            if cohort is None:
+                raise ValueError("The student's existing tutorial group has no cohort.")
+            return cohort
+
+        enrolment = student.module_enrollments.select_related("module__year").order_by("pk").first()
+        if enrolment is None:
+            raise ValueError("The student has no module enrolment from which to determine a cohort.")
+        return enrolment.module.year
+
+    def _resolve_tutor(self, value, row):
+        """Resolve a tutor using the shared APT account matcher."""
+        value = self._spreadsheet_text(value)
+        if not value:
+            raise ValueError("A Tutor value is required when tutorial is not supplied.")
+
+        tutor = self.tutor_widget.clean(value, row=row)
+        if tutor is None:
+            raise ValueError(f"Tutor '{value}' could not be resolved to a non-superuser staff account.")
+        return tutor
+
+    @classmethod
+    def _row_value(cls, row, *column_names):
+        """Return the first non-empty value from case-insensitive column names."""
+        for column_name in column_names:
+            normalised_name = column_name.strip().casefold()
+            for key, value in row.items():
+                if str(key).strip().casefold() == normalised_name and cls._spreadsheet_text(value):
+                    return value
+        return None
+
+    @staticmethod
+    def _spreadsheet_text(value):
+        """Normalise identifiers read from spreadsheet number cells."""
+        if value is None:
+            return ""
+        if isinstance(value, float) and value.is_integer():
+            return str(int(value))
+        return str(value).strip()
 
 
 class SessionTypeResource(resources.ModelResource):
@@ -164,6 +287,7 @@ class MeetingAttendanceResource(resources.ModelResource):
             "meeting",
             "staff",
             "status",
+            "flag",
             "created_at",
             "updated_at",
         )
@@ -190,11 +314,11 @@ class MeetingResource(resources.ModelResource):
 
     class Meta:
         model = Meeting
-        fields = ("id", "name", "level", "notes", "due_semester", "due_week")
+        fields = ("id", "name", "module", "notes", "due_semester", "due_week")
         import_id_fields = ("id",)
 
-    level = fields.Field(
-        column_name="level",
-        attribute="level",
-        widget=widgets.ForeignKeyWidget(Year, "id"),
+    module = fields.Field(
+        column_name="module",
+        attribute="module",
+        widget=widgets.ForeignKeyWidget(Module, "id"),
     )

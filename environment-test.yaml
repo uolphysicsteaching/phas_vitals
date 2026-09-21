@@ -58,6 +58,7 @@ dependencies:
   - celery-batches>=0.8.0
   - json-datetime
   - django-tinymce>=3.5.0
+  - nh3>=0.2.14
   - django-autocomplete-light>=3.9.0
   - django-ajax-selects
   - django-cookie-law

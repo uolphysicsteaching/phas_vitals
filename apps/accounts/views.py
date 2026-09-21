@@ -115,7 +115,7 @@ class StudentSummaryPageView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
                 return "accounts/parts/summary_vitals.html"
             case "required_work":
                 return "accounts/parts/summary_required.html"
-            case "meetings":
+            case "meeting":
                 return "accounts/parts/summary_meetings.html"
             case _:
                 return "accounts/parts/summary_category.html"
@@ -257,15 +257,26 @@ class StudentSummaryPageView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
         }
         return context
 
-    def get_context_data_meetings(self, **kwargs):
-        """List the meeting templates and records for the student's level."""
+    def get_context_data_meeting(self, **kwargs):
+        """List meeting templates for modules on which the student is enrolled."""
         context = super().get_context_data(**kwargs)
         Meeting = apps.get_model("tutorial", "Meeting")
         MeetingAttendance = apps.get_model("tutorial", "MeetingAttendance")
-        meetings = [
+        scheduled_meetings = list(
+            Meeting.objects.filter(module__student_enrollments__student=self.user).order_by(
+                "due_semester", "due_week", "name"
+            )
+        )
+        today = tz.localdate()
+        meetings = [meeting for meeting in scheduled_meetings if meeting.is_available_for(self.user, on_date=today)]
+        try:
+            cohort = self.user.tutorial_group_assignment.tutorial.cohort
+        except ObjectDoesNotExist:
+            cohort = None
+        future_meetings = [
             meeting
-            for meeting in Meeting.objects.filter(level=self.user.year).order_by("due_semester", "due_week", "name")
-            if meeting.is_available_for(self.user)
+            for meeting in scheduled_meetings
+            if cohort is not None and (first_day := meeting.first_day(cohort)) is not None and first_day > today
         ]
         attendance_by_meeting = {
             attendance.meeting_id: attendance
@@ -279,7 +290,8 @@ class StudentSummaryPageView(IsStudentViewixin, HTMXProcessMixin, TemplateView):
                 }
                 for meeting in meetings
             ],
-            "tab": self.kwargs.get("selected_tab", "#meetings"),
+            "future_meetings": future_meetings,
+            "tab": self.kwargs.get("selected_tab", "#meeting"),
         }
         return context
 

@@ -1,4 +1,5 @@
 <h3>Meetings</h3>
+<h4>Current and past meetings</h4>
 {% if meetings %}
     <div class="list-group">
         {% for row in meetings %}
@@ -24,5 +25,24 @@
         {% endfor %}
     </div>
 {% else %}
-    <p>No meetings are configured for this student's current level.</p>
+    <p>No current or past meetings are configured for this student's modules.</p>
+{% endif %}
+
+<h4 class="mt-4">Future meetings</h4>
+{% if future_meetings %}
+    <p class="text-muted">These meetings are shown for information only until their scheduled week begins.</p>
+    <div class="list-group">
+        {% for meeting in future_meetings %}
+            <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <strong>
+                        <a href="{% url 'tutorial:meeting-detail' meeting.pk %}">{{ meeting.name }}</a>
+                    </strong>
+                    <span>Semester {{ meeting.due_semester }}, week {{ meeting.due_week }}</span>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p>No future meetings are configured for this student's modules.</p>
 {% endif %}

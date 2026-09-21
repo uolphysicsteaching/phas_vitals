@@ -252,7 +252,10 @@ class VITAL(models.Model):
     )
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["name", "module"], name="Singleton VITAL name per module")]
+        constraints = [
+            models.UniqueConstraint(fields=["name", "module"], name="Singleton VITAL name per module"),
+            models.UniqueConstraint(fields=["module", "VITAL_ID"], name="vital_unique_module_vital_id"),
+        ]
         ordering = ["module__code", "VITAL_ID"]
 
     def natural_key(self):

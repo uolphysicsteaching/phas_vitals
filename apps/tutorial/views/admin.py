@@ -76,10 +76,8 @@ class MeetingsSummary(IsSuperuserViewMixin, FormMixin, SingleTableView):
         cohort = self.kwargs.get("cohort", "")
         try:
             cohort = Cohort.objects.get(name=cohort)
-            levels = TutorialAssignment.objects.filter(
-                tutorial__cohort=cohort, student__year__isnull=False
-            ).values_list("student__year_id", flat=True)
-            meetings = meetings.filter(level_id__in=levels).distinct()
+            students = TutorialAssignment.objects.filter(tutorial__cohort=cohort).values_list("student_id", flat=True)
+            meetings = meetings.filter(module__student_enrollments__student_id__in=students).distinct()
         except ObjectDoesNotExist:
             pass
         attrs = OrderedDict()
@@ -117,10 +115,12 @@ class MeetingsSummary(IsSuperuserViewMixin, FormMixin, SingleTableView):
         )
         meetings = Meeting.objects.all()
         if cohort:
-            students = students.filter(tutorial_group__cohort=cohort).distinct().prefetch_related("marksheets")
-            meetings = meetings.filter(
-                level_id__in=students.exclude(year__isnull=True).values_list("year_id", flat=True)
-            ).distinct()
+            students = (
+                students.filter(tutorial_group__cohort=cohort)
+                .distinct()
+                .prefetch_related("marksheets", "module_enrollments")
+            )
+            meetings = meetings.filter(module__student_enrollments__student__in=students).distinct()
         meetings = list(meetings)
         meeting_status = {}
         for meeting in meetings:
@@ -136,6 +136,7 @@ class MeetingsSummary(IsSuperuserViewMixin, FormMixin, SingleTableView):
             meeting_status[meeting.pk] = None if due_session and due_session.end > tz.now().date() else False
         table = []
         for student in students:
+            enrolled_module_ids = {enrolment.module_id for enrolment in student.module_enrollments.all()}
             record = dict(
                 [
                     ("student", "Unknown"),
@@ -143,7 +144,7 @@ class MeetingsSummary(IsSuperuserViewMixin, FormMixin, SingleTableView):
                 ]
             )
             for meeting in meetings:
-                record[meeting.slug] = meeting_status[meeting.pk] if meeting.level_id == student.year_id else None
+                record[meeting.slug] = meeting_status[meeting.pk] if meeting.module_id in enrolled_module_ids else None
             record["student"] = format_html('<a href="/accounts/staff_view/{}">{}</a>', student.username, student)
             if hasattr(student, "tutorial_group") and student.tutorial_group.first():
                 record["tutor"] = student.tutorial_group.first().tutor.initials

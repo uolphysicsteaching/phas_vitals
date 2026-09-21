@@ -3,7 +3,7 @@
 
 # Django imports
 from django import template
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 
 # external imports
 import numpy as np
@@ -76,25 +76,33 @@ def comp_colour(value, formula="linear"):
 
 
 @register.simple_tag
-def engagement(student, semester, cohort):
-    """Build an engagement entry for a givent student and semester."""
+def engagement(student, semester, cohort, sessions):
+    """Build an engagement entry for a student and the displayed sessions."""
     if hasattr(student, "engagement_session"):
-        data = student.engagement_session(cohort, semester)
+        data = student.engagement_session(cohort, semester, sessions=sessions)
     else:
         data = {}
-    out = ""
-    for k, v in data.items():
-        out += format_html(
-            "<td class='session_score' id='session_{student}_{k}'"
-            + """ headers='session_{pk}_{k}'>
-            {v}<br/>
-        </td>""",
-            student=student.pk,
-            k=k,
-            v=v,
-            pk=student.tutorial_group.first().pk,
-        )
-    return format_html(out)
+    cells = []
+    group = student.tutorial_group.first()
+    for session in sessions:
+        if session.pk in data:
+            cells.append(
+                format_html(
+                    "<td class='session_score' id='session_{student}_{session}'"
+                    + """ headers='session_{group}_{session}'>
+                {value}<br/>
+            </td>""",
+                    student=student.pk,
+                    session=session.pk,
+                    value=data[session.pk],
+                    group=group.pk,
+                )
+            )
+        else:
+            cells.append(
+                format_html('<td headers="session_{group}_{session}">&nbsp;</td>', group=group.pk, session=session.pk)
+            )
+    return format_html_join("", "{}", ((cell,) for cell in cells))
 
 
 @register.simple_tag

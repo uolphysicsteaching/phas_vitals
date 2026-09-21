@@ -1,6 +1,11 @@
 # Django imports
 from django import forms
-from django.contrib.admin import SimpleListFilter, StackedInline, register
+from django.contrib.admin import (
+    RelatedOnlyFieldListFilter,
+    SimpleListFilter,
+    StackedInline,
+    register,
+)
 
 # external imports
 from accounts.models import Account
@@ -75,7 +80,13 @@ class TutorialAssignmentAdmin(ImportExportModelAdmin):
     """Admin class for Tutorial Assignment."""
 
     list_display = ("tutorial", "student")
-    list_filter = ("tutorial", StudentListFilter)
+    list_filter = (
+        ("tutorial__cohort", RelatedOnlyFieldListFilter),
+        ("tutorial__tutor", RelatedOnlyFieldListFilter),
+        ("student__module_enrollments__module", RelatedOnlyFieldListFilter),
+        "tutorial",
+        StudentListFilter,
+    )
     search_fields = [
         "student__first_name",
         "student__last_name",
@@ -299,8 +310,8 @@ class QuestionAdmin(ImportExportModelAdmin):
 class MeetingAttendanceAdmin(ImportExportModelAdmin):
     """Admin class for Meeting Attendance."""
 
-    list_display = ("student", "meeting", "status", "staff", "updated_at")
-    list_filter = ("meeting", "status", "staff", "updated_at")
+    list_display = ("student", "meeting", "status", "flag", "staff", "updated_at")
+    list_filter = ("flag", "meeting", "status", "staff", "updated_at")
     search_fields = (
         "student__first_name",
         "student__last_name",
@@ -311,7 +322,7 @@ class MeetingAttendanceAdmin(ImportExportModelAdmin):
     list_select_related = (
         "student",
         "meeting",
-        "meeting__level",
+        "meeting__module",
         "staff",
     )
     inlines = (AnswerInline,)
@@ -329,10 +340,10 @@ class MeetingAttendanceAdmin(ImportExportModelAdmin):
 class MeetingAdmin(ImportExportModelAdmin):
     """Admin class for tutorial meetings."""
 
-    list_display = ("name", "level", "due_semester", "due_week")
-    list_filter = ("name", "level", "due_semester", "due_week")
-    search_fields = ("name", "level__name", "level__status")
-    list_select_related = ("level",)
+    list_display = ("name", "module", "due_semester", "due_week")
+    list_filter = ("name", "module", "due_semester", "due_week")
+    search_fields = ("name", "module__code", "module__name")
+    list_select_related = ("module",)
     inlines = (MeetingQuestionInline,)
 
     def get_export_resource_class(self):

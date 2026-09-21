@@ -425,6 +425,8 @@ class TermDate(models.Model):
         """Store the datetime as date and time parts."""
         match value:
             case datetime():
+                if timezone.is_aware(value):
+                    value = timezone.localtime(value, TIMEZONE)
                 self.date = value.date()
                 self.time = value.time()
             case date():
@@ -443,27 +445,31 @@ class TermDate(models.Model):
     def find(cls, target):
         """Return the TermDate object that matches the target,"""
         match target:
-            case date():
-                target = datetime.combine(target, time.min)
             case str():
-                target = parse(target)
+                return cls.find(parse(target))
             case datetime():
-                pass
+                if timezone.is_aware(target):
+                    target = timezone.localtime(target, TIMEZONE)
+                target_date = target.date()
+                target_time = target.time()
+            case date():
+                target_date = target
+                target_time = time.min
             case cls():
                 return target
             case _:
                 raise TypeError(f"Cannot interpret {target} as a date.")
 
-        possible = cls.objects.filter(start__lte=target).order_by("start").last()
+        possible = cls.objects.filter(start__lte=target_date).order_by("start").last()
         if not possible:
-            raise ValueError(f"No TermDates before {target}")
-        extent = target - datetime.combine(possible.start, time.min)
+            raise ValueError(f"No TermDates before {target_date}")
+        extent = target_date - possible.start
         possible.week += extent.days // 7
         possible.day = extent.days % 7
-        possible.date = target.date()
-        possible.time = target.time()
+        possible.date = target_date
+        possible.time = target_time
         if possible.pk != cls.reverse(possible.cohort, possible.week, possible.day).pk:
-            raise ValueError(f"Date {target} appears to be outside of a term dates.")
+            raise ValueError(f"Date {target_date} appears to be outside of a term dates.")
         return possible
 
     @classmethod
@@ -476,6 +482,24 @@ class TermDate(models.Model):
         ret.day = day
         ret.date = (datetime.combine(ret.start, time.min) + timedelta(days=delta_days)).date()
         ret.time = time.min
+        return ret
+
+    @classmethod
+    def reverse_semester(cls, cohort, semester, week, day=0):
+        """Return a TermDate for a semester-relative week and day.
+
+        Negative weeks are measured backwards from the semester's week-zero
+        datum, so week -1 is the week immediately before week 0.
+        """
+        try:
+            semester_start_week = {1: 1, 2: 14}[semester]
+        except KeyError as error:
+            raise ValueError(f"Cannot map semester {semester} to a term date.") from error
+
+        ret = cls.reverse(cohort, semester_start_week, 0)
+        ret.week = week
+        ret.day = day
+        ret.date += timedelta(weeks=week - 1, days=day)
         return ret
 
     @classmethod

@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class VITALsWidget(widgets.ManyToManyWidget):
-    """Import Export Widge for reading Tests that understands the natural key for a test."""
+    """Import and export test VITALs using module-qualified identifiers."""
 
     def __init__(self, model, separator=None, field=None, **kwargs):
         """Handle converting model from string to model instance."""
@@ -41,28 +41,38 @@ class VITALsWidget(widgets.ManyToManyWidget):
         super().__init__(model, separator, field, **kwargs)
 
     def clean(self, value, row=None, **kwargs):
-        """Split the value by separator and then lookup natural keys."""
+        """Resolve semicolon-separated ``module code:VITAL_ID`` references."""
         if not value:
             return self.model.objects.none()
-        if self.separator in value:
-            values = [x.strip() for x in value.split(self.separator) if x.strip() != ""]
+        if isinstance(value, str):
+            values = [item.strip() for item in value.split(self.separator) if item.strip()]
         else:
             values = [value]
         ret = []
-        for v in values:
+        for imported_value in values:
+            if not isinstance(imported_value, str) or ":" not in imported_value:
+                raise ValueError(f"Expected a VITAL reference in MODULE_CODE:VITAL_ID format; got {imported_value!r}.")
+            module_code, vital_id = (part.strip() for part in imported_value.split(":", maxsplit=1))
+            if not module_code or not vital_id:
+                raise ValueError(f"Expected a VITAL reference in MODULE_CODE:VITAL_ID format; got {imported_value!r}.")
+            query = Q(module__code=module_code, VITAL_ID=vital_id)
             try:
-                v = int(v)
-                query = Q(id=v)
-            except (ValueError, TypeError):
-                query = Q(VITAL_ID=v) | Q(name=v)
-            ret.append(self.model.objects.get(query))
+                ret.append(self.model.objects.get(query))
+            except self.model.DoesNotExist as exc:
+                raise self.model.DoesNotExist(
+                    f"Could not find a VITAL matching module code {module_code!r} and VITAL_ID {vital_id!r}."
+                ) from exc
+            except self.model.MultipleObjectsReturned as exc:
+                raise self.model.MultipleObjectsReturned(
+                    f"Multiple VITALs matched module code {module_code!r} and VITAL_ID {vital_id!r}."
+                ) from exc
         return ret
 
     def render(self, value, obj=None, **kwargs):
         """Render using natural keys."""
         if value is None:
             return ""
-        ids = [str(obj.VITAL_ID) for obj in value.all()]
+        ids = [f"{obj.module.code}:{obj.VITAL_ID}" for obj in value.all()]
         return self.separator.join(ids)
 
 

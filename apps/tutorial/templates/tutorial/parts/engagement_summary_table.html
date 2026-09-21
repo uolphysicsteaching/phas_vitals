@@ -18,7 +18,7 @@
                     <a href="/accounts/detail/{{ student.number }}/#dashboard">{{ student.display_name }}</a>
                 </td>
                 <td>&nbsp;</td>
-                {% engagement student semester cohort %}
+                {% engagement student semester cohort sessions %}
                 <td colspan=2 style="background-color: {{ student.activity_colour }}; color: {{ student.activity_colour|comp_colour }}" headers="status_{{ group.pk }}">{{ student.activity_label }}</td>
             </tr>
         {% endfor %}

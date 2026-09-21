@@ -7,7 +7,7 @@ from copy import deepcopy
 from .common import *  # NOQA  pylint: disable=unused-import,wildcard-import
 from .secrets import *  # NOQA  pylint: disable=unused-import,wildcard-import
 
-DEBUG = False
+DEBUG = True
 
 LOGGING = deepcopy(LOGGING)
 LOGGING["root"]["level"] = "INFO"

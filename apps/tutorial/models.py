@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple, Union
 # Django imports
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.db import DEFAULT_DB_ALIAS, models
+from django.db import DEFAULT_DB_ALIAS, models, transaction
 from django.db.models import QuerySet
 from django.utils import timezone as tz
 from django.utils.functional import cached_property, classproperty
@@ -26,8 +26,8 @@ from accounts.models import (
     students_Q,
 )
 from constance import config
-from minerva.models import SummaryScore
-from tinymce.models import HTMLField
+from minerva.models import Module, SummaryScore
+from util.fields import ObfuscatedHTMLField
 from util.models import colour, contrast, patch_model
 
 task_logger = logging.getLogger("celery_tasks")
@@ -229,6 +229,45 @@ class Session(models.Model):
         return f"{self.name}-{settings.SEMESTERS[self.semester][1]} ({self.cohort})"
 
     @classmethod
+    @transaction.atomic
+    def create_for_cohort(cls, cohort):
+        """Create or update the standard teaching-week sessions for a cohort.
+
+        Args:
+            cohort (Cohort):
+                The academic cohort for which sessions should be created.
+
+        Returns:
+            (tuple):
+                The numbers of sessions created and updated.
+        """
+        schedule = []
+        for semester, first_academic_week in ((1, 1), (2, 14)):
+            for week in range(1, 12):
+                academic_week = first_academic_week + week - 1
+                try:
+                    start = TermDate.reverse(cohort, academic_week, 0).date
+                    end = TermDate.reverse(cohort, academic_week, 4).date
+                except AttributeError as error:
+                    raise ValueError(
+                        f"No term-date mapping is available for {cohort}, semester {semester}."
+                    ) from error
+                schedule.append((semester, week, start, end))
+
+        created_count = 0
+        updated_count = 0
+        for semester, week, start, end in schedule:
+            _, created = cls.objects.update_or_create(
+                cohort=cohort,
+                semester=semester,
+                name=f"Wk {week}",
+                defaults={"week": week, "start": start, "end": end},
+            )
+            created_count += int(created)
+            updated_count += int(not created)
+        return created_count, updated_count
+
+    @classmethod
     def past(cls, cohort=None):
         """Return all sessions that are in the past."""
         if cohort is not None:
@@ -380,7 +419,7 @@ class Question(models.Model):
         MULTI_SELECT = "m-select", "Multiple choice"
 
     type = models.CharField(max_length=8, choices=Type.choices)
-    text = HTMLField()
+    text = ObfuscatedHTMLField()
     data = models.JSONField(default=list, blank=True)
 
     def clean(self):
@@ -416,13 +455,12 @@ class Question(models.Model):
 class MeetingAttendanceManager(models.Manager):
     """Manager for MeetingAttendanceManager."""
 
-    def get_by_natural_key(self, meeting, level, student) -> "MeetingAttendance":
-        """Find a record by its meeting, level and student identifiers."""
-        level_name, level_status = level.split(",", maxsplit=1)
+    def get_by_natural_key(self, meeting, module, exam_code, student) -> "MeetingAttendance":
+        """Find a record by its meeting, module and student identifiers."""
         return self.get(
             meeting__name=meeting,
-            meeting__level__name=level_name.strip(),
-            meeting__level__status=level_status.strip(),
+            meeting__module__code=module,
+            meeting__module__exam_code=exam_code,
             student__username=student,
         )
 
@@ -456,6 +494,7 @@ class MeetingAttendance(models.Model):
         limit_choices_to=academic_Q,
     )
     status = models.CharField(max_length=10, choices=Status.choices)
+    flag = models.BooleanField(default=False, help_text="Mark this record for extra attention.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -468,21 +507,22 @@ class MeetingAttendance(models.Model):
         ]
 
     def clean(self):
-        """Require new records to match the student's current level."""
+        """Require new records to belong to one of the student's modules."""
         super().clean()
         if (
             self._state.adding
             and self.meeting_id
             and self.student_id
-            and self.meeting.level_id != self.student.year_id
+            and not self.student.module_enrollments.filter(module_id=self.meeting.module_id).exists()
         ):
-            raise ValidationError({"student": "The student's current level does not match the meeting level."})
+            raise ValidationError({"student": "The student is not enrolled on the meeting's module."})
 
     def natural_key(self) -> Tuple:
-        """Use meeting name, level and username as the natural key."""
+        """Use meeting name, module code and username as the natural key."""
         return (
             self.meeting.name,
-            self.meeting.level.natural_key(),
+            self.meeting.module.code,
+            self.meeting.module.exam_code,
             self.student.username,
         )
 
@@ -495,18 +535,18 @@ class MeetingAttendance(models.Model):
 
 
 class Meeting(models.Model):
-    """A level-specific meeting template containing ordered prompts."""
+    """A module-specific meeting template containing ordered prompts."""
 
     name: "models.CharField" = models.CharField(max_length=40, unique=False)
-    level = models.ForeignKey(
-        Year,
+    module = models.ForeignKey(
+        Module,
         on_delete=models.PROTECT,
         related_name="meetings",
-        verbose_name="Student level",
+        verbose_name="Module code",
     )
-    notes: HTMLField = HTMLField(blank=True, default="")
+    notes: ObfuscatedHTMLField = ObfuscatedHTMLField(blank=True, default="")
     due_semester = models.PositiveSmallIntegerField(choices=settings.SEMESTERS)
-    due_week = models.PositiveSmallIntegerField()
+    due_week = models.SmallIntegerField()
     questions = models.ManyToManyField(
         Question,
         through="MeetingQuestion",
@@ -517,20 +557,22 @@ class Meeting(models.Model):
 
     class Meta:
         ordering: Tuple = ("due_semester", "due_week", "name")
-        constraints = [models.UniqueConstraint(fields=("name", "level"), name="unique_meeting_name_level")]
+        constraints = [models.UniqueConstraint(fields=("name", "module"), name="unique_meeting_name_module")]
 
     def __str__(self) -> str:
         """Create a string representation."""
-        return f"{self.name} - {self.level}"
+        return f"{self.name} - {self.module.code}"
+
+    def is_for(self, student):
+        """Return whether the student is enrolled on this meeting's module."""
+        return student.module_enrollments.filter(module_id=self.module_id).exists()
 
     def first_day(self, cohort):
         """Return the first day of this meeting's due week for a cohort."""
-        semester_starts = {1: TermDate.start_s1, 2: TermDate.start_s2}
         try:
-            semester_start = semester_starts[self.due_semester](cohort)
-        except (AttributeError, KeyError):
+            return TermDate.reverse_semester(cohort, self.due_semester, self.due_week).date
+        except (AttributeError, ValueError):
             return None
-        return (semester_start + timedelta(weeks=self.due_week - 1)).date()
 
     def is_available_for(self, student, on_date=None):
         """Return whether this meeting's due week has started for the student."""
@@ -730,18 +772,22 @@ def engagement_colour(self) -> str:
 
 
 @patch_model(Account)
-def engagement_session(self, cohort=None, semester=None) -> dict:
+def engagement_session(self, cohort=None, semester=None, sessions=None) -> dict:
     """Monkeypatch a method for getting the session engagement score."""
     if cohort is None:
         cohort: Cohort = self.cohort
     if semester is None:
         semester = 1 if tz.now().month >= 8 else 2
-    sessions: QuerySet[Session] = Session.objects.filter(cohort=cohort, semester=semester)
-    base: format_html[int, str] = {x.pk: format_html("&nbsp;-&nbsp;") for x in sessions}
-    for attendance in self.tutorial_sessions.filter(session__cohort=cohort, session__semester=semester):
+    if sessions is None:
+        sessions = Session.objects.filter(cohort=cohort, semester=semester)
+    sessions = list(sessions)
+    enrolled_module_ids = set(self.module_enrollments.values_list("module_id", flat=True))
+    eligible_sessions = [session for session in sessions if session.module_id in enrolled_module_ids]
+    base = {session.pk: format_html("&nbsp;{}&nbsp;", "-") for session in eligible_sessions}
+    for attendance in self.attendance.filter(type=SessionType.TUTORIAL, session__in=eligible_sessions):
         session = attendance.session
         if attendance.score is None:
-            base[session.pk] = format_html(" - ")
+            base[session.pk] = format_html("{}", " - ")
         else:
             score_imgs = [
                 {"src": "/static/admin/img/icon-yes.svg", "alt": "Authorised Absence"},
@@ -763,9 +809,13 @@ def engagement_session(self, cohort=None, semester=None) -> dict:
                 },
             ]
             score = int(attendance.score) + 1
-            attrs = " ".join([f'{k}="{val}"' for k, val in score_imgs[score].items()])
-            img_str = f"<img {attrs} />"
-            base[session.pk] = format_html(img_str)
+            image = score_imgs[score]
+            if width := image.get("width"):
+                base[session.pk] = format_html(
+                    '<img src="{}" alt="{}" width="{}" />', image["src"], image["alt"], width
+                )
+            else:
+                base[session.pk] = format_html('<img src="{}" alt="{}" />', image["src"], image["alt"])
     return base
 
 

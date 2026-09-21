@@ -53,13 +53,13 @@ class MeetingDetailView(IsStudentViewixin, DetailView):
     model = Meeting
     context_object_name = "meeting"
     template_name = "tutorial/meeting_detail.html"
-    queryset = Meeting.objects.select_related("level")
+    queryset = Meeting.objects.select_related("module")
 
     def test_func(self):
-        """Allow staff, or a student at the meeting's level, to view it."""
+        """Allow staff, or a student enrolled on the meeting's module, to view it."""
         if not super().test_func():
             return False
-        return self.request.user.is_staff or (self.request.user.year_id == self.get_object().level_id)
+        return self.request.user.is_staff or self.get_object().is_for(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -73,7 +73,7 @@ class MeetingManageListView(IsSuperuserViewMixin, ListView):
     model = Meeting
     context_object_name = "meetings"
     template_name = "tutorial/meeting_manage_list.html"
-    queryset = Meeting.objects.select_related("level").all()
+    queryset = Meeting.objects.select_related("module").all()
 
 
 class MeetingFormSetMixin:
@@ -114,6 +114,10 @@ class MeetingManageCreateView(IsSuperuserViewMixin, MeetingFormSetMixin, CreateV
 
 class MeetingManageUpdateView(IsSuperuserViewMixin, MeetingFormSetMixin, UpdateView):
     """Edit a meeting template and its ordered questions."""
+
+    def get_success_url(self):
+        """Return to the meeting list after a successful update."""
+        return reverse("tutorial:meeting-manage-list")
 
 
 class MeetingManageDeleteView(IsSuperuserViewMixin, DeleteView):
@@ -193,11 +197,11 @@ class MeetingAttendanceActionView(RedirectView):
         return MeetingAttendanceDetailView
 
     def get_superuser_view(self, request):
-        """Superusers may read an existing record, but not author one."""
+        """Allow superusers to create a missing record or read an existing one."""
         if request.user.is_authenticated and request.user.is_superuser:
             view = self.detail_view()
             if view is None:
-                raise Http404("No attendance record exists for this meeting.")
+                return MeetingAttendanceCreateView
             return view
         return None
 
@@ -223,19 +227,20 @@ class MeetingAttendanceActionView(RedirectView):
 
 
 class TutorMeetingAccessMixin(IsStaffViewMixin):
-    """Allow only the tutor currently assigned to the meeting's student."""
+    """Allow a superuser or the tutor currently assigned to the student."""
 
     def get_access_student(self):
         """Return the student whose tutor controls this request."""
         raise NotImplementedError
 
     def test_func(self):
-        """Require an authenticated staff user who is the assigned tutor."""
+        """Require an authorised staff user and an available, applicable meeting."""
         student = self.get_access_student()
         return (
             super().test_func()
-            and tutor_for(student) == self.request.user
+            and (self.request.user.is_superuser or tutor_for(student) == self.request.user)
             and self.get_meeting().is_available_for(student)
+            and self.get_meeting().is_for(student)
         )
 
 
@@ -302,10 +307,6 @@ class MeetingAttendanceCreateView(TutorMeetingAccessMixin, MeetingRecordFormMixi
 
     def get_access_student(self):
         return self.student
-
-    def test_func(self):
-        """Additionally require the selected template to match the student's level."""
-        return super().test_func() and self.student.year_id == self.meeting.level_id
 
     def set_ownership(self, attendance):
         """Set fields that must never be accepted from posted form data."""
@@ -375,7 +376,7 @@ class MeetingAttendanceDetailView(MeetingRecordReadAccessMixin, DetailView):
     model = MeetingAttendance
     context_object_name = "attendance"
     template_name = "tutorial/meetingattendance_detail.html"
-    queryset = MeetingAttendance.objects.select_related("meeting", "meeting__level", "student", "staff")
+    queryset = MeetingAttendance.objects.select_related("meeting", "meeting__module", "student", "staff")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -383,7 +384,9 @@ class MeetingAttendanceDetailView(MeetingRecordReadAccessMixin, DetailView):
         context["responses"] = [
             (question, answers.get(question.pk)) for question in self.object.meeting.ordered_questions
         ]
-        context["can_edit"] = self.request.user.is_staff and tutor_for(self.object.student) == self.request.user
+        context["can_edit"] = self.request.user.is_superuser or (
+            self.request.user.is_staff and tutor_for(self.object.student) == self.request.user
+        )
         context["can_delete"] = self.request.user.is_superuser
         return context
 

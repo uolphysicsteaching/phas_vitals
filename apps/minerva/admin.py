@@ -67,7 +67,7 @@ def ModuleListFilter(subfield=None):
             Returns:
                 (list of tuples): A list of (code, display_string) tuples for module options.
             """
-            return [(mod.code, str(mod)) for mod in Module.objects.all().order_by("code")]
+            return [(mod.code, str(mod)) for mod in Module.objects.all().order_by("code", "exam_code")]
 
         def queryset(self, request, queryset):
             """Get the module by code."""
@@ -102,7 +102,7 @@ class TestCategoryFilter(admin.SimpleListFilter):
             if queryset.model is GradebookColumn:
                 queryset = queryset.filter(category__text=self.value())
             elif queryset.model is Test:
-                queryset = queryset.filter(columns__category__text=self.value())
+                queryset = queryset.filter(columns__category__text=self.value()).distinct()
             else:
                 raise TypeError("Unknown queryset model {queryset.model}")
 
@@ -189,6 +189,7 @@ class GradebookColumnInline(admin.StackedInline):
 class ModuleAdmin(ImportExportModelAdmin):
     """Admin Class for Module objects."""
 
+    ordering = ("code", "exam_code")
     list_display = ("id", "year", "code", "courseId", "name")
     list_filter = list_display
     search_fields = ["name", "description", "module__year"]
@@ -643,9 +644,9 @@ class StatusCodeAdmin(ImportExportModelAdmin):
 class ModuleEnrollmentAdmin(ImportExportModelAdmin):
     """Admin interface for ModuleEnrollment objects."""
 
-    list_display = ("module", "student", "status")
-    list_editable = ("status",)
-    list_filter = (ModuleListFilter(), StudentListFilter, "status")
+    list_display = ("module", "student", "status", "locked")
+    list_editable = ("status", "locked")
+    list_filter = (ModuleListFilter(), StudentListFilter, "status", "locked")
     search_fields = [
         "module__name",
         "module__code",

@@ -2,6 +2,7 @@
 """Celery taks for the minerva app."""
 # Python imports
 import logging
+from collections import defaultdict
 from datetime import datetime, time
 from functools import partial
 from traceback import format_exc
@@ -36,19 +37,43 @@ update_all_users = celery_app.signature("accounts.tasks.update_all_users")
 def import_module_list():
     """Periodic task to update the list of modules we're reading."""
     mod_list = [x for x in json.get_blob_list() if x.endswith("Course.json")]
-    for mod_json in mod_list:
-        data = json.get_blob_by_name(mod_json)[0]
-        year, crn, code = data["courseId"].split("_")
-        year = Cohort.objects.get(name=year)
+    module_data = [json.get_blob_by_name(mod_json)[0] for mod_json in mod_list]
+    years_by_crn = defaultdict(set)
+    for data in module_data:
+        year_name, crn, _ = data["courseId"].split("_")
+        years_by_crn[crn].add(year_name)
+    conflicting_crns = {crn: years for crn, years in years_by_crn.items() if len(years) > 1}
+    if conflicting_crns:
+        conflicts = ", ".join(f"{crn}: {', '.join(sorted(years))}" for crn, years in sorted(conflicting_crns.items()))
+        raise ValueError(f"Module list contains CRNs in multiple academic years ({conflicts}); no modules updated.")
+
+    for data in module_data:
+        year_name, crn, code = data["courseId"].split("_")
+        year = Cohort.objects.get(name=year_name)
         school = School.from_code(code[:4])
-        crn = data["courseId"].split("_")[1]
         name = " ".join(data["name"].split(" ")[1:-1])
-        mod, _ = Module.objects.get_or_create(uuid=data["uuid"], courseId=crn, year=year, code=code)
+        mod, created = Module.objects.get_or_create(
+            code=code,
+            exam_code=1,
+            defaults={"uuid": data["uuid"], "courseId": crn, "year": year},
+        )
+        if created or not mod.student_enrollments.filter(locked=False).exists():
+            mod.uuid = data["uuid"]
+            mod.year = year
         mod.name = name
+        mod.courseId = crn
         mod.school = school
+        if mod.sub_modules:
+            mod.sub_modules.all().update(year=year)
         mod.level = int(mod.code[4])
         mod.semester = int(data["name"].split(" ")[0][-2])
         mod.save()
+        if mod.year_id != year_name:
+            logger.warning(
+                "Not importing new-year data for %s because it still has unlocked enrolments.",
+                mod,
+            )
+            continue
         mod.update_from_json(categories=True, tests=True, enrollments=True, columns=True, grades=True)
 
 

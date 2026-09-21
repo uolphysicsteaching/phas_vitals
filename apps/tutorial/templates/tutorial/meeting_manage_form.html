@@ -81,9 +81,17 @@
                 const template = document.getElementById("empty-question-form").innerHTML;
                 container.insertAdjacentHTML("beforeend", template.replaceAll("__prefix__", index));
                 total.value = index + 1;
+                const addedRow = container.lastElementChild;
+                addedRow.querySelectorAll(".tinymce").forEach(function (textarea) {
+                    const config = JSON.parse(textarea.dataset.mceConf);
+                    delete config.selector;
+                    config.target = textarea;
+                    tinymce.init(config);
+                });
                 renumber();
             });
             container.addEventListener("input", renumber);
+            container.closest("form").addEventListener("submit", renumber);
             renumber();
         });
     </script>

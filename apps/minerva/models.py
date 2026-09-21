@@ -107,7 +107,8 @@ def match_column_to_test(column, module):
     """Match a GradebookColumn to a test if possible."""
     if column.category is None:  # No category on column, so can't be assigned to a test automatically.
         return False
-    if column.gradebook_id not in module.column_data:
+    column_data = module.column_data
+    if column.gradebook_id not in column_data:
         return False
     # First try to match column to existing Test
     search = column.category.search
@@ -137,6 +138,9 @@ def match_column_to_test(column, module):
                     name=match.groupdict().get("name"),
                     category=column.category,
                 )
+                possible_score = column_data[column.gradebook_id].get("score", {}).get("possible")
+                if possible_score is not None:
+                    test.score_possible = possible_score
         test.save()
     else:
         test = column.test
@@ -380,6 +384,7 @@ class Module(models.Model):
             .order_by("student__number")
             .exclude(student__is_staff=True)
             .exclude(student__is_superuser=True)
+            .exclude(locked=True)
         )
         add = (
             Account.objects.filter(number__in=data.keys())
@@ -397,6 +402,7 @@ class Module(models.Model):
                     .order_by("student__number")
                     .exclude(student__is_staff=True)
                     .exclude(student__is_superuser=True)
+                    .exclude(locked=True)
                 )
                 logger.debug(f"Dropping {sub_drop.count()} enrollments from {module}")
                 sub_drop.delete()
@@ -562,7 +568,10 @@ class TestCategory(models.Model):
             category.save()
 
     def save(self, force_insert=False, force_update=False, using=DEFAULT_DB_ALIAS, update_fields=None):
-        """Set the label to be the text if the label is &nbsp;"""
+        """Initialise the sort order and set a default label."""
+        if self._state.adding and self.order == 0:
+            maximum_order = type(self).objects.using(using).aggregate(models.Max("order"))["order__max"] or 0
+            self.order = maximum_order + 1
         if not self.label:
             self.label = self.text[:40]
         super().save(force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)
@@ -608,6 +617,7 @@ class ModuleEnrollment(models.Model):
     student = models.ForeignKey("accounts.Account", on_delete=models.CASCADE, related_name="module_enrollments")
     status = models.ForeignKey(StatusCode, on_delete=models.SET_DEFAULT, default="RE")
     user_id = models.CharField(max_length=20, blank=True, null=True)  # User_ID appears to be per module
+    locked = models.BooleanField(default=False, help_text="Do not delete this enrolment during module updates.")
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["module", "student"], name="Singleton EWnrollment on a module")]
@@ -1008,13 +1018,13 @@ class Test(models.Model):
             if test and not test.locked:  # We found, or created a test, so update test properties
                 test.grading_attemptsAllowed = dictionary.get("grading", {}).get("attemptsAllowed", None)
                 test.score_possible = dictionary.get("score", {}).get("possible", None)
-                if due := dictionary.get("grading", {}).get("due", None) and not test.recommended_date:
+                if (due := dictionary.get("grading", {}).get("due", None)) and not test.recommended_date:
                     due = due.replace(tzinfo=UK)
                     test.recommended_date = due
                     test.grading_due = due + timedelta(days=14)
                 else:
                     print(f"No due date for {test} {dictionary.get("grading",{}).get("due", None)}")
-                if modified := dictionary.get("modified", None) and not test.release_date:
+                if (modified := dictionary.get("modified", None)) and not test.release_date:
                     modified = modified.replace(tzinfo=UK)
                     test.release_date = modified
                 else:
