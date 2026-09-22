@@ -1,14 +1,24 @@
 """Tests for the vitals app models."""
 
 # Django imports
+from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
 from django.utils import timezone as tz
+from django.utils.html import strip_tags
 
 # external imports
 import pytest
 
 # app imports
 from .models import VITAL, VITAL_Result, VITAL_Test_Map
+
+
+def _make_test(module, name):
+    """Create a minimally configured test for VITAL requirement tests."""
+    # external imports
+    from minerva.models import Test
+
+    return Test.objects.create(test_id=f"test-id-{name}", module=module, name=name)
 
 
 @pytest.mark.django_db
@@ -66,6 +76,41 @@ class TestVITAL_Test_Map:
         assert mapping.sufficient is True
         assert mapping.condition == "pass"
         assert mapping.required_fractrion == 1.0
+
+    def test_non_sufficient_mappings_must_have_matching_fractions(self, sample_test, sample_vital, sample_module):
+        """Test that unequal non-sufficient fractions fail model validation."""
+        VITAL_Test_Map.objects.create(
+            test=sample_test,
+            vital=sample_vital,
+            sufficient=False,
+            required_fractrion=0.5,
+        )
+        mapping = VITAL_Test_Map(
+            test=_make_test(sample_module, "Unequal Fraction Test"),
+            vital=sample_vital,
+            sufficient=False,
+            required_fractrion=0.25,
+        )
+
+        with pytest.raises(ValidationError, match="same required fraction"):
+            mapping.full_clean()
+
+    def test_non_sufficient_mapping_fraction_comparison_has_tolerance(self, sample_test, sample_vital, sample_module):
+        """Test that insignificant floating-point differences pass validation."""
+        VITAL_Test_Map.objects.create(
+            test=sample_test,
+            vital=sample_vital,
+            sufficient=False,
+            required_fractrion=0.5,
+        )
+        mapping = VITAL_Test_Map(
+            test=_make_test(sample_module, "Approximate Fraction Test"),
+            vital=sample_vital,
+            sufficient=False,
+            required_fractrion=0.5005,
+        )
+
+        mapping.full_clean()
 
 
 @pytest.mark.django_db
@@ -147,6 +192,100 @@ class TestVITAL_Result:
         """
         result = VITAL_Result.objects.create(vital=sample_vital, user=sample_user, passed=True)
         assert "check" in result.icon
+
+    def test_tests_text_describes_fractional_mappings_with_per_test_verbs(
+        self, sample_vital, sample_user, sample_test, sample_module
+    ):
+        """Test the requirements text for three unflagged half-weight mappings."""
+        attempt_test = _make_test(sample_module, "Attempt Test")
+        other_pass_test = _make_test(sample_module, "Other Pass Test")
+        VITAL_Test_Map.objects.create(
+            test=sample_test,
+            vital=sample_vital,
+            sufficient=False,
+            condition="pass",
+            required_fractrion=0.5,
+        )
+        VITAL_Test_Map.objects.create(
+            test=attempt_test,
+            vital=sample_vital,
+            sufficient=False,
+            condition="attempt",
+            required_fractrion=0.5,
+        )
+        VITAL_Test_Map.objects.create(
+            test=other_pass_test,
+            vital=sample_vital,
+            sufficient=False,
+            condition="pass",
+            required_fractrion=0.5,
+        )
+
+        result = VITAL_Result(vital=sample_vital, user=sample_user)
+        text = " ".join(strip_tags(str(result.tests_text)).split())
+
+        assert text == (
+            "You should do 2 of the following: pass Sample Test (PHAS1234) "
+            "attempt Attempt Test (PHAS1234) pass Other Pass Test (PHAS1234)"
+        )
+
+    def test_tests_text_joins_sufficient_necessary_and_fractional_routes(
+        self, sample_vital, sample_user, sample_test, sample_module
+    ):
+        """Test sufficient, necessary and remaining requirement sections and joiners."""
+        necessary_test = _make_test(sample_module, "Necessary Test")
+        remaining_test = _make_test(sample_module, "Remaining Test")
+        VITAL_Test_Map.objects.create(
+            test=sample_test,
+            vital=sample_vital,
+            sufficient=True,
+            condition="attempt",
+            required_fractrion=0.25,
+        )
+        VITAL_Test_Map.objects.create(
+            test=necessary_test,
+            vital=sample_vital,
+            necessary=True,
+            sufficient=False,
+            condition="pass",
+            required_fractrion=0.5,
+        )
+        VITAL_Test_Map.objects.create(
+            test=remaining_test,
+            vital=sample_vital,
+            sufficient=False,
+            condition="attempt",
+            required_fractrion=0.5,
+        )
+
+        result = VITAL_Result(vital=sample_vital, user=sample_user)
+        text = " ".join(strip_tags(str(result.tests_text)).split())
+
+        assert text == (
+            "You should do the following: attempt Sample Test (PHAS1234) or the following: "
+            "pass Necessary Test (PHAS1234) and 1 of the following: attempt Remaining Test (PHAS1234)"
+        )
+
+    def test_tests_text_reports_unequal_non_sufficient_fractions(
+        self, sample_vital, sample_user, sample_test, sample_module
+    ):
+        """Test that legacy inconsistent mapping data produces a visible error."""
+        VITAL_Test_Map.objects.create(
+            test=sample_test,
+            vital=sample_vital,
+            sufficient=False,
+            required_fractrion=0.5,
+        )
+        VITAL_Test_Map.objects.create(
+            test=_make_test(sample_module, "Invalid Fraction Test"),
+            vital=sample_vital,
+            sufficient=False,
+            required_fractrion=0.25,
+        )
+
+        result = VITAL_Result(vital=sample_vital, user=sample_user)
+
+        assert "Requirements configuration error" in str(result.tests_text)
 
 
 @pytest.mark.django_db

@@ -666,3 +666,109 @@ class TestFeedbackApiHardening:
         from .api import FeednackViewSet
 
         assert "delete" not in FeednackViewSet.http_method_names
+
+
+@pytest.mark.django_db
+@pytest.mark.unit
+class TestTestScoreVitalsText:
+    """Test descriptions of how a test affects mapped VITALs."""
+
+    @pytest.mark.parametrize(
+        ("standing", "sufficient_label", "necessary_label", "contributing_label"),
+        [
+            ("Ok", "You passed", "Was required for passing", "Contributed to passing"),
+            (
+                "Overdue",
+                "You would still pass",
+                "Is required in order to pass",
+                "Would contribute to passing",
+            ),
+            ("Finished", "You would have passed", "Was required to pass", "Would have contributed to passing"),
+            ("Released", "You will pass", "Will be required to pass", "Will contribute to passing"),
+            (
+                "Waiting for Mark",
+                "This will let you pass",
+                "Will be required to pass",
+                "This will contribute to you passing",
+            ),
+        ],
+    )
+    def test_vitals_text_distinguishes_mapping_roles(
+        self,
+        monkeypatch,
+        sample_module,
+        sample_test,
+        sample_user,
+        standing,
+        sufficient_label,
+        necessary_label,
+        contributing_label,
+    ):
+        """Test wording for sufficient, necessary and unflagged mappings."""
+        # external imports
+        from vitals.models import VITAL, VITAL_Test_Map
+
+        sufficient_vital = VITAL.objects.create(name="Sufficient VITAL", module=sample_module, VITAL_ID="VS")
+        necessary_vital = VITAL.objects.create(name="Necessary VITAL", module=sample_module, VITAL_ID="VN")
+        contributing_vital = VITAL.objects.create(name="Contributing VITAL", module=sample_module, VITAL_ID="VC")
+        VITAL_Test_Map.objects.create(
+            test=sample_test,
+            vital=sufficient_vital,
+            sufficient=True,
+            condition="attempt",
+        )
+        VITAL_Test_Map.objects.create(
+            test=sample_test,
+            vital=necessary_vital,
+            necessary=True,
+            sufficient=False,
+            condition="pass",
+        )
+        VITAL_Test_Map.objects.create(
+            test=sample_test,
+            vital=contributing_vital,
+            necessary=False,
+            sufficient=False,
+            condition="attempt",
+        )
+        monkeypatch.setattr(Test_Score, "manual_standing", property(lambda _score: standing))
+        monkeypatch.setattr(
+            "minerva.models.vital_qs_to_html",
+            lambda queryset, _user: ", ".join(queryset.values_list("name", flat=True)),
+        )
+
+        score = Test_Score(user=sample_user, test=sample_test)
+        text = str(score.vitals_text)
+
+        assert f"{sufficient_label}:" in text
+        assert f"{necessary_label}:" in text
+        assert f"{contributing_label}:" in text
+        assert "Sufficient VITAL" in text
+        assert "Necessary VITAL" in text
+        assert "Contributing VITAL" in text
+
+    def test_sufficient_mapping_is_not_repeated_as_necessary(
+        self, monkeypatch, sample_module, sample_test, sample_user
+    ):
+        """Test that a sufficient mapping is excluded from later mapping groups."""
+        # external imports
+        from vitals.models import VITAL, VITAL_Test_Map
+
+        vital = VITAL.objects.create(name="Both Flags VITAL", module=sample_module, VITAL_ID="VB")
+        VITAL_Test_Map.objects.create(
+            test=sample_test,
+            vital=vital,
+            necessary=True,
+            sufficient=True,
+        )
+        monkeypatch.setattr(Test_Score, "manual_standing", property(lambda _score: "Ok"))
+        monkeypatch.setattr(
+            "minerva.models.vital_qs_to_html",
+            lambda queryset, _user: ", ".join(queryset.values_list("name", flat=True)),
+        )
+
+        text = str(Test_Score(user=sample_user, test=sample_test).vitals_text)
+
+        assert "You passed:" in text
+        assert "Was required" not in text
+        assert text.count("Both Flags VITAL") == 1

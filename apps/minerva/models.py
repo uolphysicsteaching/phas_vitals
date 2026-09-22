@@ -16,7 +16,7 @@ from django.db import DEFAULT_DB_ALIAS, models, transaction
 from django.db.models import F, Prefetch, Q
 from django.forms import ValidationError
 from django.utils import timezone as tz
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 
 # external imports
 import numpy as np
@@ -476,8 +476,14 @@ class Module(models.Model):
         """Check to see whether all the columns for a test are in the json or not."""
         if not self.data_ready:  # Don;'t do anything if we don't have data
             return
-        for test in self.tests.all():
-            test.remove_columns_not_in_json(remove_column=remove_column)
+        blobs = json.get_blob_list()
+        for column in self.gradebook_columns.all().order_by("priority"):
+            if column.json_attempts_file not in blobs and column.json_grades_file not in blobs:
+                if remove_column:
+                    column.delete()
+                else:
+                    column.test = None
+                    column.save()
 
 
 class TestCategory(models.Model):
@@ -1351,46 +1357,43 @@ class Test_Score(models.Model):
 
     @property
     def vitals_text(self):
-        """Get a Label for whether we pass VITALS or not."""
+        """Describe how this test affects the student's VITALs."""
         vitals_count = self.test.vitals_mappings.count()
         if vitals_count == 0:
             return "Possible VITALs to be confirmed:"
+
         sufficient = self.test.VITALS.model.objects.filter(
-            tests_mappings__in=self.test.vitals_mappings.filter(sufficient=True, condition="pass")
-        )
+            tests_mappings__in=self.test.vitals_mappings.filter(sufficient=True)
+        ).distinct()
         necessary = self.test.VITALS.model.objects.filter(
-            tests_mappings__in=self.test.vitals_mappings.filter(necessary=True, condition="attempt")
-        )
-        ret = ""
-        match self.manual_standing:
-            case "Ok":
-                if sufficient.count() > 0:
-                    ret += f"You passed:\n{vital_qs_to_html(sufficient, self.user)}"
-                if necessary.count() > 0:
-                    ret += f"Contributed to passing:\n{vital_qs_to_html(necessary, self.user)}"
-            case "Overdue" | "Missing":
-                if sufficient.count() > 0:
-                    ret += f"You would still pass:\n{vital_qs_to_html(sufficient, self.user)}"
-                if necessary.count() > 0:
-                    ret += f"Would contribute to passing:\n{vital_qs_to_html(necessary, self.user)}"
-            case "Finished":
-                if sufficient.count() > 0:
-                    ret += f"You would have passed:\n{vital_qs_to_html(sufficient, self.user)}"
-                if necessary.count() > 0:
-                    ret += f"Would have contributed to passing:\n{vital_qs_to_html(necessary, self.user)}"
-            case "Released" | "Not Started":
-                if sufficient.count() > 0:
-                    ret += f"You will pass:\n{vital_qs_to_html(sufficient, self.user)}"
-                if necessary.count() > 0:
-                    ret += f"Will contribute to passing:\n{vital_qs_to_html(necessary, self.user)}"
-            case "Waiting for Mark":
-                if sufficient.count() > 0:
-                    ret += f"This will let you pass:\n{vital_qs_to_html(sufficient, self.user)}"
-                if necessary.count() > 0:
-                    ret += f"This will contribute to you passing:\n{vital_qs_to_html(necessary, self.user)}"
-            case _:
-                ret = ""
-        return format_html(ret)
+            tests_mappings__in=self.test.vitals_mappings.filter(sufficient=False, necessary=True)
+        ).distinct()
+        contributing = self.test.VITALS.model.objects.filter(
+            tests_mappings__in=self.test.vitals_mappings.filter(sufficient=False, necessary=False)
+        ).distinct()
+
+        labels = {
+            "Ok": ("You passed", "Was required for passing", "Contributed to passing"),
+            "Overdue": ("You would still pass", "Is required in order to pass", "Would contribute to passing"),
+            "Missing": ("You would still pass", "Is required in order to pass", "Would contribute to passing"),
+            "Finished": ("You would have passed", "Was required to pass", "Would have contributed to passing"),
+            "Released": ("You will pass", "Will be required to pass", "Will contribute to passing"),
+            "Not Started": ("You will pass", "Will be required to pass", "Will contribute to passing"),
+            "Waiting for Mark": (
+                "This will let you pass",
+                "Will be required to pass",
+                "This will contribute to you passing",
+            ),
+        }.get(self.manual_standing)
+        if labels is None:
+            return ""
+
+        sections = [
+            format_html("{}:\n{}", label, vital_qs_to_html(vitals, self.user))
+            for label, vitals in zip(labels, (sufficient, necessary, contributing), strict=True)
+            if vitals.exists()
+        ]
+        return format_html_join("", "{}", ((section,) for section in sections))
 
     @property
     def best_score(self):

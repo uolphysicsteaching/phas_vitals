@@ -1,6 +1,7 @@
 """Model objects for the VITALs app."""
 
 # Python imports
+import math
 import re
 from collections import defaultdict
 from datetime import timedelta
@@ -8,10 +9,10 @@ from datetime import timedelta
 # Django imports
 from django.apps import apps
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
 from django.utils import timezone as tz
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 
 # external imports
 import numpy as np
@@ -33,6 +34,27 @@ def test_qs_to_html(queryset):
             {test.name} ({test.module.code})</a></li>\n"""
     ret += "</ul>\n"
     return format_html(ret)
+
+
+REQUIRED_FRACTION_TOLERANCE = 0.001
+
+
+def mappings_to_html(mappings):
+    """Produce an HTML list of the actions required by test mappings."""
+    items = format_html_join(
+        "",
+        '<li>{} <a class="vital_link" href="{}">{} ({})</a></li>\n',
+        ((mapping.condition, mapping.test.url, mapping.test.name, mapping.test.module.code) for mapping in mappings),
+    )
+    return format_html("<ul>\n{}</ul>\n", items)
+
+
+def join_html_sections(sections, conjunction):
+    """Join safe HTML sections with a conjunction in its own paragraph."""
+    output = sections[0]
+    for section in sections[1:]:
+        output = format_html("{}\n<p>{}</p>\n{}", output, conjunction, section)
+    return output
 
 
 class VITAL_Test_Map(models.Model):
@@ -65,6 +87,32 @@ class VITAL_Test_Map(models.Model):
             + " The sum of this field for all met conditions must be equal or greater than 1."
         ),
     )
+
+    def clean(self):
+        """Require non-sufficient mappings for a VITAL to use the same fraction."""
+        super().clean()
+        if self.sufficient or not self.vital_id:
+            return
+        sibling_fraction = (
+            type(self)
+            .objects.filter(vital_id=self.vital_id, sufficient=False)
+            .exclude(pk=self.pk)
+            .values_list("required_fractrion", flat=True)
+            .first()
+        )
+        if sibling_fraction is not None and not math.isclose(
+            self.required_fractrion,
+            sibling_fraction,
+            rel_tol=0.0,
+            abs_tol=REQUIRED_FRACTION_TOLERANCE,
+        ):
+            raise ValidationError(
+                {
+                    "required_fractrion": (
+                        "All non-sufficient mappings for a VITAL must have the same required fraction."
+                    )
+                }
+            )
 
     def __str__(self):
         """Provide a sensible string for logging etc."""
@@ -158,42 +206,55 @@ class VITAL_Result(models.Model):
 
     @property
     def tests_text(self):
-        """Get text for advise about tests."""
-        if self.vital.tests_mappings.count() == 0:
-            return {
-                "Ok": "Requirements to be confirmed.",  # PAssed
-                "Finished": "Requirements to be confirmed.",  # Overdue passing
-                "Started": "Requirements to be confirmed.",  # Underway, not passed yet
-                "Not Started": "Requirements to be confirmed.",  # In the future, no worries yet
-            }.get(self.status, "")
+        """Describe the combinations of mapped tests that award this VITAL."""
+        mappings = list(self.vital.tests_mappings.select_related("test", "test__module").order_by("pk"))
+        if not mappings:
+            return "Requirements to be confirmed."
 
-        sufficient, sufficient_txt = self.vital.sufficient_pass_tests
-        necessary, necessary_txt = self.vital.neccessary_attempt_tests
-        ret = ""
-        match self.status:
-            case "Ok":  # passed
-                if sufficient.count() >= 1:
-                    ret += f"You passed {sufficient_txt}:\n{test_qs_to_html(sufficient)}"
-                if necessary.count() >= 1:
-                    ret += f"You attempted {necessary_txt}:\n{test_qs_to_html(necessary)}"
-            case "Finished":
-                if sufficient.count() >= 1:
-                    ret += f"You still need to pass {sufficient_txt}:\n{test_qs_to_html(sufficient)}"
-                if necessary.count() >= 1:
-                    ret += f"You still need to attempt {necessary_txt}:\n{test_qs_to_html(necessary)}"
-            case "Started":
-                if sufficient.count() >= 1:
-                    ret += f"You need to pass {sufficient_txt}:\n{test_qs_to_html(sufficient)}"
-                if necessary.count() >= 1:
-                    ret += f"You need to attempt {necessary_txt}:\n{test_qs_to_html(necessary)}"
-            case "Not Started":
-                if sufficient.count() >= 1:
-                    ret += f"You will need to pass {sufficient_txt}:\n{test_qs_to_html(sufficient)}"
-                if necessary.count() >= 1:
-                    ret += f"You will need to attempt {necessary_txt}:\n{test_qs_to_html(necessary)}"
-            case _:
-                pass
-        return format_html(ret)
+        sufficient = [mapping for mapping in mappings if mapping.sufficient]
+        non_sufficient = [mapping for mapping in mappings if not mapping.sufficient]
+        necessary = [mapping for mapping in non_sufficient if mapping.necessary]
+        remaining = [mapping for mapping in non_sufficient if not mapping.necessary]
+
+        if non_sufficient:
+            required_fraction = non_sufficient[0].required_fractrion
+            fractions_match = all(
+                math.isclose(
+                    mapping.required_fractrion,
+                    required_fraction,
+                    rel_tol=0.0,
+                    abs_tol=REQUIRED_FRACTION_TOLERANCE,
+                )
+                for mapping in non_sufficient[1:]
+            )
+            if not fractions_match or required_fraction <= 0:
+                return format_html(
+                    '<span class="text-danger">{}</span>',
+                    "Requirements configuration error: non-sufficient mappings must have the same positive "
+                    "required fraction.",
+                )
+            remaining_required = max(0, round(1 / required_fraction) - len(necessary))
+        else:
+            remaining_required = 0
+
+        routes = []
+        if sufficient:
+            heading = "one of the following:" if len(sufficient) > 1 else "the following:"
+            routes.append(format_html("{}\n{}", heading, mappings_to_html(sufficient)))
+
+        fractional_sections = []
+        if necessary:
+            heading = "all of the following:" if len(necessary) > 1 else "the following:"
+            fractional_sections.append(format_html("{}\n{}", heading, mappings_to_html(necessary)))
+        if remaining_required > 0:
+            fractional_sections.append(
+                format_html("{} of the following:\n{}", remaining_required, mappings_to_html(remaining))
+            )
+
+        if fractional_sections:
+            routes.append(join_html_sections(fractional_sections, "and"))
+
+        return format_html("You should do {}", join_html_sections(routes, "or"))
 
 
 class VITAL_Manager(models.Manager):
